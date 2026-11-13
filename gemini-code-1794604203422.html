@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مؤسسة الحافظ للتنمية والخدمات</title>
+    <!-- استدعاء Tailwind CSS للتصميم السريع والنظيف -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- شريط الاتصال العلوي -->
+    <div class="bg-emerald-800 text-white py-2 px-4 text-sm">
+        <div class="container mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
+            <div class="flex items-center gap-4">
+                <span><i class="fas fa-phone-alt ml-1"></i> 01155540066</span>
+                <span><i class="fab fa-whatsapp ml-1 text-green-400"></i> 01000880156</span>
+                <span><i class="fas fa-envelope ml-1"></i> alhafiz52025@gmail.com</span>
+            </div>
+            <div class="text-xs bg-emerald-700 px-3 py-1 rounded-full">
+                مشهرة برقم 2202 لسنة 2025
+            </div>
+        </div>
+    </div>
+
+    <!-- الشريط الرئيسي (Navbar) -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-100 p-2 rounded-full text-emerald-700 font-bold text-xl">
+                    <i class="fas fa-hands-helping"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-emerald-900 leading-tight">مؤسسة الحافظ</h1>
+                    <p class="text-xs text-gray-500">للتنمية والخدمات</p>
+                </div>
+            </div>
+            <nav class="hidden md:flex gap-6 font-medium text-gray-700">
+                <a href="#" class="text-emerald-700 hover:text-emerald-500 transition">الرئيسية</a>
+                <a href="#about" class="hover:text-emerald-600 transition">عن المؤسسة</a>
+                <a href="#programs" class="hover:text-emerald-600 transition">برامجنا</a>
+                <a href="#donate" class="hover:text-emerald-600 transition">تبرع لنا</a>
+                <a href="#contact" class="hover:text-emerald-600 transition">تواصل معنا</a>
+            </nav>
+            <div>
+                <a href="#register" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow transition">
+                    <i class="fas fa-file-alt ml-1"></i> تسجيل طلب مساعدة
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- القسم الرئيسي (Hero Section) -->
+    <section class="bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 text-white py-20 px-4 text-center relative overflow-hidden">
+        <div class="container mx-auto max-w-4xl relative z-10">
+            <span class="bg-emerald-700/80 text-emerald-200 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-4">خيراً نعمل .. وبكم نستمر</span>
+            <h2 class="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">مؤسسة الحافظ للتنمية والخدمات</h2>
+            <p class="text-lg text-emerald-100 mb-8 max-w-2xl mx-auto">نسعى لتقديم الرعاية الشاملة للأسر المتعففة والأيتام وتحقيق التنمية المستدامة في مركز إهناسيا بمحافظة بني سويف.</p>
+            <div class="flex flex-wrap justify-center gap-4">
+                <a href="#register" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-8 py-3 rounded-xl shadow-lg transition">تسجيل حالة استحقاق</a>
+                <a href="#donate" class="bg-white/10 hover:bg-white/20 border border-white/30 font-bold px-8 py-3 rounded-xl transition">طرق التبرع والدعم</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- نبذة عن المقر والإشهار -->
+    <section id="about" class="py-12 bg-white border-b">
+        <div class="container mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+            <div class="p-6 bg-gray-50 rounded-2xl shadow-sm">
+                <div class="text-emerald-600 text-3xl mb-3"><i class="fas fa-certificate"></i></div>
+                <h3 class="font-bold text-lg mb-1">الاشهار الرسمي</h3>
+                <p class="text-gray-600 text-sm">مشهرة برقم 2202 لسنة 2025 رسمياً بوزارة التضامن الاجتماعي.</p>
+            </div>
+            <div class="p-6 bg-gray-50 rounded-2xl shadow-sm">
+                <div class="text-emerald-600 text-3xl mb-3"><i class="fas fa-map-marker-alt"></i></div>
+                <h3 class="font-bold text-lg mb-1">مقر المؤسسة</h3>
+                <p class="text-gray-600 text-sm">قرية منشأة عبدالصمد، مدخل القرية على البحر اليوسفى، مركز إهناسيا، بني سويف.</p>
+            </div>
+            <div class="p-6 bg-gray-50 rounded-2xl shadow-sm">
+                <div class="text-emerald-600 text-3xl mb-3"><i class="fas fa-bullseye"></i></div>
+                <h3 class="font-bold text-lg mb-1">رؤيتنا</h3>
+                <p class="text-gray-600 text-sm">التمكين الاجتماعي والاقتصادي وتحقيق التنمية المستدامة للفئات الأكثر احتياجاً.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- برامج المؤسسة -->
+    <section id="programs" class="py-16 px-4">
+        <div class="container mx-auto max-w-6xl">
+            <div class="text-center mb-12">
+                <h3 class="text-3xl font-bold text-emerald-900 mb-2">أنشطة وبرامج المؤسسة</h3>
+                <p class="text-gray-600">نعمل على عدة محاور رئيسية لخدمة المجتمع المحلي</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- برنامج 1 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-child"></i></div>
+                    <h4 class="font-bold text-lg mb-2">رعاية الأيتام</h4>
+                    <p class="text-gray-600 text-sm">دعم وتوفير المتطلبات الأساسية للأطفال الأيتام ورعايتهم معيشياً وتعليمياً.</p>
+                </div>
+                <!-- برنامج 2 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-ring"></i></div>
+                    <h4 class="font-bold text-lg mb-2">تجهيز عروسة</h4>
+                    <p class="text-gray-600 text-sm">مساعدة الفتيات اليتامى غير القادرات وغير القادرات على تجهيز مستلزمات الزواج.</p>
+                </div>
+                <!-- برنامج 3 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-hands-holding-heart"></i></div>
+                    <h4 class="font-bold text-lg mb-2">إعانة الأسر المتعففة</h4>
+                    <p class="text-gray-600 text-sm">تقديم المساعدات العينية والنقدية المباشرة للأسر المستحقة بحفظ كرامتهم.</p>
+                </div>
+                <!-- برنامج 4 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-calendar-alt"></i></div>
+                    <h4 class="font-bold text-lg mb-2">مساعدات شهرية وموسمية</h4>
+                    <p class="text-gray-600 text-sm">توزيع كراتين الأغذية، لحوم الأضاحي، وملابس العيد في مواسم الخير.</p>
+                </div>
+                <!-- برنامج 5 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-tshirt"></i></div>
+                    <h4 class="font-bold text-lg mb-2">معرض الملابس</h4>
+                    <p class="text-gray-600 text-sm">إقامة معارض ملابس خيرية شبه مجانية للأسر والأطفال في المناسبات.</p>
+                </div>
+                <!-- برنامج 6 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-tint"></i></div>
+                    <h4 class="font-bold text-lg mb-2">وصلة مياه نظيفة</h4>
+                    <p class="text-gray-600 text-sm">حفر وتوصيل شبكات ومياه الشرب النقية للمنازل الأكثر احتياجاً محرومة المياه.</p>
+                </div>
+                <!-- برنامج 7 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-ambulance"></i></div>
+                    <h4 class="font-bold text-lg mb-2">إغاثة وطوارئ</h4>
+                    <p class="text-gray-600 text-sm">التدخل السريع والآني لمواجهة الأزمات والحالات الطارئة للبيوت المتضررة.</p>
+                </div>
+                <!-- برنامج 8 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-600 hover:-translate-y-1 transition">
+                    <div class="text-emerald-600 text-2xl mb-3"><i class="fas fa-seedling"></i></div>
+                    <h4 class="font-bold text-lg mb-2">التنمية المستدامة</h4>
+                    <p class="text-gray-600 text-sm">مشاريع تنموية صغيرة تضمن دخلاً مستداماً للأسر لتحقيق الاكتفاء الذاتي.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- قسم التبرع (مستخرج من الصور المرفقة بدقة) -->
+    <section id="donate" class="py-16 bg-emerald-900 text-white px-4">
+        <div class="container mx-auto max-w-4xl text-center">
+            <h3 class="text-3xl font-bold mb-4">ساهم معنا في دعم الخير</h3>
+            <p class="text-emerald-200 mb-10">التبرع عبر الحسابات البنكية الرسمية للمؤسسة أو محافظ الكاش المعتمدة</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-right">
+                <!-- البنك الزراعي المصري -->
+                <div class="bg-emerald-800 p-6 rounded-2xl border border-emerald-700 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold text-lg text-amber-300"><i class="fas fa-university ml-2"></i> البنك الزراعي المصري</h4>
+                        <span class="text-xs bg-emerald-700 px-2.5 py-1 rounded">فرع منهرة</span>
+                    </div>
+                    <p class="text-xs text-gray-300 mb-1">رقم الحساب الرسمي:</p>
+                    <div class="bg-emerald-950 p-3 rounded-xl font-mono tracking-widest text-emerald-300 text-center text-lg font-bold mb-4 select-all">
+                        10010395839201011
+                    </div>
+                </div>
+
+                <!-- محفظة الكاش المعتمدة -->
+                <div class="bg-pink-900/60 p-6 rounded-2xl border border-pink-700 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold text-lg text-pink-200"><i class="fas fa-mobile-alt ml-2"></i> رقم محفظة الكاش المعتمدة</h4>
+                        <span class="text-xs bg-pink-800 px-2.5 py-1 rounded">متاح فودافون / كاش</span>
+                    </div>
+                    <p class="text-xs text-pink-100 mb-1">متاح لاستقبال التبرعات السريعة من أي مكان:</p>
+                    <div class="bg-pink-950 p-3 rounded-xl font-mono tracking-widest text-pink-300 text-center text-lg font-bold mb-4 select-all">
+                        01000880156
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- نموذج تسجيل الأسر (مبدئي مرتب) -->
+    <section id="register" class="py-16 px-4 bg-gray-100">
+        <div class="container mx-auto max-w-2xl bg-white p-8 rounded-3xl shadow-xl">
+            <div class="text-center mb-8">
+                <h3 class="text-2xl font-bold text-emerald-900 mb-2">تسجيل طلب مساعدة / حالة جديدة</h3>
+                <p class="text-gray-500 text-sm">يرجى ملء البيانات بدقة ليتسنى للباحث الميداني التواصل معكم ودراسة الحالة.</p>
+            </div>
+            <form onsubmit="event.preventDefault(); alert('تم إرسال طلبك بنجاح وسيتم المراجعة من قبل الإدارة.');" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">الاسم الرباعي لرب الأسرة</label>
+                    <input type="text" required class="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">الرقم القومي (14 رقم)</label>
+                        <input type="text" maxlength="14" required class="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">رقم الهاتف المحمول</label>
+                        <input type="tel" required class="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">العنوان بالتفصيل (القرية / الشارع)</label>
+                    <input type="text" required class="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none" value="بني سويف - إهناسيا - منشأة عبدالصمد">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">نوع المساعدة المطلوبة</label>
+                    <select class="w-full border rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-emerald-500 outline-none bg-white">
+                        <option>مساعدة مالية / إعانة شهرية</option>
+                        <option>رعاية طبية وعلاج</option>
+                        <option>تجهيز عروسة</option>
+                        <option>وصلة مياه نظيفة</option>
+                        <option>أخرى / طوارئ</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow transition">
+                    إرسال الطلب وحفظ البيانات
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- الفوتر (Footer) -->
+    <footer id="contact" class="bg-gray-900 text-gray-400 py-12 px-4 text-sm border-t border-gray-800">
+        <div class="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div>
+                <h4 class="text-white font-bold text-base mb-3">مؤسسة الحافظ للتنمية والخدمات</h4>
+                <p class="text-xs leading-relaxed mb-4">مؤسسة أهلية مشهرة برقم 2202 لسنة 2025، تهدف لخدمة المجتمع المحلي بمحافظة بني سويف وتحقيق التنمية المستدامة.</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-base mb-3">بيانات التواصل والمقر</h4>
+                <p class="mb-2"><i class="fas fa-map-marker-alt text-emerald-500 ml-2"></i> منشأة عبدالصمد، مدخل القرية على البحر اليوسفى، إهناسيا، بني سويف.</p>
+                <p class="mb-2"><i class="fas fa-phone-alt text-emerald-500 ml-2"></i> تليفون: 01155540066</p>
+                <p class="mb-2"><i class="fab fa-whatsapp text-emerald-500 ml-2"></i> واتساب: 01000880156</p>
+            </div>
+            <div>
+                <h4 class="text-white font-bold text-base mb-3">ساعات العمل والإدارة</h4>
+                <p class="mb-2"><i class="fas fa-clock text-emerald-500 ml-2"></i> طوال أيام الأسبوع لخدمة الحالات الطارئة.</p>
+                <p class="mb-2"><i class="fas fa
