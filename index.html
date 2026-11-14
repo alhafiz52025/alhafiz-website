@@ -314,6 +314,14 @@
     <script src="egypt-data.js"></script>
     <script src="wizard.js"></script>
     <script src="dashboards.js"></script>
+  <script>
+  // التأكد من إظهار الصفحة الرئيسية تلقائياً عند تحميل الموقع
+  document.addEventListener("DOMContentLoaded", function() {
+    if (typeof showSection === 'function') {
+      showSection('home');
+    }
+  });
+</script>
 </body>
 </html>
 
