@@ -1,5 +1,5 @@
-const SUPABASE_URL = 'ضع_هنا_PROJECT_URL';
-const SUPABASE_KEY = 'ضع_هنا_ANON_PUBLIC_KEY';
+const SUPABASE_URL = 'https://fwyacpvbhwdlivzeiper.supabase.co';
+const SUPABASE_KEY = sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz
 
 const db = (window.supabase && SUPABASE_URL.startsWith('http'))
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
