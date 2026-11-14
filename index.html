@@ -1,176 +1,379 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مؤسسة الحافظ للتنمية والخدمات | مركز إهناسيا - بني سويف</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://tailwindcss.com"></script>
-    <link href="https://googleapis.com" rel="stylesheet">
-    <script src="https://jsdelivr.net"></script>
-    <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
-        .emerald-gradient { background: linear-gradient(135deg, #064e3b 0%, #047857 100%); }
-        .card-hover:hover { transform: translateY(-4px); transition: all 0.25s ease; }
-    </style>
-</head>
-<body class="text-slate-800 flex flex-col min-h-screen">
+  "الفيوم": {
+    "الفيوم": ["مدينة الفيوم", "هوارة المقطع", "دمو", "العدوة"],
+    "إطسا": ["مدينة إطسا", "الغرق", "تطون", "قلمشاة"],
+    "يوسف الصديق": ["الشواشنة", "قارون", "النزلة", "الحامولي"],
+    "سنورس": ["مدينة سنورس", "فديمين", "سنهور القبلية"],
+    "طامية": ["مدينة طامية", "الروضة", "فانوس", "سرسنا"],
+    "أبشواي": ["مدينة أبشواي", "طبهار", "العجميين"]
+  },
+  "المنيا": {
+    "المنيا": ["مدينة المنيا", "تلة", "طوخ الخيل"],
+    "مغاغة": ["مدينة مغاغة", "أبا الوقف", "برطباط"],
+    "العدوة": ["مدينة العدوة", "صفانية", "بني عامر"],
+    "بني مزار": ["مدينة بني مزار", "القيس", "صندفا"],
+    "مطاي": ["مدينة مطاي", "أبو عزيز", "حلوة"],
+    "سمالوط": ["مدينة سمالوط", "قلوصنا", "البيهو"],
+    "ملوي": ["مدينة ملوي", "الروضة", "ديروط أم نخلة"],
+    "أبو قرقاص": ["مدينة أبو قرقاص", "اتليدم", "بني عبيد"],
+    "دير مواس": ["مدينة دير مواس", "دلجا", "تل العمارنة"]
+  },
+  "أسيوط": {
+    "أسيوط": ["مدينة أسيوط", "منقباد", "درنكة"],
+    "ديروط": ["مدينة ديروط", "صنبو", "مسارة"],
+    "القوصية": ["مدينة القوصية", "مير", "التتالية"],
+    "منفلوط": ["مدينة منفلوط", "بني رافع", "الحواتكة"],
+    "أبنوب": ["مدينة أبنوب", "بني محمديات"],
+    "الفتح": ["الناصرية", "بني مر"],
+    "ساحل سليم": ["مدينة ساحل سليم", "العونة"],
+    "البداري": ["مدينة البداري", "النواورة"],
+    "صدفا": ["مدينة صدفا", "البربا"],
+    "الغنايم": ["مدينة الغنايم", "المشايعة"],
+    "أبو تيج": ["مدينة أبو تيج", "النخيلة"]
+  },
+  "سوهاج": {
+    "سوهاج": ["مدينة سوهاج", "روافع القصير", "بلصفورة"],
+    "طما": ["مدينة طما", "المدمر", "مشطا"],
+    "طهطا": ["مدينة طهطا", "شطورة", "بني حرب"],
+    "المراغة": ["مدينة المراغة", "شندويل"],
+    "جهينة": ["مدينة جهينة", "عنيبس"],
+    "أخميم": ["مدينة أخميم", "نيدة", "الحواويش"],
+    "جرجا": ["مدينة جرجا", "المجابرة"],
+    "البلينا": ["مدينة البلينا", "برديس"],
+    "دار السلام": ["مدينة دار السلام", "أولاد يحيى"],
+    "المنشأة": ["مدينة المنشأة", "أولاد سلامة"],
+    "ساقلتة": ["مدينة ساقلتة", "الجلاوية"]
+  },
+  "قنا": {
+    "قنا": ["مدينة قنا", "دندرة", "المحروسة"],
+    "نجع حمادي": ["مدينة نجع حمادي", "بهجورة", "هو"],
+    "دشنا": ["مدينة دشنا", "السمطا", "فاو قبلي"],
+    "قوص": ["مدينة قوص", "حجازة", "خزام"],
+    "أبو تشت": ["مدينة أبو تشت", "بلاد المال"],
+    "فرشوط": ["مدينة فرشوط", "العركي"],
+    "الوقف": ["مدينة الوقف", "المراشدة"],
+    "قفط": ["مدينة قفط", "القلعة"],
+    "نقادة": ["مدينة نقادة", "طوخ"]
+  },
+  "الأقصر": {
+    "الأقصر": ["مدينة الأقصر", "الكرنك", "البياضية"],
+    "إسنا": ["مدينة إسنا", "أصفون", "الكيمان"],
+    "أرمنت": ["مدينة أرمنت", "الرزيقات"],
+    "القرنة": ["القرنة", "الضبعية"],
+    "الزينية": ["الزينية قبلي", "العشي"],
+    "الطود": ["الطود", "العديسات"]
+  },
+  "أسوان": {
+    "أسوان": ["مدينة أسوان", "غرب سهيل", "أبو الريش"],
+    "كوم أمبو": ["مدينة كوم أمبو", "العباسية", "فارس"],
+    "إدفو": ["مدينة إدفو", "الرمادي", "البصيلية"],
+    "دراو": ["مدينة دراو", "بنبان"],
+    "نصر النوبة": ["نصر النوبة", "بلانة", "عنيبة"]
+  },
+  "مطروح": {
+    "مرسى مطروح": ["مرسى مطروح", "الحمام", "العلمين", "سيوة"]
+  },
+  "شمال سيناء": {
+    "العريش": ["العريش", "الشيخ زويد", "رفح", "بئر العبد"]
+  },
+  "جنوب سيناء": {
+    "طور سيناء": ["طور سيناء", "شرم الشيخ", "دهب", "نويبع"]
+  },
+  "البحر الأحمر": {
+    "الغردقة": ["الغردقة", "رأس غارب", "سفاجا", "القصير"]
+  },
+  "الوادي الجديد": {
+    "الخارجة": ["الخارجة", "الداخلة", "الفرافرة", "باريس"]
+  }
+};
 
-    <!-- الشريط العلوي الرسمي -->
-    <div class="bg-emerald-950 text-emerald-100 text-xs py-2 px-4">
-        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
-            <span>🏛️ مؤسسة الحافظ للتنمية والخدمات - مشهرة رسمياً برقم <strong>2202 لسنة 2025</strong> بوزارة التضامن الاجتماعي</span>
-            <div class="flex gap-4 font-semibold">
-                <span>📞 01155540066</span>
-                <span>💬 واتساب: 01000880156</span>
+(async function loadExtendedVillages() {
+  const url = 'https://githubusercontent.com';
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const fullData = await res.json();
+      for (const gov in fullData) {
+        if (gov !== "بني سويف") {
+          EGYPT_LOCATIONS[gov] = fullData[gov];
+        }
+      }
+    }
+  } catch (e) {
+    console.log('تم تحميل القاعدة الجغرافية لمصر');
+  }
+})();
+
+const AID_TYPES = [
+  "كفالة أيتام شهرية",
+  "إعانة أسرة متعففة (امرأة معيلة / مسنين / عجز كلي)",
+  "تجهيز عروسة (أجهزة كهربائية / مفروشات)",
+  "إجراء عملية جراحية",
+  "علاج ودواء شهري مزمن",
+  "أشعة وتحاليل طبية",
+  "أجهزة تعويضية (كرسي متحرك / سماعة / طرف صناعي)",
+  "تركيب وصلة مياه نظيفة",
+  "تركيب عداد كهرباء",
+  "تسقيف منزل",
+  "ترميم وبناء منزل",
+  "كراتين ومساعدات غذائية موسمية",
+  "بطاطين وأغطية شتاء",
+  "شنط ومستلزمات مدرسية وسداد مصروفات",
+  "إغاثة عاجلة وطوارئ",
+  "مشروع تمكين اقتصادي صغير"
+];
+
+const EGYPT_JOBS = [
+  "لا يعمل / عاطل عن العمل",
+  "بالمعاش",
+  "غير قادر على العمل (عجز كلي / مرض مزمن)",
+  "ربة منزل (للزوجة)",
+  "عامل باليومية (أرزقي)",
+  "عامل زراعي / فلاح",
+  "حرفي ومهني (نجار / سباك / كهربائي / نقاش / بناء)",
+  "ميكانيكي / فني صيانة",
+  "خياط / ترزي",
+  "سائق (توك توك / ميكروباص / نقل)",
+  "موظف حكومي (قطاع عام)",
+  "موظف قطاع خاص",
+  "مدرس / إداري",
+  "عامل نظافة أو خدمات / فرد أمن",
+  "بائع متجول / صاحب كشك صغير",
+  "صياد",
+  "أعمال حرة أخرى"
+];
+
+const EDUCATION_LEVELS = [
+  { value: "illiterate", label: "غير متعلم (لا يقرأ ولا يكتب)" },
+  { value: "literate", label: "يقرأ ويكتب (محو أمية)" },
+  { value: "primary", label: "حاصل على الابتدائية" },
+  { value: "prep", label: "حاصل على الإعدادية" },
+  { value: "diploma", label: "حاصل على دبلوم فني" },
+  { value: "secondary", label: "حاصل على الثانوية العامة / الأزهرية" },
+  { value: "institute", label: "معهد فوق متوسط" },
+  { value: "university", label: "مؤهل جامعي (بكالوريوس / ليسانس)" },
+  { value: "master", label: "ماجستير" },
+  { value: "phd", label: "دكتوراه" }
+];
+
+const MEDICAL_NEEDS = [
+  "إجراء عملية جراحية",
+  "دواء وعلاج شهري مزمن",
+  "جلسات غسيل كلوي أو علاج كيماوي",
+  "أشعة وتحاليل طبية وفحوصات",
+  "تركيب طرف صناعي (علوي / سفلي)",
+  "أجهزة تعويضية (كرسي متحرك / سماعة / عكاز / مرتبة هوائية)",
+  "جلسات علاج طبيعي أو تخاطب"
+];
+    <!-- 2. شاشة من نحن والهيكل التنظيمي -->
+    <section id="section-about" class="hidden container">
+        <h3 class="section-title">من نحن والهيكل التنظيمي</h3>
+        <p class="section-desc">
+            مؤسسة تنموية خيرية مشهرة رسمياً برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي
+        </p>
+        <div class="grid-2" style="margin-bottom: 24px;">
+            <div class="card">
+                <h4 style="color:#064e3b; font-weight:800; margin-bottom:8px;">🎯 رؤيتنا ورسالتنا</h4>
+                <p style="font-size:14px; color:#475569;">
+                    الريادة في العمل التنموي المستدام بمركز إهناسيا ومحافظة بني سويف، من خلال بناء جسور الثقة بين كبرى المؤسسات المانحة والجمعيات القاعدية، وتطبيق أعلى معايير الحوكمة والعدالة الرقمية لضمان وصول الدعم لمستحقيه.
+                </p>
+            </div>
+            <div class="card">
+                <h4 style="color:#064e3b; font-weight:800; margin-bottom:8px;">🏛️ البيانات القانونية والإشهار</h4>
+                <p style="font-size:14px; color:#475569;">
+                    <strong>الاسم المشهر:</strong> مؤسسة الحافظ للتنمية والخدمات<br>
+                    <strong>رقم الإشهار:</strong> 2202 لسنة 2025 – تضامن بني سويف<br>
+                    <strong>المقر الرئيسي:</strong> منشأة عبدالصمد – مركز إهناسيا – بني سويف
+                </p>
             </div>
         </div>
-    </div>
-
-    <!-- القائمة الرئيسية -->
-    <nav class="bg-white shadow-sm sticky top-0 z-50 border-b border-emerald-100">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
-            <div onclick="showSection('home')" class="flex items-center gap-3 cursor-pointer">
-               <img src="logo.jpg" alt="شعار مؤسسة الحافظ" style="width: 54px; height: 54px; border-radius: 12px; object-fit: contain; background: #fff; padding: 2px; border: 1px solid #d1fae5;">
-                <div>
-                    <h1 class="font-extrabold text-lg text-emerald-950 leading-tight">مؤسسة الحافظ</h1>
-                    <p class="text-xs text-amber-600 font-bold">للتنمية والخدمات - مركز إهناسيا</p>
+        <div class="card">
+            <h4 style="color:#064e3b; font-weight:800; margin-bottom:14px; text-align:center;">
+                الهيكل التنظيمي ومجلس الأمناء
+            </h4>
+            <div class="grid-3">
+                <div style="background:#ecfdf5; padding:14px; border-radius:12px; text-align:center;">
+                    <p style="font-size:12px; color:#047857; font-weight:700;">رئيس مجلس الأمناء</p>
+                    <p style="font-size:15px; font-weight:800; color:#064e3b;">أ. نجم الدين حسين إبراهيم</p>
+                    <p style="font-size:12px; color:#475569;">هاتف: 01155540066</p>
                 </div>
-            </div>
-            <div class="flex flex-wrap gap-2 mt-2 md:mt-0">
-                <button onclick="showSection('home')" class="px-3 py-2 text-xs md:text-sm font-bold text-slate-700 hover:text-emerald-700">الرئيسية</button>
-                <button onclick="showSection('apply')" class="px-4 py-2 text-xs md:text-sm font-extrabold bg-emerald-700 text-white rounded-xl hover:bg-emerald-800 shadow-sm">+ تقديم طلب مساعدة</button>
-                <button onclick="showSection('track')" class="px-3 py-2 text-xs md:text-sm font-bold bg-amber-50 text-amber-900 border border-amber-200 rounded-xl hover:bg-amber-100">🔍 استعلام عن طلب</button>
-                <button onclick="showSection('grievance')" class="px-3 py-2 text-xs md:text-sm font-bold text-red-700 hover:bg-red-50 rounded-xl">⚖️ شكوى / تظلم</button>
-                <button onclick="showSection('login')" class="px-4 py-2 text-xs md:text-sm font-extrabold bg-slate-900 text-white rounded-xl hover:bg-slate-800">🔐 بوابة الدخول</button>
+                <div style="background:#f8fafc; padding:14px; border-radius:12px; text-align:center; border:1px solid #e2e8f0;">
+                    <p style="font-size:12px; color:#d97706; font-weight:700;">الأمين العام (السكرتير)</p>
+                    <p style="font-size:15px; font-weight:800;">هيئة مكتب مجلس الأمناء</p>
+                </div>
+                <div style="background:#f8fafc; padding:14px; border-radius:12px; text-align:center; border:1px solid #e2e8f0;">
+                    <p style="font-size:12px; color:#d97706; font-weight:700;">أمين الصندوق</p>
+                    <p style="font-size:15px; font-weight:800;">الإدارة المالية والمراجعة</p>
+                </div>
+                <div style="background:#f8fafc; padding:14px; border-radius:12px; text-align:center; border:1px solid #e2e8f0;">
+                    <p style="font-size:12px; color:#047857; font-weight:700;">المدير التنفيذي</p>
+                    <p style="font-size:15px; font-weight:800;">إدارة البرامج والبحث الميداني</p>
+                </div>
+                <div style="background:#f8fafc; padding:14px; border-radius:12px; text-align:center; border:1px solid #e2e8f0;">
+                    <p style="font-size:12px; color:#047857; font-weight:700;">عضو مجلس الأمناء</p>
+                    <p style="font-size:15px; font-weight:800;">لجنة الرقابة والحوكمة</p>
+                </div>
             </div>
         </div>
-    </nav>
+    </section>
 
-    <!-- 1. الصفحة الرئيسية الفخمة -->
-    <main id="section-home" class="flex-grow">
-        <section class="emerald-gradient text-white py-16 px-4">
-            <div class="max-w-5xl mx-auto text-center">
-                <span class="inline-block bg-white/10 text-amber-300 text-xs font-bold px-4 py-1.5 rounded-full mb-4 border border-white/20">منظومة حوكمة وشفافية رقمية لتغطية مركز إهناسيا وضواحيها</span>
-                <h2 class="text-3xl md:text-5xl font-extrabold mb-4 leading-tight">معاً.. نصنع أثراً يمتد ويبقى</h2>
-                <p class="text-emerald-100 text-sm md:text-lg max-w-2xl mx-auto mb-8">نعمل كمظلة تنموية تربط كبرى المؤسسات المانحة بالجمعيات القاعدية في القرى والعزب، بنظام إلكتروني دقيق يمنع الازدواجية ويضمن وصول الدعم لمستحقيه.</p>
-                <div class="flex flex-wrap justify-center gap-4">
-                    <button onclick="showSection('apply')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-7 py-3.5 rounded-xl shadow-lg text-sm">تسجيل طلب مساعدة للأسرة</button>
-                    <a href="#donate" class="bg-white/15 hover:bg-white/25 text-white font-bold px-7 py-3.5 rounded-xl border border-white/30 text-sm">طرق التبرع الرسمية</a>
-                </div>
-            </div>
-        </section>
-
-        <!-- برامج المؤسسة -->
-        <section class="max-w-7xl mx-auto py-12 px-4">
-            <h3 class="text-2xl font-extrabold text-center text-emerald-950 mb-2">برامج ومشاريع المؤسسة</h3>
-            <p class="text-center text-slate-500 text-xs mb-8">رعاية متكاملة للأسر المتعففة والأيتام في قرى وعزب مركز إهناسيا</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 card-hover">
-                    <div class="text-3xl mb-3">💍</div>
-                    <h4 class="font-bold text-emerald-900 mb-1">تجهيز عروسة</h4>
-                    <p class="text-xs text-slate-600 leading-relaxed">توفير الأجهزة الكهربائية والمفروشات لتيسير زواج الفتيات اليتيمات وغير القادرات.</p>
-                </div>
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 card-hover">
-                    <div class="text-3xl mb-3">👶</div>
-                    <h4 class="font-bold text-emerald-900 mb-1">كفالة ورعاية الأيتام</h4>
-                    <p class="text-xs text-slate-600 leading-relaxed">كفالات شهرية منتظمة ودعم تعليمي وصحي شامل للأيتام والأسر بلا عائل.</p>
-                </div>
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 card-hover">
-                    <div class="text-3xl mb-3">💧</div>
-                    <h4 class="font-bold text-emerald-900 mb-1">وصلات مياه وتسقيف</h4>
-                    <p class="text-xs text-slate-600 leading-relaxed">توصيل مياه الشرب النقية وتسقيف وترميم منازل الأسر الأولى بالرعاية.</p>
-                </div>
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 card-hover">
-                    <div class="text-3xl mb-3">🏥</div>
-                    <h4 class="font-bold text-emerald-900 mb-1">الرعاية الطبية والعمليات</h4>
-                    <p class="text-xs text-slate-600 leading-relaxed">إجراء العمليات الجراحية وصرف الأدوية الشهرية وتوفير الأجهزة التعويضية.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- قسم التبرع الرسمي -->
-        <section id="donate" class="bg-emerald-50 py-12 px-4 border-t border-emerald-100">
-            <div class="max-w-4xl mx-auto text-center">
-                <h3 class="text-2xl font-extrabold text-emerald-950 mb-2">حسابات التبرع الرسمية المعتمدة</h3>
-                <p class="text-xs text-slate-600 mb-6">تحت إشراف وزارة التضامن الاجتماعي - إشهار رقم 2202 لسنة 2025</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-emerald-200">
-                        <p class="text-xs text-slate-500 font-bold mb-1">البنك الزراعي المصري - فرع منهرة</p>
-                        <p class="text-lg font-extrabold text-emerald-900 tracking-wider my-2">10010395839201011</p>
-                        <button onclick="copyText('10010395839201011')" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-900 px-4 py-2 rounded-lg font-bold">نسخ رقم الحساب</button>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-amber-200">
-                        <p class="text-xs text-slate-500 font-bold mb-1">محفظة فودافون كاش المعتمدة</p>
-                        <p class="text-lg font-extrabold text-amber-700 tracking-wider my-2">01000880156</p>
-                        <button onclick="copyText('01000880156')" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-lg font-bold">نسخ رقم المحفظة</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-    <!-- 2. شاشة الاستمارة الذكية المتعددة الخطوات -->
-    <section id="section-apply" class="hidden max-w-4xl mx-auto py-10 px-4 w-full flex-grow">
-        <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 md:p-8">
-            <div class="flex flex-wrap justify-between items-center border-b pb-4 mb-6 gap-2">
+    <!-- 3. شاشة الاستمارة الذكية المتعددة الخطوات -->
+    <section id="section-apply" class="hidden container">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid #e2e8f0; padding-bottom:14px; margin-bottom:20px;">
                 <div>
-                    <h2 class="text-xl font-extrabold text-emerald-950">استمارة تسجيل وبحث حالة اجتماعية</h2>
-                    <p class="text-xs text-slate-500">يتم فحص الرقم القومي تلقائياً لمنع الازدواجية وتطبيق الحوكمة</p>
+                    <h3 style="text-align:right; font-size:20px; margin:0;">استمارة تسجيل وبحث حالة اجتماعية</h3>
+                    <p style="font-size:12px; color:#64748b;">
+                        يجب استيفاء البيانات الأساسية في كل خطوة قبل الانتقال للتالي
+                    </p>
                 </div>
-                <button onclick="saveDraft()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2 rounded-xl border">💾 حفظ كمسودة</button>
+                <button onclick="saveDraft()" class="nav-btn btn-gold">💾 حفظ كمسودة</button>
             </div>
             <div id="wizard-container"></div>
         </div>
     </section>
 
-    <!-- 3. شاشة الاستعلام الفوري عن الطلب -->
-    <section id="section-track" class="hidden max-w-xl mx-auto py-14 px-4 w-full flex-grow">
-        <div class="bg-white rounded-2xl shadow-md border border-slate-200 p-6 text-center">
-            <h2 class="text-xl font-extrabold text-emerald-950 mb-2">الاستعلام الفوري عن حالة الطلب</h2>
-            <p class="text-xs text-slate-500 mb-6">أدخل كود المتابعة (مثل HF-2026-1001) أو الرقم القومي لرب الأسرة</p>
-            <input type="text" id="track-input" placeholder="اكتب كود الطلب أو الرقم القومي..." class="w-full border border-slate-300 rounded-xl p-3.5 text-center font-bold mb-4 focus:outline-emerald-600">
-            <button onclick="trackApplication()" class="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3.5 rounded-xl">بحث عن الحالة</button>
-            <div id="track-result" class="mt-6 text-right"></div>
+    <!-- 4. شاشة الاستعلامات والأسئلة الشائعة -->
+    <section id="section-track" class="hidden container">
+        <div class="grid-2">
+            <div class="card">
+                <h3 style="font-size:20px;">🔍 الاستعلام الفوري عن طلب</h3>
+                <p style="font-size:13px; color:#64748b; text-align:center; margin-bottom:16px;">
+                    أدخل كود المتابعة (مثل HF-2026-1001) أو الرقم القومي لرب الأسرة
+                </p>
+                <input type="text" id="track-input" placeholder="كود الطلب أو الرقم القومي (14 رقم)...">
+                <button onclick="trackApplication()" class="action-btn" style="width:100%;">بحث عن حالة الطلب</button>
+                <div id="track-result" style="margin-top:16px;"></div>
+            </div>
+            <div>
+                <h3 style="font-size:20px; margin-bottom:14px;">❓ الأسئلة الشائعة</h3>
+                <details open>
+                    <summary>كيف أقدم طلب مساعدة لأسرتي؟</summary>
+                    <p>اضغط على زر "+ تقديم طلب مساعدة" في القائمة العلوية، واملأ الخطوات السبع بدقة مع إرفاق صورة البطاقة، وسيظهر لك كود متابعة فوري.</p>
+                </details>
+                <details>
+                    <summary>لماذا يرفض النظام تكرار الرقم القومي؟</summary>
+                    <p>تطبيقاً لمبدأ العدالة ومنع الازدواجية، يمنع النظام حصول نفس الأسرة على نفس المساعدة مرتين، بينما يسمح بالتقديم في نوع مساعدة مختلف بعد المراجعة.</p>
+                </details>
+                <details>
+                    <summary>كيف تنضم الجمعيات القاعدية أو الباحثون؟</summary>
+                    <p>من خلال الضغط على "بوابة الدخول" ثم اختيار "طلب انضمام جديد"، وبعد اعتماد إدارة المؤسسة يتم تفعيل الحساب وإرسال كلمة المرور.</p>
+                </details>
+            </div>
+        </div>
+    </section>
+    <!-- 5. شاشة اتصل بنا والدعم الفني والتظلمات السرية -->
+    <section id="section-contact" class="hidden container">
+        <h3 class="section-title">اتصل بنا والدعم الفني والتظلمات</h3>
+        <p class="section-desc">
+            نرحب باستفساراتكم وتظلماتكم وبلاغات الرقابة المجتمعية بسرية تامة
+        </p>
+        <div class="grid-2">
+            <div class="card">
+                <h4 style="color:#064e3b; font-weight:800; margin-bottom:12px;">📍 بيانات المقر والتواصل المباشر</h4>
+                <p style="font-size:14px; margin-bottom:10px;">
+                    <strong>العنوان:</strong> منشأة عبدالصمد – مركز إهناسيا – محافظة بني سويف
+                </p>
+                <p style="font-size:14px; margin-bottom:10px;">
+                    <strong>رئيس مجلس الأمناء:</strong> أ. نجم الدين حسين إبراهيم (01155540066)
+                </p>
+                <p style="font-size:14px; margin-bottom:10px;">
+                    <strong>البريد الإلكتروني:</strong> alhafiz52025@gmail.com
+                </p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+                    <a href="https://wa.me" target="_blank" class="action-btn" style="text-decoration:none; background:#16a34a;">
+                        💬 تواصل واتساب مباشر (01000880156)
+                    </a>
+                    <a href="https://facebook.com" target="_blank" class="action-btn" style="text-decoration:none; background:#1d4ed8;">
+                        📘 صفحة المؤسسة على فيسبوك
+                    </a>
+                </div>
+            </div>
+            <div class="card">
+                <h4 style="color:#b91c1c; font-weight:800; margin-bottom:10px;">⚖️ نموذج الدعم الفني والتظلمات السرية</h4>
+                <select id="grievance-type">
+                    <option value="appeal">تظلم من رفض طلب مساعدة</option>
+                    <option value="report_ineligible">إبلاغ عن حالة غير مستحقة (رقابة مجتمعية)</option>
+                    <option value="tech_support">طلب دعم فني للمنصة</option>
+                    <option value="general">مقترح أو استفسار إداري</option>
+                </select>
+                <input type="text" id="grievance-phone" placeholder="رقم الهاتف للتواصل">
+                <textarea id="grievance-details" rows="4" placeholder="اكتب رسالتك أو تفاصيل التظلم بوضوح..."></textarea>
+                <button onclick="submitGrievance()" class="action-btn" style="width:100%; background:#b91c1c;">
+                    إرسال الرسالة بسرية تامة
+                </button>
+            </div>
         </div>
     </section>
 
-    <!-- 4. شاشة التظلمات والشكاوى السرية -->
-    <section id="section-grievance" class="hidden max-w-xl mx-auto py-14 px-4 w-full flex-grow">
-        <div class="bg-white rounded-2xl shadow-md border border-red-100 p-6">
-            <h2 class="text-xl font-extrabold text-red-800 mb-2">بوابة التظلمات والرقابة السرية</h2>
-            <p class="text-xs text-slate-500 mb-5">تصل رسالتك مباشرة لرئيس مجلس الإدارة ولجنة الحوكمة بسرية تامة.</p>
-            <select id="grievance-type" class="w-full border rounded-xl p-3 mb-3 text-sm font-bold">
-                <option value="appeal">تظلم من رفض طلب مساعدة</option>
-                <option value="report_ineligible">إبلاغ عن حالة غير مستحقة (رقابة مجتمعية)</option>
-                <option value="general">شكوى أو مقترح إداري</option>
-            </select>
-            <input type="text" id="grievance-phone" placeholder="رقم الهاتف للتواصل" class="w-full border rounded-xl p-3 mb-3 text-sm">
-            <textarea id="grievance-details" rows="4" placeholder="اكتب تفاصيل التظلم أو البلاغ بوضوح..." class="w-full border rounded-xl p-3 mb-4 text-sm"></textarea>
-            <button onclick="submitGrievance()" class="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3.5 rounded-xl">إرسال البلاغ السري</button>
+    <!-- 6. شاشة الخصوصية وشروط الاستخدام (معيار منحة مايكروسوفت) -->
+    <section id="section-privacy" class="hidden container">
+        <div class="card">
+            <h3 class="section-title">سياسة الخصوصية وشروط استخدام الخدمات</h3>
+            <p class="section-desc">
+                تلتزم مؤسسة الحافظ للتنمية والخدمات (إشهار 2202 لسنة 2025) بحماية سرية بيانات المستفيدين والمتبرعين
+            </p>
+            <div style="font-size:14px; color:#334155; space-y:12px;">
+                <p style="margin-bottom:12px;">
+                    <strong>1. حماية البيانات الشخصية:</strong> تُستخدم كافة البيانات القومية والاجتماعية والطبية المسجلة في المنصة حصرياً لأغراض البحث الميداني ودراسة الاستحقاق وتقديم المساعدات الخيرية، ولا يتم بيعها أو مشاركتها مع أي طرف تجاري.
+                </p>
+                <p style="margin-bottom:12px;">
+                    <strong>2. المشاركة الرقابية مع الشركاء:</strong> يوافق مقدم الطلب على اطلاع إدارة مؤسسة الحافظ والجمعيات القاعدية والمؤسسات المانحة الشريكة الموقعة لبروتوكولات تعاون على ملف الحالة لضمان الحوكمة ومنع ازدواجية الصرف.
+                </p>
+                <p style="margin-bottom:12px;">
+                    <strong>3. شروط الاستخدام:</strong> يقر المستخدم بصحة جميع البيانات والمستندات المرفوعة، وتحتفظ المؤسسة بحق استبعاد أي طلب يثبت عدم صحة بياناته أو تكراره.
+                </p>
+            </div>
         </div>
     </section>
 
-    <!-- 5. بوابة الدخول الموحدة ولوحات التحكم المستقلة -->
-    <section id="section-login" class="hidden max-w-6xl mx-auto py-10 px-4 w-full flex-grow">
-        <div id="login-box" class="max-w-md mx-auto bg-white rounded-2xl shadow-md border p-6">
-            <h2 class="text-xl font-extrabold text-slate-900 text-center mb-2">بوابة الدخول الموحدة</h2>
-            <p class="text-xs text-slate-500 text-center mb-6">مخصصة للإدارة العليا، المؤسسات المانحة، الجمعيات القاعدية، الباحثين، والمتطوعين</p>
-            <input type="email" id="login-email" placeholder="البريد الإلكتروني المعتمد" class="w-full border rounded-xl p-3 mb-3 text-sm">
-            <input type="password" id="login-pass" placeholder="كلمة المرور" class="w-full border rounded-xl p-3 mb-4 text-sm">
-            <button onclick="loginUser()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl mb-3">تسجيل الدخول</button>
-            <button onclick="openPartnerRegister()" class="w-full text-xs text-emerald-700 font-bold hover:underline">طلب انضمام جديد (جمعية شريكة / مؤسسة مانحة / باحث / متطوع)</button>
+    <!-- 7. بوابة الدخول الموحدة ولوحات التحكم -->
+    <section id="section-login" class="hidden container">
+        <div id="login-box" class="card" style="max-width:460px; margin:auto;">
+            <h3 style="font-size:22px; margin-bottom:6px;">🔐 بوابة الدخول الموحدة</h3>
+            <p style="font-size:12px; color:#64748b; text-align:center; margin-bottom:18px;">
+                للإدارة العليا، المؤسسات المانحة، الجمعيات القاعدية، الباحثين، والمتطوعين
+            </p>
+            <input type="email" id="login-email" placeholder="البريد الإلكتروني المعتمد">
+            <input type="password" id="login-pass" placeholder="كلمة المرور">
+            <button onclick="loginUser()" class="action-btn" style="width:100%; background:#0f172a; margin-bottom:10px;">
+                تسجيل الدخول
+            </button>
+            <button onclick="openPartnerRegister()" class="nav-btn" style="width:100%; color:#047857;">
+                + طلب انضمام جديد (جمعية شريكة / مؤسسة / باحث / متطوع)
+            </button>
         </div>
-        <div id="partner-register-box" class="hidden max-w-lg mx-auto bg-white rounded-2xl shadow-md border p-6"></div>
+        <div id="partner-register-box" class="hidden card" style="max-width:500px; margin:auto;"></div>
         <div id="dashboard-area" class="hidden"></div>
     </section>
 
-    <!-- التذييل الرسمي -->
-    <footer class="bg-slate-900 text-slate-400 text-xs py-6 px-4 text-center mt-12">
-        <p class="text-white font-bold mb-1">مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025</p>
-        <p>المقر الرئيسي: منشأة عبدالصمد - مركز إهناسيا - محافظة بني سويف | البريد: alhafiz52025@gmail.com</p>
+    <!-- التذييل الرسمي المتكامل -->
+    <footer>
+        <div class="footer-grid">
+            <div>
+                <h4>مؤسسة الحافظ للتنمية والخدمات</h4>
+                <p>مؤسسة أهلية تنموية مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي. نعمل لخدمة الأسر المتعففة والأيتام بمركز إهناسيا ومحافظة بني سويف.</p>
+            </div>
+            <div>
+                <h4>روابط سريعة والحوكمة</h4>
+                <a href="javascript:void(0)" onclick="showSection('about')">من نحن والهيكل التنظيمي</a>
+                <a href="javascript:void(0)" onclick="showSection('apply')">تقديم طلب مساعدة للأسرة</a>
+                <a href="javascript:void(0)" onclick="showSection('track')">الاستعلامات والأسئلة الشائعة</a>
+                <a href="javascript:void(0)" onclick="showSection('privacy')">سياسة الخصوصية وشروط الاستخدام</a>
+            </div>
+            <div>
+                <h4>التواصل والقنوات الرسمية</h4>
+                <p>📍 منشأة عبدالصمد - إهناسيا - بني سويف</p>
+                <p>📞 إدارة المؤسسة: 01155540066</p>
+                <a href="https://wa.me" target="_blank">💬 واتساب: 01000880156</a>
+                <a href="https://facebook.com" target="_blank">📘 فيسبوك: صفحة مؤسسة الحافظ الرسمية</a>
+            </div>
+        </div>
+        <p style="text-align:center; margin-top:20px; color:#64748b;">
+            © 2026 جميع الحقوق محفوظة لمؤسسة الحافظ للتنمية والخدمات - إشهار 2202 لسنة 2025
+        </p>
     </footer>
 
-    <script src="config.js"></script>
+    <script src="egypt-data.js"></script>
     <script src="wizard.js"></script>
     <script src="dashboards.js"></script>
 </body>
