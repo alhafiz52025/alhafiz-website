@@ -1,63 +1,72 @@
 async function loginUser() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  if (!email || !pass) return alert('⚠️ أدخل البريد الإلكتروني وكلمة المرور.');
+  try {
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-pass').value;
 
-  if (!db) {
-    const choice = prompt(
-      "وضع المعاينة الحية: اختر رقم اللوحة لتجربتها الآن:\n" +
-      "1 - الإدارة العليا (مؤسسة الحافظ)\n" +
-      "2 - الجمعيات القاعدية الشريكة\n" +
-      "3 - المؤسسات الكبرى المانحة\n" +
-      "4 - الباحث الميداني\n" +
-      "5 - المتطوع"
-    );
-    const map = {
-      '1': 'admin',
-      '2': 'grassroots_partner',
-      '3': 'donor_partner',
-      '4': 'researcher',
-      '5': 'volunteer'
-    };
-    if (map[choice]) {
-      document.getElementById('login-box').classList.add('hidden');
-      renderRoleDashboard(map[choice], { full_name: 'حساب معتمد' });
+    if (!email || !pass) {
+      alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور أولاً.');
+      return;
     }
-    return;
-  }
 
-  const res = await db.auth.signInWithPassword({ email, password: pass });
-  if (res.error) return alert('❌ خطأ في الدخول: ' + res.error.message);
-
-  const profRes = await db
-    .from('users_profiles')
-    .select('*')
-    .eq('id', res.data.user.id)
-    .single();
-
-  const prof = profRes.data;
-  if (!prof || prof.account_status !== 'approved') {
-    await db.auth.signOut();
-    return alert('⏳ حسابك ما زال بانتظار اعتماد إدارة مؤسسة الحافظ.');
-  }
-
-  if (prof.must_change_password) {
-    const newPass = prompt('🔐 لأمان حسابك، اكتب كلمة مرور جديدة (6 أحرف على الأقل):');
-    if (newPass && newPass.length >= 6) {
-      await db.auth.updateUser({ password: newPass });
-      await db
-        .from('users_profiles')
-        .update({ must_change_password: false })
-        .eq('id', prof.id);
-      alert('✅ تم تحديث كلمة المرور بنجاح.');
-    } else {
-      return alert('⚠️ يجب تعيين كلمة مرور من 6 أحرف على الأقل.');
+    if (typeof db === 'undefined' || !db) {
+      alert('⚠️ تنبيه: لم يتم الاتصال بقاعدة البيانات بعد. تأكد من تعطيل مانع الإعلانات أو مراجعة مفتاح Supabase.');
+      return;
     }
-  }
 
-  document.getElementById('login-box').classList.add('hidden');
-  renderRoleDashboard(prof.role, prof);
+    const btn = document.querySelector('#login-box button');
+    if (btn) btn.innerText = '⏳ جاري التحقق من البيانات...';
+
+    const res = await db.auth.signInWithPassword({ email: email, password: pass });
+
+    if (res.error) {
+      if (btn) btn.innerText = 'تسجيل الدخول';
+      alert('❌ خطأ في الدخول: ' + res.error.message);
+      return;
+    }
+
+    const profRes = await db
+      .from('users_profiles')
+      .select('*')
+      .eq('id', res.data.user.id)
+      .single();
+
+    if (profRes.error || !profRes.data) {
+      if (btn) btn.innerText = 'تسجيل الدخول';
+      alert('⚠️ تم الدخول ولكن حسابك غير مسجل في جدول الصلاحيات (users_profiles).');
+      return;
+    }
+
+    const prof = profRes.data;
+    if (prof.account_status !== 'approved') {
+      await db.auth.signOut();
+      if (btn) btn.innerText = 'تسجيل الدخول';
+      alert('⏳ حسابك ما زال بانتظار اعتماد إدارة مؤسسة الحافظ.');
+      return;
+    }
+
+    if (prof.must_change_password) {
+      const newPass = prompt('🔐 لأمان حسابك، اكتب كلمة مرور جديدة (6 أحرف على الأقل):');
+      if (newPass && newPass.length >= 6) {
+        await db.auth.updateUser({ password: newPass });
+        await db
+          .from('users_profiles')
+          .update({ must_change_password: false })
+          .eq('id', prof.id);
+        alert('✅ تم تحديث كلمة المرور بنجاح.');
+      } else {
+        if (btn) btn.innerText = 'تسجيل الدخول';
+        alert('⚠️ يجب تعيين كلمة مرور من 6 أحرف على الأقل.');
+        return;
+      }
+    }
+
+    document.getElementById('login-box').classList.add('hidden');
+    renderRoleDashboard(prof.role, prof);
+  } catch (err) {
+    alert('❌ حدث خطأ تقني: ' + err.message);
+  }
 }
+
 
 function renderRoleDashboard(role, profile) {
   const area = document.getElementById('dashboard-area');
