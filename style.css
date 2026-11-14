@@ -204,3 +204,43 @@ footer {
   margin-top: 60px;
   font-size: 13px;
 }
+/* تنسيق الجداول والقوائم الجانبية للوحات التحكم */
+aside {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+aside button {
+  width: 100%;
+  text-align: right;
+  margin-bottom: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+}
+
+aside button:first-child {
+  background: #047857;
+  color: #ffffff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  background: #fff;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: right;
+}
+
+th {
+  background: #f1f5f9;
+  color: #064e3b;
+  font-weight: 800;
+}
