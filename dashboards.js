@@ -1,11 +1,12 @@
 const SB_URL = https://fwyacpvbhwdlivzeiper.supabase.co
 const SB_KEY = sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz
-const db = (typeof db !== 'undefined' && db)
-  ? db
-  : (window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null);
+const supabaseClient = window.supabase
+  ? window.supabase.createClient(SB_URL, SB_KEY)
+  : null;
 
 async function loginUser() {
   try {
+    const db = supabaseClient;
     const email = document.getElementById('login-email').value.trim();
     const pass = document.getElementById('login-pass').value;
 
