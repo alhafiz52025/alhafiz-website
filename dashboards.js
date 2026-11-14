@@ -1,6 +1,6 @@
-const SB_URL = https://fwyacpvbhwdlivzeiper.supabase.co
-const SB_KEY = sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz
-const supabaseClient = window.supabase
+const SB_URL = 'https://fwyacpvbhwdlivzeiper.supabase.co';
+const SB_KEY = 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
+const supabaseClient = window.supabase && typeof window.supabase.createClient === 'function'
   ? window.supabase.createClient(SB_URL, SB_KEY)
   : null;
 
@@ -15,7 +15,7 @@ async function loginUser() {
       return;
     }
 
-    if (typeof db === 'undefined' || !db) {
+    if (!db) {
       alert('⚠️ تنبيه: لم يتم الاتصال بقاعدة البيانات بعد. تأكد من تعطيل مانع الإعلانات أو مراجعة مفتاح Supabase.');
       return;
     }
@@ -74,9 +74,9 @@ async function loginUser() {
   }
 }
 
-
 function renderRoleDashboard(role, profile) {
   const area = document.getElementById('dashboard-area');
+  if (!area) return;
   area.classList.remove('hidden');
   if (role === 'grassroots_partner') renderGrassrootsDash(area, profile);
   else if (role === 'donor_partner') renderDonorDash(area, profile);
@@ -87,7 +87,35 @@ function renderRoleDashboard(role, profile) {
 async function trackApplication() {
   const val = document.getElementById('track-input').value.trim();
   if (!val) return alert('⚠️ أدخل كود الطلب أو الرقم القومي.');
-  document.getElementById('track-result').innerHTML = `
+  const resultArea = document.getElementById('track-result');
+  if (!resultArea) return;
+
+  try {
+    if (supabaseClient) {
+      const { data, error } = await supabaseClient
+        .from('families')
+        .select('*')
+        .or(`national_id.eq.${val},id.eq.${val}`)
+        .maybeSingle();
+
+      if (data) {
+        resultArea.innerHTML = `
+          <div style="padding:14px; border-radius:12px; background:#ecfdf5; border:1px solid #10b981; font-size:13px;">
+            <p style="font-weight:800; color:#065f46; margin-bottom:4px;">
+              حالة الطلب (${data.full_name || val}): ${data.status || 'قيد الفحص'}
+            </p>
+            <p style="color:#334155;">
+              القرية: ${data.village || 'غير محدد'} | نوع المساعدة: ${data.aid_type || 'مساعدات اجتماعية'}
+            </p>
+          </div>`;
+        return;
+      }
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  resultArea.innerHTML = `
     <div style="padding:14px; border-radius:12px; background:#ecfdf5; border:1px solid #10b981; font-size:13px;">
       <p style="font-weight:800; color:#065f46; margin-bottom:4px;">
         حالة الطلب (${val}): قيد الفحص والمراجعة الميدانية
@@ -99,19 +127,31 @@ async function trackApplication() {
 }
 
 async function submitGrievance() {
-  const phone = document.getElementById('grievance-phone').value.trim();
-  const details = document.getElementById('grievance-details').value.trim();
+  const phoneInput = document.getElementById('grievance-phone');
+  const detailsInput = document.getElementById('grievance-details');
+  const typeInput = document.getElementById('grievance-type');
+
+  const phone = phoneInput ? phoneInput.value.trim() : '';
+  const details = detailsInput ? detailsInput.value.trim() : '';
+  const complaintType = typeInput ? typeInput.value : 'تظلم عام';
+
   if (!phone || !details) return alert('⚠️ يرجى إدخال رقم الهاتف وتفاصيل الرسالة.');
-  if (db) {
-    await db.from('grievances').insert([{
-      complaint_type: document.getElementById('grievance-type').value,
+  
+  if (supabaseClient) {
+    const { error } = await supabaseClient.from('grievances').insert([{
+      complaint_type: complaintType,
       phone: phone,
       details: details
     }]);
+    if (error) {
+      alert('❌ حدث خطأ أثناء إرسال الشكوى: ' + error.message);
+      return;
+    }
   }
   alert('✅ تم إرسال رسالتك بسرية تامة إلى لجنة الحوكمة ورئيس مجلس الأمناء.');
-  showSection('home');
+  if (typeof showSection === 'function') showSection('home');
 }
+
 function renderGrassrootsDash(container, profile) {
   container.innerHTML = `
     <div class="card">
@@ -130,24 +170,14 @@ function renderGrassrootsDash(container, profile) {
       </div>
       <div class="dash-layout">
         <aside>
-          <button onclick="showSection('apply')"
-            style="background:#047857; color:#fff;">
+          <button onclick="showSection('apply')" style="background:#047857; color:#fff;">
             + تسجيل أسرة جديدة
           </button>
-          <button onclick="filterCases('all')">
-            📋 إجمالي الأسر المسجلة
-          </button>
-          <button onclick="filterCases('review')">
-            ⏳ حالات تحت الفحص
-          </button>
-          <button onclick="filterCases('approved')">
-            ✅ حالات مقبولة ومعتمدة
-          </button>
-          <button onclick="filterCases('rejected')">
-            ❌ حالات مرفوضة بأسبابها
-          </button>
-          <button onclick="exportCSV('تقرير_الجمعية')"
-            style="background:#0f172a; color:#fff; margin-top:8px;">
+          <button onclick="filterCases('all')">📋 إجمالي الأسر المسجلة</button>
+          <button onclick="filterCases('review')">⏳ حالات تحت الفحص</button>
+          <button onclick="filterCases('approved')">✅ حالات مقبولة ومعتمدة</button>
+          <button onclick="filterCases('rejected')">❌ حالات مرفوضة بأسبابها</button>
+          <button onclick="exportCSV('تقرير_الجمعية')" style="background:#0f172a; color:#fff; margin-top:8px;">
             📥 تحميل التقارير (Excel)
           </button>
         </aside>
@@ -187,18 +217,14 @@ function renderGrassrootsDash(container, profile) {
                   <td>محمود سيد عبدالرحمن</td>
                   <td>منشأة عبدالصمد</td>
                   <td>تجهيز عروسة</td>
-                  <td style="color:#047857; font-weight:700;">
-                    مقبولة ومعتمدة
-                  </td>
+                  <td style="color:#047857; font-weight:700;">مقبولة ومعتمدة</td>
                 </tr>
                 <tr>
                   <td><strong>HF-2026-1015</strong></td>
                   <td>أحمد كامل إبراهيم</td>
                   <td>قاي</td>
                   <td>كفالة أيتام</td>
-                  <td style="color:#b91c1c; font-weight:700;">
-                    مرفوضة: مكررة بجمعية أخرى
-                  </td>
+                  <td style="color:#b91c1c; font-weight:700;">مرفوضة: مكررة بجمعية أخرى</td>
                 </tr>
               </tbody>
             </table>
@@ -221,43 +247,31 @@ function renderDonorDash(container, profile) {
           </h3>
         </div>
         <div style="display:flex; gap:8px;">
-          <button onclick="exportCSV('تقرير_المؤسسة')" class="action-btn">
-            📥 تصدير الكشف
-          </button>
-          <button onclick="location.reload()" class="nav-btn btn-dark">
-            خروج
-          </button>
+          <button onclick="exportCSV('تقرير_المؤسسة')" class="action-btn">📥 تصدير الكشف</button>
+          <button onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
         </div>
       </div>
       <div class="grid-3" style="margin-bottom:16px;">
         <div style="background:#ecfdf5; padding:14px; border-radius:10px; border:1px solid #a7f3d0;">
-          <p style="font-size:12px; font-weight:700; color:#065f46;">
-            حالات البروتوكول الممولة
-          </p>
+          <p style="font-size:12px; font-weight:700; color:#065f46;">حالات البروتوكول الممولة</p>
           <strong style="font-size:20px;">150 حالة</strong>
         </div>
         <div style="background:#eff6ff; padding:14px; border-radius:10px; border:1px solid #bfdbfe;">
-          <p style="font-size:12px; font-weight:700; color:#1e40af;">
-            تم التسليم وتوثيق الصور
-          </p>
+          <p style="font-size:12px; font-weight:700; color:#1e40af;">تم التسليم وتوثيق الصور</p>
           <strong style="font-size:20px;">128 حالة</strong>
         </div>
         <div style="background:#fffbeb; padding:14px; border-radius:10px; border:1px solid #fde68a;">
-          <p style="font-size:12px; font-weight:700; color:#92400e;">
-            نطاق التغطية بمركز إهناسيا
-          </p>
+          <p style="font-size:12px; font-weight:700; color:#92400e;">نطاق التغطية بمركز إهناسيا</p>
           <strong style="font-size:20px;">18 قرية وعزبة</strong>
         </div>
       </div>
       <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:13px;">
         <span><strong>HF-2026-1042</strong> | أسرة محمود سيد</span>
-        <button onclick="alert('عرض الأوراق + صورة ما بعد التسليم')"
-          class="action-btn">
-          📄 الأوراق وصور التسليم
-        </button>
+        <button onclick="alert('عرض الأوراق + صورة ما بعد التسليم')" class="action-btn">📄 الأوراق وصور التسليم</button>
       </div>
     </div>`;
 }
+
 function renderAdminDash(container, profile) {
   container.innerHTML = `
     <div class="card">
@@ -270,75 +284,50 @@ function renderAdminDash(container, profile) {
             الحوكمة، الاعتمادات، منع الازدواجية، والمخزون
           </p>
         </div>
-        <button onclick="location.reload()" class="nav-btn btn-dark">
-          خروج
-        </button>
+        <button onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
       </div>
       <div class="grid-4" style="margin-bottom:16px; text-align:center;">
-        <div style="background:#ecfdf5; padding:10px; border-radius:10px;">
-          <p style="font-size:12px;">طلبات جديدة</p>
-          <strong>34</strong>
-        </div>
-        <div style="background:#fffbeb; padding:10px; border-radius:10px;">
-          <p style="font-size:12px;">اعتماد حسابات</p>
-          <strong>5</strong>
-        </div>
-        <div style="background:#eff6ff; padding:10px; border-radius:10px;">
-          <p style="font-size:12px;">المخزون والعهدة</p>
-          <strong>120</strong>
-        </div>
-        <div style="background:#fef2f2; padding:10px; border-radius:10px;">
-          <p style="font-size:12px;">تظلمات سرية</p>
-          <strong>2</strong>
-        </div>
+        <div style="background:#ecfdf5; padding:10px; border-radius:10px;"><p style="font-size:12px;">طلبات جديدة</p><strong>34</strong></div>
+        <div style="background:#fffbeb; padding:10px; border-radius:10px;"><p style="font-size:12px;">اعتماد حسابات</p><strong>5</strong></div>
+        <div style="background:#eff6ff; padding:10px; border-radius:10px;"><p style="font-size:12px;">المخزون والعهدة</p><strong>120</strong></div>
+        <div style="background:#fef2f2; padding:10px; border-radius:10px;"><p style="font-size:12px;">تظلمات سرية</p><strong>2</strong></div>
       </div>
       <div style="background:#fffbeb; border:1px solid #fde68a; padding:12px; border-radius:10px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:13px;">
         <span>🔔 <strong>طلب انضمام:</strong> جمعية البر بقرية قاي تنتظر الاعتماد.</span>
-        <button onclick="alert('✅ تم اعتماد الحساب وإرسال كلمة المرور المؤقتة')"
-          class="action-btn">
-          اعتماد وتوليد باسورد
-        </button>
+        <button onclick="alert('✅ تم اعتماد الحساب وإرسال كلمة المرور المؤقتة')" class="action-btn">اعتماد وتوليد باسورد</button>
       </div>
-      <button onclick="exportCSV('التقرير_الشامل_لمؤسسة_الحافظ')"
-        class="action-btn" style="background:#0f172a;">
+      <button onclick="exportCSV('التقرير_الشامل_لمؤسسة_الحافظ')" class="action-btn" style="background:#0f172a;">
         📥 تصدير الكشف الشامل لجميع الحالات (Excel)
       </button>
     </div>`;
 }
 
 function renderFieldDash(container, profile, role) {
-  const title = role === 'researcher'
-    ? 'لوحة الباحث الميداني'
-    : 'بوابة المتطوعين ولوحة الشرف';
+  const title = role === 'researcher' ? 'لوحة الباحث الميداني' : 'بوابة المتطوعين ولوحة الشرف';
   container.innerHTML = `
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:14px;">
         <h3 style="text-align:right; font-size:18px; margin:0;">${title}</h3>
-        <button onclick="location.reload()" class="nav-btn btn-dark">
-          خروج
-        </button>
+        <button onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
       </div>
       <p style="font-size:13px; margin-bottom:14px;">
         مرحباً: <strong>${profile.full_name}</strong> | التقييم: ⭐⭐⭐⭐⭐
       </p>
       <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-size:13px;">
         <span>المهام والحالات المسندة إليك في مركز إهناسيا</span>
-        <button onclick="alert('تم فتح نموذج التقييم الميداني وتوثيق التسليم')"
-          class="action-btn">
-          فتح السجل
-        </button>
+        <button onclick="alert('تم فتح نموذج التقييم الميداني وتوثيق التسليم')" class="action-btn">فتح السجل</button>
       </div>
     </div>`;
 }
 
 function openPartnerRegister() {
-  document.getElementById('login-box').classList.add('hidden');
+  const loginBox = document.getElementById('login-box');
+  if (loginBox) loginBox.classList.add('hidden');
   const box = document.getElementById('partner-register-box');
+  if (!box) return;
   box.classList.remove('hidden');
   box.innerHTML = `
-    <h3 style="font-size:18px; margin-bottom:6px;">
-      طلب انضمام لمنظومة مؤسسة الحافظ
-    </h3>
+    <h3 style="font-size:18px; margin-bottom:6px;">طلب انضمام لمنظومة مؤسسة الحافظ</h3>
     <p style="font-size:12px; color:#64748b; text-align:center; margin-bottom:14px;">
       يُفعّل الحساب ويُرسل الباسورد المؤقت بعد اعتماد الإدارة.
     </p>
@@ -351,13 +340,10 @@ function openPartnerRegister() {
     <input id="reg-name" placeholder="الاسم الكامل / اسم الجمعية ورقم الإشهار">
     <input id="reg-phone" placeholder="رقم الموبايل / واتساب">
     <input id="reg-email" placeholder="البريد الإلكتروني">
-    <button onclick="submitPartnerReq()" class="action-btn"
-      style="width:100%; margin-bottom:8px;">
+    <button onclick="submitPartnerReq()" class="action-btn" style="width:100%; margin-bottom:8px;">
       إرسال طلب الاعتماد للإدارة
     </button>
-    <button onclick="location.reload()" class="nav-btn" style="width:100%;">
-      رجوع
-    </button>`;
+    <button onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
 }
 
 function submitPartnerReq() {
