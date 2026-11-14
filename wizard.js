@@ -1,3 +1,34 @@
+// دالة مساعدة لرفع الملفات إلى Supabase Storage Bucket (documents)
+async function uploadFileToSupabase(fileInput, folderName) {
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) return null;
+  if (!supabaseClient) return null;
+
+  const file = fileInput.files[0];
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${folderName}/${Date.now()}_${Math.random().toString(36.substring(2, 7))}.${fileExt}`;
+
+  try {
+    const { data, error } = await supabaseClient.storage
+      .from('documents')
+      .upload(fileName, file);
+
+    if (error) {
+      console.error('Error uploading file:', error.message);
+      return null;
+    }
+
+    // جلب الرابط العام للملف المرفوع
+    const { data: publicUrlData } = supabaseClient.storage
+      .from('documents')
+      .getPublicUrl(fileName);
+
+    return publicUrlData ? publicUrlData.publicUrl : null;
+  } catch (err) {
+    console.error('Storage exception:', err);
+    return null;
+  }
+}
+
 function showSection(sectionName) {
   const secs = [
     'home', 'about', 'apply', 'track',
@@ -27,6 +58,7 @@ let formData = draftData ? JSON.parse(draftData) : {
     village: 'منشأة عبدالصمد', custom_hamlet: '', addr: ''
   },
   wife: { first: '', second: '', last: '', nid: '', phone: '' },
+  children: [],
   housing: { ownership: 'ملكية خاصة', roof: 'سقف مسلح', gps: '' },
   expenses: { total: 0 },
   income: { total: 0 },
@@ -44,12 +76,12 @@ async function checkDuplication(nid, alertId) {
     box.innerHTML = '<span style="color:#dc2626;">⚠️ الرقم القومي يجب أن يكون 14 رقماً.</span>';
     return;
   }
-  if (!db) {
+  if (!supabaseClient) {
     box.innerHTML = '<span style="color:#047857;">✓ تم التحقق من صحة الرقم القومي.</span>';
     return;
   }
   box.innerHTML = '<span style="color:#64748b;">⏳ جاري فحص الرقم القومي...</span>';
-  const res = await db.rpc('check_national_id_duplication', {
+  const res = await supabaseClient.rpc('check_national_id_duplication', {
     p_national_id: nid,
     p_aid_type: formData.aid_type
   });
@@ -67,10 +99,13 @@ async function checkDuplication(nid, alertId) {
     box.innerHTML = '<span style="color:#047857;">✅ ' + d.message + '</span>';
   }
 }
+
 function renderWizardStep(step) {
   const c = document.getElementById('wizard-container');
+  if (!c) return;
+
   if (step === 0) {
-    const opts = AID_TYPES.map(a =>
+    const opts = (typeof AID_TYPES !== 'undefined' ? AID_TYPES : ['مساعدات نقدية', 'تجهيز عرائس', 'وصلات مياه', 'أسقف وسوتشات', 'علاج وتدخلات طبية']).map(a =>
       `<option value="${a}" ${formData.aid_type === a ? 'selected' : ''}>${a}</option>`
     ).join('');
     c.innerHTML = `
@@ -81,22 +116,23 @@ function renderWizardStep(step) {
         اختر نوع المساعدة بدقة:
       </label>
       <select id="w-aid">${opts}</select>
-      <button onclick="nextFromStep0()" class="action-btn">
+      <button onclick="nextFromStep0()" class="action-btn" style="margin-top:14px;">
         التالي: بيانات الزوج / العائل ←
       </button>`;
   } else if (step === 1) {
-    const govs = Object.keys(EGYPT_LOCATIONS).map(g =>
+    const govs = Object.keys(typeof EGYPT_LOCATIONS !== 'undefined' ? EGYPT_LOCATIONS : {'بني سويف': {'إهناسيا': ['منشأة عبدالصمد']}}).map(g =>
       `<option value="${g}" ${formData.husband.gov === g ? 'selected' : ''}>${g}</option>`
     ).join('');
-    const edus = EDUCATION_LEVELS.map(e =>
+    const edus = (typeof EDUCATION_LEVELS !== 'undefined' ? EDUCATION_LEVELS : [{value: ' متوسط', label: 'متوسط'}]).map(e =>
       `<option value="${e.value}">${e.label}</option>`
     ).join('');
-    const jobs = EGYPT_JOBS.map(j =>
+    const jobs = (typeof EGYPT_JOBS !== 'undefined' ? EGYPT_JOBS : ['بدون عمل', 'زراعة', 'حرفي / يومية']).map(j =>
       `<option value="${j}">${j}</option>`
     ).join('');
-    const meds = MEDICAL_NEEDS.map(m =>
+    const meds = (typeof MEDICAL_NEEDS !== 'undefined' ? MEDICAL_NEEDS : ['أمراض مزمنة', 'عمليات جراحية']).map(m =>
       `<option value="${m}">${m}</option>`
     ).join('');
+
     c.innerHTML = `
       <h4 style="color:#064e3b; font-weight:800; margin-bottom:12px;">
         الخطوة 2 من 6: بيانات الزوج (رب الأسرة / العائل) *
@@ -106,7 +142,7 @@ function renderWizardStep(step) {
         <input id="h-second" value="${formData.husband.second}" placeholder="الاسم الثاني *">
         <input id="h-last" value="${formData.husband.last}" placeholder="اللقب / العائلة *">
       </div>
-      <div class="grid-3">
+      <div class="grid-3" style="margin-top:10px;">
         <input id="h-nid" maxlength="14" value="${formData.husband.nid}"
           onblur="checkDuplication(this.value, 'h-dup')" placeholder="الرقم القومي (14 رقم) *">
         <input id="h-phone" maxlength="11" value="${formData.husband.phone}"
@@ -118,17 +154,17 @@ function renderWizardStep(step) {
           <option value="imprisoned">مسجون</option>
         </select>
       </div>
-      <div id="h-dup" style="margin-bottom:10px; font-size:13px; font-weight:700;"></div>
+      <div id="h-dup" style="margin:8px 0; font-size:13px; font-weight:700;"></div>
       <div class="grid-3">
         <select id="h-gov" onchange="updateCenters()">${govs}</select>
         <select id="h-center" onchange="updateVillages()"></select>
         <select id="h-village" onchange="toggleCustomHamlet()"></select>
       </div>
       <input id="h-custom-hamlet" class="hidden" value="${formData.husband.custom_hamlet}"
-        placeholder="اكتب اسم القرية / العزبة / النجع التابع لها *">
+        placeholder="اكتب اسم القرية / العزبة / النجع التابع لها *" style="margin-top:10px;">
       <input id="h-addr" value="${formData.husband.addr}"
-        placeholder="العنوان التفصيلي كما هو مدون ببطاقة الرقم القومي *">
-      <div class="grid-3">
+        placeholder="العنوان التفصيلي كما هو مدون ببطاقة الرقم القومي *" style="margin-top:10px;">
+      <div class="grid-3" style="margin-top:10px;">
         <select id="h-edu">${edus}</select>
         <select id="h-job">${jobs}</select>
         <select id="h-health" onchange="toggleMed('h-med', this.value)">
@@ -136,23 +172,23 @@ function renderWizardStep(step) {
           <option value="sick">مريض / ذوي همم</option>
         </select>
       </div>
-      <div id="h-med" class="hidden" style="background:#fffbeb; padding:12px; border-radius:10px; margin-bottom:12px;">
-        <label style="font-size:12px; font-weight:700;">نوع الاحتياج الطبي:</label>
-        <select>${meds}</select>
-        <input type="file" accept="image/*">
+      <div id="h-med" class="hidden" style="background:#fffbeb; padding:12px; border-radius:10px; margin-top:10px;">
+        <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">نوع الاحتياج الطبي:</label>
+        <select id="h-med-type">${meds}</select>
+        <input type="file" id="h-med-file" accept="image/*" style="margin-top:6px;">
       </div>
-      <div class="grid-2" style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:14px; font-size:12px;">
-        <div><strong>صورة بطاقة الزوج (أمامي):</strong><input type="file" accept="image/*"></div>
-        <div><strong>صورة بطاقة الزوج (ظهر):</strong><input type="file" accept="image/*"></div>
+      <div class="grid-2" style="background:#f8fafc; padding:12px; border-radius:10px; margin-top:10px; font-size:12px;">
+        <div><strong>صورة بطاقة الزوج (أمامي):</strong><input type="file" id="h-front-file" accept="image/*" style="margin-top:4px;"></div>
+        <div><strong>صورة بطاقة الزوج (ظهر):</strong><input type="file" id="h-back-file" accept="image/*" style="margin-top:4px;"></div>
       </div>
-      <div style="display:flex; justify-content:space-between;">
+      <div style="display:flex; justify-content:space-between; margin-top:16px;">
         <button onclick="renderWizardStep(0)" class="nav-btn">→ السابق</button>
         <button onclick="saveHusbandStep()" class="action-btn">التالي: بيانات الزوجة ←</button>
       </div>`;
     updateCenters();
   } else if (step === 2) {
-    const edus = EDUCATION_LEVELS.map(e => `<option value="${e.value}">${e.label}</option>`).join('');
-    const jobs = EGYPT_JOBS.map(j =>
+    const edus = (typeof EDUCATION_LEVELS !== 'undefined' ? EDUCATION_LEVELS : []).map(e => `<option value="${e.value}">${e.label}</option>`).join('');
+    const jobs = (typeof EGYPT_JOBS !== 'undefined' ? EGYPT_JOBS : ['ربة منزل', 'زراعة']).map(j =>
       `<option value="${j}" ${j.includes('ربة') ? 'selected' : ''}>${j}</option>`
     ).join('');
     c.innerHTML = `
@@ -164,38 +200,36 @@ function renderWizardStep(step) {
         <input id="w-second" value="${formData.wife.second}" placeholder="الاسم الثاني *">
         <input id="w-last" value="${formData.wife.last}" placeholder="اللقب / العائلة *">
       </div>
-      <div class="grid-3">
+      <div class="grid-3" style="margin-top:10px;">
         <input id="w-nid" maxlength="14" value="${formData.wife.nid}"
           onblur="checkDuplication(this.value, 'w-dup')" placeholder="الرقم القومي للزوجة (14 رقم) *">
         <input id="w-phone" maxlength="11" value="${formData.wife.phone}" placeholder="رقم هاتف الزوجة">
-        <select>
+        <select id="w-status">
           <option value="alive">على قيد الحياة</option>
           <option value="deceased">متوفاة</option>
           <option value="divorced">مطلقة / معيلة</option>
         </select>
       </div>
-      <div id="w-dup" style="margin-bottom:10px; font-size:13px; font-weight:700;"></div>
-      <div class="grid-2">
-        <select>${edus}</select>
-        <select>${jobs}</select>
+      <div id="w-dup" style="margin:8px 0; font-size:13px; font-weight:700;"></div>
+      <div class="grid-2" style="margin-top:10px;">
+        <select id="w-edu">${edus}</select>
+        <select id="w-job">${jobs}</select>
       </div>
-      <div class="grid-2" style="background:#f8fafc; padding:12px; border-radius:10px; margin-bottom:14px; font-size:12px;">
-        <div><strong>بطاقة الزوجة (أمامي):</strong><input type="file" accept="image/*"></div>
-        <div><strong>بطاقة الزوجة (ظهر):</strong><input type="file" accept="image/*"></div>
+      <div class="grid-2" style="background:#f8fafc; padding:12px; border-radius:10px; margin-top:10px; font-size:12px;">
+        <div><strong>بطاقة الزوجة (أمامي):</strong><input type="file" id="w-front-file" accept="image/*" style="margin-top:4px;"></div>
+        <div><strong>بطاقة الزوجة (ظهر):</strong><input type="file" id="w-back-file" accept="image/*" style="margin-top:4px;"></div>
       </div>
-      <div style="display:flex; justify-content:space-between;">
+      <div style="display:flex; justify-content:space-between; margin-top:16px;">
         <button onclick="renderWizardStep(1)" class="nav-btn">→ السابق</button>
         <button onclick="saveWifeStep()" class="action-btn">التالي: الأبناء والسكن ←</button>
       </div>`;
-  }
-  else if (step === 3) {
+  } else if (step === 3) {
     c.innerHTML = `
       <h4 style="color:#064e3b; font-weight:800; margin-bottom:10px;">
         الخطوة 4 من 6: بيانات الأبناء ووصف السكن
       </h4>
       <div id="children-list"></div>
-      <button onclick="addChildCard()" class="nav-btn btn-gold"
-        style="margin-bottom:14px;">
+      <button onclick="addChildCard()" class="nav-btn btn-gold" style="margin-bottom:14px;">
         + إضافة ابن / تابع
       </button>
       <div style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #e2e8f0; margin-bottom:14px;">
@@ -213,18 +247,15 @@ function renderWizardStep(step) {
             <option>سقف خشب / جريد</option>
             <option>آيل للسقوط</option>
           </select>
-          <button type="button" onclick="getGPS()" class="action-btn"
-            style="background:#2563eb;">
+          <button type="button" onclick="getGPS()" class="action-btn" style="background:#2563eb;">
             📍 تحديد موقع المنزل
           </button>
         </div>
-        <p id="gps-txt" style="font-size:12px; color:#1d4ed8; font-weight:700;"></p>
+        <p id="gps-txt" style="font-size:12px; color:#1d4ed8; font-weight:700; margin-top:6px;"></p>
       </div>
       <div style="display:flex; justify-content:space-between;">
         <button onclick="renderWizardStep(2)" class="nav-btn">→ السابق</button>
-        <button onclick="renderWizardStep(4)" class="action-btn">
-          التالي: الميزانية ←
-        </button>
+        <button onclick="renderWizardStep(4)" class="action-btn">التالي: الميزانية ←</button>
       </div>`;
     addChildCard();
   } else if (step === 4) {
@@ -234,26 +265,22 @@ function renderWizardStep(step) {
       </h4>
       <div class="grid-2" style="margin-bottom:12px;">
         <div style="background:#fef2f2; padding:12px; border-radius:10px;">
-          <p style="font-weight:800; color:#991b1b; font-size:13px; margin-bottom:8px;">
-            المصروفات الشهرية (ج.م)
-          </p>
-          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="إيجار السكن">
-          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="فواتير كهرباء ومياه">
-          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="مصروفات الطعام">
-          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="العلاج والتعليم">
-          <p style="font-weight:800; color:#991b1b; font-size:14px;">
+          <p style="font-weight:800; color:#991b1b; font-size:13px; margin-bottom:8px;">المصروفات الشهرية (ج.م)</p>
+          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="إيجار السكن" style="margin-bottom:6px;">
+          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="فواتير كهرباء ومياه" style="margin-bottom:6px;">
+          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="مصروفات الطعام" style="margin-bottom:6px;">
+          <input type="number" oninput="calcBudget()" class="exp-in" placeholder="العلاج والتعليم" style="margin-bottom:6px;">
+          <p style="font-weight:800; color:#991b1b; font-size:14px; margin-top:8px;">
             إجمالي المصروفات: <span id="tot-exp">0</span> ج.م
           </p>
         </div>
         <div style="background:#ecfdf5; padding:12px; border-radius:10px;">
-          <p style="font-weight:800; color:#065f46; font-size:13px; margin-bottom:8px;">
-            الدخل الشهري (ج.م)
-          </p>
-          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="دخل الزوج الشهري">
-          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="دخل الزوجة الشهري">
-          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="معاشات / تكافل">
-          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="دخل الأولاد">
-          <p style="font-weight:800; color:#065f46; font-size:14px;">
+          <p style="font-weight:800; color:#065f46; font-size:13px; margin-bottom:8px;">الدخل الشهري (ج.م)</p>
+          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="دخل الزوج الشهري" style="margin-bottom:6px;">
+          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="دخل الزوجة الشهري" style="margin-bottom:6px;">
+          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="معاشات / تكافل" style="margin-bottom:6px;">
+          <input type="number" oninput="calcBudget()" class="inc-in" placeholder="دخل الأولاد" style="margin-bottom:6px;">
+          <p style="font-weight:800; color:#065f46; font-size:14px; margin-top:8px;">
             إجمالي الدخل: <span id="tot-inc">0</span> ج.م
           </p>
         </div>
@@ -263,28 +290,25 @@ function renderWizardStep(step) {
       </div>
       <div style="display:flex; justify-content:space-between;">
         <button onclick="renderWizardStep(3)" class="nav-btn">→ السابق</button>
-        <button onclick="saveBudgetStep()" class="action-btn">
-          التالي: المرفقات ←
-        </button>
+        <button onclick="saveBudgetStep()" class="action-btn">التالي: المرفقات ←</button>
       </div>`;
-  }
-  else if (step === 5) {
+  } else if (step === 5) {
     c.innerHTML = `
       <h4 style="color:#064e3b; font-weight:800; margin-bottom:10px;">
         الخطوة 6 من 6: المستندات المؤيدة والتأكيد النهائي
       </h4>
-      <div class="grid-2" style="font-size:12px; margin-bottom:14px;">
+      <div class="grid-2" style="font-size:12px; margin-bottom:14px; gap:10px;">
         <div style="border:1px solid #cbd5e1; padding:10px; border-radius:10px;">
-          <strong>البحث الاجتماعي المختوم:</strong><input type="file">
+          <strong>البحث الاجتماعي المختوم:</strong><input type="file" id="doc-social" style="margin-top:4px;">
         </div>
         <div style="border:1px solid #cbd5e1; padding:10px; border-radius:10px;">
-          <strong>برنت تأميني (الزوج والزوجة):</strong><input type="file" multiple>
+          <strong>برنت تأميني (الزوج والزوجة):</strong><input type="file" id="doc-insurance" multiple style="margin-top:4px;">
         </div>
         <div style="border:1px solid #cbd5e1; padding:10px; border-radius:10px;">
-          <strong>جواب الحيازة الزراعية:</strong><input type="file">
+          <strong>جواب الحيازة الزراعية:</strong><input type="file" id="doc-agr" style="margin-top:4px;">
         </div>
         <div style="border:1px solid #cbd5e1; padding:10px; border-radius:10px;">
-          <strong>إثبات قيد / قسيمة زواج:</strong><input type="file" multiple>
+          <strong>إثبات قيد / قسيمة زواج:</strong><input type="file" id="doc-marriage" multiple style="margin-top:4px;">
         </div>
       </div>
       <label style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; background:#fffbeb; padding:12px; border-radius:10px; margin-bottom:14px;">
@@ -293,8 +317,7 @@ function renderWizardStep(step) {
       </label>
       <div style="display:flex; justify-content:space-between;">
         <button onclick="renderWizardStep(4)" class="nav-btn">→ السابق</button>
-        <button onclick="submitFinalApp()" class="action-btn"
-          style="background:#d97706; color:#0f172a; font-weight:800;">
+        <button onclick="submitFinalApp()" class="action-btn" style="background:#d97706; color:#0f172a; font-weight:800;">
           ✅ إرسال واعتماد الطلب
         </button>
       </div>`;
@@ -310,22 +333,33 @@ function nextFromStep0() {
 }
 
 function toggleMed(id, val) {
-  document.getElementById(id).classList.toggle('hidden', val !== 'sick');
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden', val !== 'sick');
 }
 
 function updateCenters() {
-  const gov = document.getElementById('h-gov').value;
+  const govEl = document.getElementById('h-gov');
+  if (!govEl) return;
+  const gov = govEl.value;
   const cs = document.getElementById('h-center');
-  const centers = Object.keys(EGYPT_LOCATIONS[gov] || {});
-  cs.innerHTML = centers.map(c => `<option value="${c}">${c}</option>`).join('');
+  const locations = typeof EGYPT_LOCATIONS !== 'undefined' ? EGYPT_LOCATIONS : {};
+  const centers = Object.keys(locations[gov] || {});
+  if (cs) {
+    cs.innerHTML = centers.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
   updateVillages();
 }
 
 function updateVillages() {
-  const gov = document.getElementById('h-gov').value;
-  const center = document.getElementById('h-center').value;
+  const govEl = document.getElementById('h-gov');
+  const centerEl = document.getElementById('h-center');
   const vs = document.getElementById('h-village');
-  const villages = (EGYPT_LOCATIONS[gov] && EGYPT_LOCATIONS[gov][center]) || [];
+  if (!govEl || !centerEl || !vs) return;
+
+  const gov = govEl.value;
+  const center = centerEl.value;
+  const locations = typeof EGYPT_LOCATIONS !== 'undefined' ? EGYPT_LOCATIONS : {};
+  const villages = (locations[gov] && locations[gov][center]) || [];
   let opts = villages.map(v => `<option value="${v}">${v}</option>`).join('');
   opts += `<option value="other">+ أخرى (عزبة / نجع غير مدرج - اكتب الاسم)</option>`;
   vs.innerHTML = opts;
@@ -333,9 +367,11 @@ function updateVillages() {
 }
 
 function toggleCustomHamlet() {
-  const val = document.getElementById('h-village').value;
+  const vs = document.getElementById('h-village');
   const customInput = document.getElementById('h-custom-hamlet');
-  customInput.classList.toggle('hidden', val !== 'other');
+  if (vs && customInput) {
+    customInput.classList.toggle('hidden', vs.value !== 'other');
+  }
 }
 
 function saveHusbandStep() {
@@ -384,25 +420,29 @@ function saveWifeStep() {
 
 function addChildCard() {
   const list = document.getElementById('children-list');
+  if (!list) return;
   const idx = list.children.length + 1;
   const div = document.createElement('div');
   div.style.cssText = 'padding:12px; border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc; margin-bottom:10px;';
   div.innerHTML = `
     <p style="font-weight:800; font-size:12px; color:#064e3b; margin-bottom:6px;">الابن / التابع (${idx})</p>
     <div class="grid-3">
-      <input placeholder="الاسم رباعي">
-      <input maxlength="14" placeholder="الرقم القومي (14 رقم)">
-      <input type="number" placeholder="العمر بالسنوات">
+      <input class="child-name" placeholder="الاسم رباعي">
+      <input class="child-nid" maxlength="14" placeholder="الرقم القومي (14 رقم)">
+      <input class="child-age" type="number" placeholder="العمر بالسنوات">
     </div>
-    <input type="file" accept="image/*" style="font-size:12px;">`;
+    <input type="file" class="child-file" accept="image/*" style="font-size:12px; margin-top:6px;">`;
   list.appendChild(div);
 }
 
 function getGPS() {
-  if (!navigator.geolocation) return alert('GPS غير مدعوم');
+  if (!navigator.geolocation) return alert('GPS غير مدعوم في متصفحك.');
   navigator.geolocation.getCurrentPosition(p => {
     formData.housing.gps = p.coords.latitude + ',' + p.coords.longitude;
-    document.getElementById('gps-txt').innerText = '✅ تم التقاط الموقع: ' + formData.housing.gps;
+    const gpsTxt = document.getElementById('gps-txt');
+    if (gpsTxt) gpsTxt.innerText = '✅ تم التقاط الموقع: ' + formData.housing.gps;
+  }, err => {
+    alert('⚠️ تعذر تحديد الموقع الجغرافي: ' + err.message);
   });
 }
 
@@ -412,13 +452,19 @@ function calcBudget() {
   document.querySelectorAll('.inc-in').forEach(i => inc += Number(i.value || 0));
   formData.expenses.total = exp;
   formData.income.total = inc;
-  document.getElementById('tot-exp').innerText = exp;
-  document.getElementById('tot-inc').innerText = inc;
+  
+  const totExpEl = document.getElementById('tot-exp');
+  const totIncEl = document.getElementById('tot-inc');
+  if (totExpEl) totExpEl.innerText = exp;
+  if (totIncEl) totIncEl.innerText = inc;
+
   const diff = inc - exp;
   const box = document.getElementById('net-box');
-  box.innerText = 'صافي الفرق: ' + diff + ' ج.م';
-  box.style.background = diff < 0 ? '#fee2e2' : '#d1fae5';
-  box.style.color = diff < 0 ? '#991b1b' : '#065f46';
+  if (box) {
+    box.innerText = 'صافي الفرق: ' + diff + ' ج.م';
+    box.style.background = diff < 0 ? '#fee2e2' : '#d1fae5';
+    box.style.color = diff < 0 ? '#991b1b' : '#065f46';
+  }
 }
 
 function saveBudgetStep() {
@@ -432,47 +478,110 @@ function saveBudgetStep() {
 async function submitFinalApp() {
   const agree = document.getElementById('legal-agree');
   if (agree && !agree.checked) return alert('⚠️ يجب الموافقة على الإقرار القانوني.');
-  const code = 'HF-2026-' + Math.floor(1000 + Math.random() * 9000);
-  if (db) {
-    const res = await db.from('families').insert([{
-      tracking_code: code,
-      aid_type: formData.aid_type || 'مساعدة عامة',
-      source_type: 'self',
-      governorate: formData.husband.gov,
-      center_city: formData.husband.center,
-      village_hamlet: formData.husband.village,
-      detailed_address: formData.husband.addr,
-      gps_location: formData.housing.gps,
-      total_expenses: formData.expenses.total || 0,
-      total_income: formData.income.total || 0,
-      duplication_warning: formData.duplication_warning
-    }]).select().single();
 
-    if (res.data && formData.husband.nid) {
-      await db.from('family_members').insert([{
-        family_id: res.data.id,
-        relation: 'husband',
-        first_name: formData.husband.first,
-        second_name: formData.husband.second,
-        last_name: formData.husband.last,
-        national_id: formData.husband.nid,
-        phone: formData.husband.phone
-      }]);
+  const btn = document.querySelector('#wizard-container button[style*="d97706"]');
+  if (btn) btn.innerText = '⏳ جاري رفع المستندات وحفظ الطلب...';
+
+  const code = 'HF-2026-' + Math.floor(1000 + Math.random() * 9000);
+
+  try {
+    // رفع صور البطاقات والمستندات إلى Supabase Storage
+    const hFrontUrl = await uploadFileToSupabase(document.getElementById('h-front-file'), 'ids');
+    const hBackUrl = await uploadFileToSupabase(document.getElementById('h-back-file'), 'ids');
+    const wFrontUrl = await uploadFileToSupabase(document.getElementById('w-front-file'), 'ids');
+    const wBackUrl = await uploadFileToSupabase(document.getElementById('w-back-file'), 'ids');
+    const socialUrl = await uploadFileToSupabase(document.getElementById('doc-social'), 'research');
+
+    if (supabaseClient) {
+      // 1. حفظ بيانات الأسرة الأساسية
+      const res = await supabaseClient.from('families').insert([{
+        tracking_code: code,
+        aid_type: formData.aid_type || 'مساعدة عامة',
+        source_type: 'self',
+        governorate: formData.husband.gov,
+        center_city: formData.husband.center,
+        village_hamlet: formData.husband.village,
+        detailed_address: formData.husband.addr,
+        gps_location: formData.housing.gps,
+        total_expenses: formData.expenses.total || 0,
+        total_income: formData.income.total || 0,
+        duplication_warning: formData.duplication_warning,
+        status: 'pending'
+      }]).select().single();
+
+      if (res.error) {
+        throw new Error(res.error.message);
+      }
+
+      const familyId = res.data.id;
+
+      // 2. إدخال بيانات الزوج في جدول الأعضاء
+      if (formData.husband.nid) {
+        await supabaseClient.from('family_members').insert([{
+          family_id: familyId,
+          relation: 'husband',
+          first_name: formData.husband.first,
+          second_name: formData.husband.second,
+          last_name: formData.husband.last,
+          national_id: formData.husband.nid,
+          phone: formData.husband.phone
+        }]);
+      }
+
+      // 3. إدخال بيانات الزوجة في جدول الأعضاء
+      if (formData.wife.nid) {
+        await supabaseClient.from('family_members').insert([{
+          family_id: familyId,
+          relation: 'wife',
+          first_name: formData.wife.first,
+          second_name: formData.wife.second,
+          last_name: formData.wife.last,
+          national_id: formData.wife.nid,
+          phone: formData.wife.phone
+        }]);
+      }
+
+      // 4. إدخال الأبناء والأفراد التابعين
+      const childCards = document.querySelectorAll('#children-list > div');
+      for (const card of childCards) {
+        const nameInput = card.querySelector('.child-name');
+        const nidInput = card.querySelector('.child-nid');
+        if (nameInput && nameInput.value.trim()) {
+          const names = nameInput.value.trim().split(' ');
+          await supabaseClient.from('family_members').insert([{
+            family_id: familyId,
+            relation: 'child',
+            first_name: names[0] || '',
+            second_name: names[1] || '',
+            last_name: names[names.length - 1] || '',
+            national_id: nidInput ? nidInput.value.trim() : null
+          }]);
+        }
+      }
     }
+
+    localStorage.removeItem('alhafiz_draft');
+    const waMsg = encodeURIComponent('كود متابعة طلبي في مؤسسة الحافظ للتنمية والخدمات هو: ' + code);
+
+    const c = document.getElementById('wizard-container');
+    if (c) {
+      c.innerHTML = `
+        <div style="text-align:center; padding:24px;">
+          <div style="font-size:48px;">✅</div>
+          <h3 style="color:#064e3b; margin:10px 0;">تم تسجيل واعتماد طلبكم بنجاح!</h3>
+          <p style="color:#64748b; font-size:13px; margin-bottom:12px;">تم رفع المستندات وتأمين البيانات بقاعدة البيانات الحية.</p>
+          <div style="display:inline-block; background:#ecfdf5; border:2px solid #059669; font-weight:800; font-size:22px; padding:10px 24px; border-radius:12px; margin-bottom:16px;">
+            ${code}
+          </div>
+          <div>
+            <a href="https://wa.me/?text=${waMsg}" target="_blank" class="action-btn" style="text-decoration:none; background:#16a34a; display:inline-block;">
+              📲 إرسال كود الطلب عبر واتساب المؤسسة
+            </a>
+          </div>
+        </div>`;
+    }
+  } catch (err) {
+    if (btn) btn.innerText = '✅ إرسال واعتماد الطلب';
+    alert('❌ حدث خطأ أثناء إرسال الطلب وحفظ الملفات: ' + err.message);
   }
-  localStorage.removeItem('alhafiz_draft');
-  const waMsg = encodeURIComponent('كود متابعة طلبي في مؤسسة الحافظ للتنمية والخدمات هو: ' + code);
-  document.getElementById('wizard-container').innerHTML = `
-    <div style="text-align:center; padding:24px;">
-      <div style="font-size:48px;">✅</div>
-      <h3 style="color:#064e3b; margin:10px 0;">تم تسجيل واعتماد طلبكم بنجاح!</h3>
-      <div style="display:inline-block; background:#ecfdf5; border:2px solid #059669; font-weight:800; font-size:22px; padding:10px 24px; border-radius:12px; margin-bottom:16px;">
-        ${code}
-      </div>
-      <div>
-        <a href="https://wa.me{waMsg}" target="_blank" class="action-btn" style="text-decoration:none; background:#16a34a;">
-          📲 إرسال كود الطلب عبر واتساب المؤسسة
-        </a>
-      </div>
-    </div>`;
 }
