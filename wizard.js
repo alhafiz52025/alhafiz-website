@@ -1,4 +1,15 @@
 // wizard.js - الاستمارة الذكية المتكاملة لمؤسسة الحافظ
+function showSection(sectionName) {
+  const secs = ['home', 'about', 'apply', 'track', 'contact', 'privacy', 'login'];
+  secs.forEach(s => {
+    const el = document.getElementById('section-' + s);
+    if (el) el.classList.add('hidden');
+  });
+  const target = document.getElementById('section-' + sectionName);
+  if (target) target.classList.remove('hidden');
+  if (sectionName === 'apply') renderWizardStep(0);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 const wizardDb = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
 
