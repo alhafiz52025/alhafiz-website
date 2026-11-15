@@ -106,13 +106,13 @@ window.loginUser = async function() {
   } catch (err) {
     alert('❌ خطأ: ' + err.message);
   }
-}
+};
 
 window.logoutUser = async function() {
   if (supabaseClient && supabaseClient.auth) await supabaseClient.auth.signOut();
   localStorage.clear();
   location.reload();
-}
+};
 
 async function renderFullAdminDashboard(container, profile) {
   const [famRes, usersRes, grievRes, achRes] = await Promise.all([
@@ -192,7 +192,7 @@ window.switchAdminTab = function(tabName) {
           <td style="white-space:nowrap;">
             <button type="button" onclick="updateFamilyStatus('${f.id}', 'approved')" class="action-btn" style="padding:4px 8px; font-size:11px;">✅</button>
             <button type="button" onclick="updateFamilyStatus('${f.id}', 'rejected')" class="action-btn" style="padding:4px 8px; font-size:11px; background:#b91c1c;">❌</button>
-            <button type="button" onclick="deleteFamilyRecord('${f.id}')" class="nav-btn" style="padding:4px 8px; font-size:11px; background:#334155; color:#fff;">🗑️</button>
+            <button type="button" onclick="deleteFamilyRecord('${f.id}')" class="nav-btn" style="padding:4px 8px; font-size:11px; background:#334155; color:#fff;" title="حذف">🗑️</button>
           </td>
         </tr>`;
     }).join('');
@@ -207,7 +207,7 @@ window.switchAdminTab = function(tabName) {
         <td><span style="padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; background:${u.account_status === 'approved' ? '#d1fae5' : '#fee2e2'};">${u.account_status === 'approved' ? '🟢 نشط' : '🔴 معلق'}</span></td>
         <td style="white-space:nowrap;">
           <button type="button" onclick="toggleUserActiveStatus('${u.id}', '${u.account_status === 'approved' ? 'suspended' : 'approved'}')" class="nav-btn" style="padding:4px 8px; font-size:11px;">${u.account_status === 'approved' ? '⏸️ إيقاف' : '▶️ تفعيل'}</button>
-          <button type="button" onclick="deleteUserAccount('${u.id}')" class="nav-btn" style="padding:4px 8px; font-size:11px; background:#b91c1c; color:#fff;">🗑️ حذف</button>
+          <button type="button" onclick="deleteUserAccount('${u.id}')" class="nav-btn" style="padding:4px 8px; font-size:11px; background:#b91c1c; color:#fff;" title="حذف">🗑️</button>
         </td>
       </tr>`).join('');
     content.innerHTML = `<div style="overflow-x:auto;"><table><thead><tr><th>الاسم</th><th>الصفة</th><th>الهاتف</th><th>الحالة</th><th>التحكم</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -226,7 +226,7 @@ window.switchAdminTab = function(tabName) {
     let rows = globalGrievances.map(g => `<div style="background:#fff1f2; border:1px solid #fecdd3; padding:12px; border-radius:10px; margin-bottom:10px;"><p style="margin:0; font-weight:700; color:#9f1239;">${g.complaint_type} - هاتف: ${g.phone}</p><p style="margin:4px 0 0; font-size:13px;">${g.details}</p></div>`).join('');
     content.innerHTML = rows || '<p style="text-align:center;">لا توجد تظلمات.</p>';
   }
-}
+};
 
 window.saveAchievement = async function() {
   const title = document.getElementById('ach-title').value.trim();
@@ -241,7 +241,7 @@ window.saveAchievement = async function() {
     alert('✅ تم نشر الإنجاز بنجاح على الموقع العام!');
     loadPublicAchievements();
   }
-}
+};
 
 async function loadPublicAchievements() {
   const container = document.getElementById('public-achievements-container');
@@ -266,26 +266,30 @@ async function loadPublicAchievements() {
 window.assignCaseToUser = async function(famId, userId) {
   await supabaseClient.from('families').update({ assigned_to: userId || null }).eq('id', famId);
   alert('✅ تم إسناد الحالة.');
-}
+};
+
 window.updateFamilyStatus = async function(famId, newStatus) {
   const note = newStatus === 'rejected' ? prompt('سبب الرفض:') : 'معتمد';
   await supabaseClient.from('families').update({ status: newStatus, rejection_or_action_note: note }).eq('id', famId);
   location.reload();
-}
+};
+
 window.deleteFamilyRecord = async function(famId) {
   if (!confirm('هل أنت متأكد من الحذف؟')) return;
   await supabaseClient.from('families').delete().eq('id', famId);
   location.reload();
-}
+};
+
 window.toggleUserActiveStatus = async function(userId, status) {
   await supabaseClient.from('users_profiles').update({ account_status: status }).eq('id', userId);
   location.reload();
-}
+};
+
 window.deleteUserAccount = async function(userId) {
   if (!confirm('حذف العضو؟')) return;
   await supabaseClient.from('users_profiles').delete().eq('id', userId);
   location.reload();
-}
+};
 
 window.exportToExcel = function(filename) {
   let csv = "\uFEFFكود,القرية,نوع المساعدة,الدخل,المصروفات,الحالة\n";
@@ -297,7 +301,7 @@ window.exportToExcel = function(filename) {
   link.href = URL.createObjectURL(blob);
   link.download = filename + ".csv";
   link.click();
-}
+};
 
 window.exportToPDF = function() {
   const content = document.getElementById('printable-area');
@@ -306,14 +310,16 @@ window.exportToPDF = function() {
   win.document.write('<html dir="rtl"><body><h2>تقرير مؤسسة الحافظ</h2>' + content.innerHTML + '</body></html>');
   win.document.close();
   win.print();
-}
+};
 
 function translateRole(role) {
   return { 'admin': 'إدارة عليا', 'grassroots_partner': 'جمعية شريكة', 'researcher': 'باحث' }[role] || role;
 }
+
 function translateStatus(st) {
   return { 'pending': 'قيد المراجعة', 'approved': 'مقبولة', 'rejected': 'مرفوضة' }[st] || st;
 }
+
 function getStatusColor(st) {
   return st === 'approved' ? '#d1fae5; color:#065f46' : '#fef3c7; color:#92400e';
 }
@@ -325,7 +331,7 @@ window.trackApplication = async function() {
   const box = document.getElementById('track-result');
   if (res.data) box.innerHTML = `<div style="padding:12px; background:#ecfdf5; border-radius:8px;">كود: ${res.data.tracking_code} | الحالة: <strong>${translateStatus(res.data.status)}</strong></div>`;
   else box.innerHTML = '<p style="color:red;">لم يتم العثور على طلب.</p>';
-}
+};
 
 window.submitGrievance = async function() {
   const phone = document.getElementById('grievance-phone').value.trim();
@@ -334,7 +340,7 @@ window.submitGrievance = async function() {
   await supabaseClient.from('grievances').insert([{ complaint_type: document.getElementById('grievance-type').value, phone, details }]);
   alert('✅ تم إرسال رسالتك بسرية.');
   showSection('home');
-}
+};
 
 window.openPartnerRegister = function() {
   const loginBox = document.getElementById('login-box');
@@ -351,10 +357,20 @@ window.openPartnerRegister = function() {
     <input type="password" id="reg-pass" placeholder="كلمة المرور" style="margin-bottom:10px;">
     <button type="button" onclick="submitPartnerRegisterToSupabase()" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال</button>
     <button type="button" onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
-}
+};
 
 window.submitPartnerRegisterToSupabase = async function() {
   const role = document.getElementById('reg-role').value;
   const name = document.getElementById('reg-name').value.trim();
   const phone = document.getElementById('reg-phone').value.trim();
-  const email = document.getElementById
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+
+  const authRes = await supabaseClient.auth.signUp({ email, password: pass });
+  if (authRes.error) return alert(authRes.error.message);
+  if (authRes.data.user) {
+    await supabaseClient.from('users_profiles').insert([{ id: authRes.data.user.id, full_name: name, email, role, phone, account_status: 'pending' }]);
+  }
+  alert('✅ تم إرسال طلبك بانتظار الاعتماد.');
+  location.reload();
+};
