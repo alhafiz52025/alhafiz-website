@@ -1,8 +1,6 @@
-const SB_URL = https://fwyacpvbhwdlivzeiper.supabase.co
-const SB_KEY = sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz
-const supabaseClient = window.supabase
-  ? window.supabase.createClient(SB_URL, SB_KEY)
-  : null;
+// dashboards.js - غرفة العمليات والإدارة العليا وبوابة الشركاء لمؤسسة الحافظ
+
+const supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
 
 async function loginUser() {
   try {
@@ -26,9 +24,10 @@ async function loginUser() {
       return alert('⏳ حسابك بانتظار اعتماد الإدارة.');
     }
 
-    document.getElementById('login-box').classList.add('hidden');
+    const loginBox = document.getElementById('login-box');
+    if (loginBox) loginBox.classList.add('hidden');
     const area = document.getElementById('dashboard-area');
-    area.classList.remove('hidden');
+    if (area) area.classList.remove('hidden');
 
     if (prof.role === 'admin') {
       await renderFullAdminDashboard(area, prof);
@@ -53,13 +52,13 @@ async function renderFullAdminDashboard(container, profile) {
   let famRows = families.map(f => `
     <tr>
       <td><strong>${f.tracking_code}</strong></td>
-      <td>${f.governorate} - ${f.center_city} (${f.village_hamlet})</td>
-      <td>${f.aid_type}</td>
-      <td>${f.total_income} / ${f.total_expenses} ج.م</td>
-      <td><strong>${f.status}</strong></td>
+      <td>${f.governorate || ''} - ${f.center_city || ''} (${f.village_hamlet || ''})</td>
+      <td>${f.aid_type || ''}</td>
+      <td>${f.total_income || 0} / ${f.total_expenses || 0} ج.م</td>
+      <td><strong>${f.status || 'pending'}</strong></td>
       <td>
-        <button onclick="updateFamilyStatus('${f.id}', 'approved')" class="action-btn" style="padding:5px 10px; font-size:11px;">✅ اعتماد</button>
-        <button onclick="updateFamilyStatus('${f.id}', 'rejected')" class="action-btn" style="padding:5px 10px; font-size:11px; background:#b91c1c;">❌ رفض</button>
+        <button type="button" onclick="updateFamilyStatus('${f.id}', 'approved')" class="action-btn" style="padding:5px 10px; font-size:11px;">✅ اعتماد</button>
+        <button type="button" onclick="updateFamilyStatus('${f.id}', 'rejected')" class="action-btn" style="padding:5px 10px; font-size:11px; background:#b91c1c;">❌ رفض</button>
       </td>
     </tr>
   `).join('');
@@ -67,9 +66,9 @@ async function renderFullAdminDashboard(container, profile) {
   if (!famRows) famRows = '<tr><td colspan="6" style="text-align:center;">لا توجد طلبات مسجلة حتى الآن.</td></tr>';
 
   let userRows = pendingUsers.map(u => `
-    <div style="background:#fffbeb; border:1px solid #fde68a; padding:10px; border-radius:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-      <span>🔔 <strong>${u.full_name}</strong> (${u.role}) - هاتف: ${u.phone}</span>
-      <button onclick="approveUserAccount('${u.id}')" class="action-btn" style="padding:6px 12px; font-size:12px;">اعتماد الحساب</button>
+    <div style="background:#fffbeb; border:1px solid #fde68a; padding:10px; border-radius:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; font-size:13px;">
+      <span>🔔 <strong>${u.full_name}</strong> (${u.role}) - هاتف: ${u.phone || 'غير محدد'}</span>
+      <button type="button" onclick="approveUserAccount('${u.id}')" class="action-btn" style="padding:6px 12px; font-size:12px;">اعتماد الحساب</button>
     </div>
   `).join('');
 
@@ -78,51 +77,38 @@ async function renderFullAdminDashboard(container, profile) {
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #e2e8f0; padding-bottom:14px; margin-bottom:20px;">
         <div>
           <h3 style="text-align:right; font-size:20px; margin:0;">🏛️ غرفة العمليات والإدارة العليا - مؤسسة الحافظ</h3>
-          <p style="font-size:13px; color:#047857; font-weight:700;">رئيس مجلس الأمناء: ${profile.full_name}</p>
+          <p style="font-size:13px; color:#047857; font-weight:700; margin:4px 0 0;">رئيس مجلس الأمناء: ${profile.full_name}</p>
         </div>
         <div style="display:flex; gap:8px;">
-          <button onclick="showSection('apply')" class="action-btn">+ تسجيل حالة جديدة</button>
-          <button onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
+          <button type="button" onclick="showSection('apply')" class="action-btn">+ تسجيل حالة جديدة</button>
+          <button type="button" onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
         </div>
       </div>
 
       <div class="grid-4" style="margin-bottom:20px; text-align:center;">
-        <div style="background:#ecfdf5; padding:14px; border-radius:12px; border:1px solid #a7f3d0;">
-          <p style="font-size:12px; font-weight:700;">إجمالي الأسر</p>
-          <strong style="font-size:22px; color:#065f46;">${families.length}</strong>
-        </div>
-        <div style="background:#fffbeb; padding:14px; border-radius:12px; border:1px solid #fde68a;">
-          <p style="font-size:12px; font-weight:700;">طلبات اعتماد حسابات</p>
-          <strong style="font-size:22px; color:#92400e;">${pendingUsers.length}</strong>
-        </div>
-        <div style="background:#eff6ff; padding:14px; border-radius:12px; border:1px solid #bfdbfe;">
-          <p style="font-size:12px; font-weight:700;">الأعضاء والشركاء</p>
-          <strong style="font-size:22px; color:#1e40af;">${users.length}</strong>
-        </div>
-        <div style="background:#fef2f2; padding:14px; border-radius:12px; border:1px solid #fecaca;">
-          <p style="font-size:12px; font-weight:700;">التظلمات السرية</p>
-          <strong style="font-size:22px; color:#991b1b;">${grievances.length}</strong>
-        </div>
+        <div style="background:#ecfdf5; padding:14px; border-radius:12px; border:1px solid #a7f3d0;"><p style="font-size:12px; font-weight:700; margin:0;">إجمالي الأسر</p><strong style="font-size:22px; color:#065f46;">${families.length}</strong></div>
+        <div style="background:#fffbeb; padding:14px; border-radius:12px; border:1px solid #fde68a;"><p style="font-size:12px; font-weight:700; margin:0;">طلبات اعتماد حسابات</p><strong style="font-size:22px; color:#92400e;">${pendingUsers.length}</strong></div>
+        <div style="background:#eff6ff; padding:14px; border-radius:12px; border:1px solid #bfdbfe;"><p style="font-size:12px; font-weight:700; margin:0;">الأعضاء والشركاء</p><strong style="font-size:22px; color:#1e40af;">${users.length}</strong></div>
+        <div style="background:#fef2f2; padding:14px; border-radius:12px; border:1px solid #fecaca;"><p style="font-size:12px; font-weight:700; margin:0;">التظلمات السرية</p><strong style="font-size:22px; color:#991b1b;">${grievances.length}</strong></div>
       </div>
 
       ${userRows ? '<h4 style="margin-bottom:10px; color:#92400e;">طلبات انضمام بانتظار اعتمادك:</h4>' + userRows : ''}
 
       <div style="display:flex; justify-content:space-between; align-items:center; margin:16px 0 10px;">
         <h4 style="color:#064e3b; margin:0;">📋 سجل الحالات والطلبات المسجلة بالمنظومة</h4>
-        <button onclick="exportCSV('تقرير_مؤسسة_الحافظ_الشامل')" class="nav-btn btn-dark">📥 تصدير Excel</button>
+        <button type="button" onclick="exportCSV('تقرير_مؤسسة_الحافظ_الشامل')" class="nav-btn btn-dark">📥 تصدير Excel</button>
       </div>
       <div style="overflow-x:auto;">
         <table>
           <thead>
-            <tr>
-              <th>الكود</th><th>المركز والقرية</th><th>نوع المساعدة</th><th>الدخل / المصروف</th><th>الحالة</th><th>القرار الإداري</th>
-            </tr>
+            <tr><th>الكود</th><th>المركز والقرية</th><th>نوع المساعدة</th><th>الدخل / المصروف</th><th>الحالة</th><th>القرار الإداري</th></tr>
           </thead>
           <tbody>${famRows}</tbody>
         </table>
       </div>
     </div>`;
 }
+
 async function updateFamilyStatus(famId, newStatus) {
   const note = newStatus === 'rejected' ? prompt('اكتب سبب الرفض (يظهر للجمعية الشريكة):') : 'معتمد من الإدارة';
   await supabaseClient.from('families').update({ status: newStatus, rejection_or_action_note: note }).eq('id', famId);
@@ -142,9 +128,9 @@ async function renderPartnerDashboard(container, profile) {
   let rows = families.map(f => `
     <tr>
       <td><strong>${f.tracking_code}</strong></td>
-      <td>${f.village_hamlet}</td>
-      <td>${f.aid_type}</td>
-      <td>${f.status}</td>
+      <td>${f.village_hamlet || ''}</td>
+      <td>${f.aid_type || ''}</td>
+      <td>${f.status || ''}</td>
       <td>${f.rejection_or_action_note || '-'}</td>
     </tr>
   `).join('');
@@ -154,17 +140,19 @@ async function renderPartnerDashboard(container, profile) {
       <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
         <div>
           <h3 style="text-align:right; font-size:18px; margin:0;">بوابة الشركاء والباحثين</h3>
-          <p style="font-size:12px; color:#047857;">مرحباً: ${profile.full_name}</p>
+          <p style="font-size:12px; color:#047857; margin:4px 0 0;">مرحباً: ${profile.full_name}</p>
         </div>
         <div style="display:flex; gap:8px;">
-          <button onclick="showSection('apply')" class="action-btn">+ تسجيل حالة</button>
-          <button onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
+          <button type="button" onclick="showSection('apply')" class="action-btn">+ تسجيل حالة</button>
+          <button type="button" onclick="location.reload()" class="nav-btn btn-dark">خروج</button>
         </div>
       </div>
-      <table>
-        <thead><tr><th>الكود</th><th>القرية</th><th>المساعدة</th><th>الحالة</th><th>ملاحظات الإدارة</th></tr></thead>
-        <tbody>${rows || '<tr><td colspan="5">لا توجد حالات بعد.</td></tr>'}</tbody>
-      </table>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>الكود</th><th>القرية</th><th>المساعدة</th><th>الحالة</th><th>ملاحظات الإدارة</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5">لا توجد حالات بعد.</td></tr>'}</tbody>
+        </table>
+      </div>
     </div>`;
 }
 
@@ -174,15 +162,16 @@ async function trackApplication() {
   if (!supabaseClient) return;
   const res = await supabaseClient.from('families').select('*').eq('tracking_code', val).maybeSingle();
   const box = document.getElementById('track-result');
+  if (!box) return;
   if (res.data) {
-    box.innerHTML = `<div style="padding:14px; border-radius:12px; background:#ecfdf5; border:1px solid #10b981;">
+    box.innerHTML = `<div style="padding:14px; border-radius:12px; background:#ecfdf5; border:1px solid #10b981; font-size:13px;">
       <strong>كود الطلب: ${res.data.tracking_code}</strong><br>
       نوع المساعدة: ${res.data.aid_type}<br>
       الحالة الحالية: <strong>${res.data.status}</strong><br>
       ملاحظات: ${res.data.rejection_or_action_note || 'قيد المراجعة'}
     </div>`;
   } else {
-    box.innerHTML = '<p style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على طلب بهذا الكود.</p>';
+    box.innerHTML = '<p style="color:#b91c1c; font-weight:700; font-size:13px;">❌ لم يتم العثور على طلب بهذا الكود.</p>';
   }
 }
 
@@ -202,22 +191,60 @@ async function submitGrievance() {
 }
 
 function openPartnerRegister() {
-  document.getElementById('login-box').classList.add('hidden');
+  const loginBox = document.getElementById('login-box');
+  if (loginBox) loginBox.classList.add('hidden');
   const box = document.getElementById('partner-register-box');
+  if (!box) return;
   box.classList.remove('hidden');
   box.innerHTML = `
     <h3 style="font-size:18px; margin-bottom:10px;">طلب انضمام لمنظومة مؤسسة الحافظ</h3>
-    <select id="reg-role">
+    <select id="reg-role" style="margin-bottom:8px;">
       <option value="grassroots_partner">جمعية قاعدية شريكة</option>
       <option value="donor_partner">مؤسسة كبرى مانحة</option>
       <option value="researcher">باحث ميداني</option>
       <option value="volunteer">متطوع</option>
     </select>
-    <input id="reg-name" placeholder="الاسم الكامل / اسم الجمعية">
-    <input id="reg-phone" placeholder="رقم الموبايل / واتساب">
-    <input id="reg-email" placeholder="البريد الإلكتروني">
-    <button onclick="alert('✅ تم استلام طلبك لمراجعته واعتماده من الإدارة.'); location.reload();" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال الطلب</button>
-    <button onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
+    <input id="reg-name" placeholder="الاسم الكامل / اسم الجمعية" style="margin-bottom:8px;">
+    <input id="reg-phone" placeholder="رقم الموبايل / واتساب" style="margin-bottom:8px;">
+    <input id="reg-email" placeholder="البريد الإلكتروني (للدخول)" style="margin-bottom:8px;">
+    <input type="password" id="reg-pass" placeholder="كلمة المرور المؤقتة (6 أحرف على الأقل)" style="margin-bottom:10px;">
+    <button type="button" onclick="submitPartnerRegisterToSupabase()" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال طلب الاعتماد</button>
+    <button type="button" onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
+}
+
+async function submitPartnerRegisterToSupabase() {
+  const role = document.getElementById('reg-role').value;
+  const name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pass = document.getElementById('reg-pass').value;
+
+  if (!name || !phone || !email || !pass || pass.length < 6) {
+    return alert('⚠️ يرجى ملء كافة البيانات وكلمة مرور من 6 أحرف على الأقل.');
+  }
+
+  try {
+    // 1. إنشاء حساب Auth جديد في Supabase
+    const authRes = await supabaseClient.auth.signUp({ email, password: pass });
+    if (authRes.error) throw new Error(authRes.error.message);
+
+    const userId = authRes.data.user ? authRes.data.user.id : null;
+    if (userId) {
+      // 2. إدخال بيانات الملف الشخصي بـ pending لتظهر للإدارة العليا
+      await supabaseClient.from('users_profiles').insert([{
+        id: userId,
+        full_name: name,
+        role: role,
+        phone: phone,
+        account_status: 'pending'
+      }]);
+    }
+
+    alert('✅ تم إرسال طلب الانضمام بنجاح! بانتظار اعتماد الإدارة العليا.');
+    location.reload();
+  } catch (err) {
+    alert('❌ خطأ في التسجيل: ' + err.message);
+  }
 }
 
 function exportCSV(filename) {
