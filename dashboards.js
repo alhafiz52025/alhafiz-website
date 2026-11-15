@@ -12,13 +12,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
 
-  // التأكد من إظهار صندوق الدخول افتراضياً
   const loginBox = document.getElementById('login-box');
   const dashboardArea = document.getElementById('dashboard-area');
-  if (loginBox) loginBox.classList.remove('hidden');
-  if (dashboardArea) dashboardArea.classList.add('hidden');
 
-  // فحص هادئ للجلسة السابقة
+  // تحقق من وجود جلسة نشطة سابقة
   if (supabaseClient && supabaseClient.auth) {
     try {
       const { data } = await supabaseClient.auth.getSession();
@@ -39,13 +36,36 @@ window.addEventListener('DOMContentLoaded', async () => {
             } else {
               await renderPartnerDashboard(dashboardArea, profRes.data);
             }
+            return; // توقف هنا واعرض اللوحة
           }
         }
       }
     } catch (e) {
-      console.log('No active session, showing login box.');
+      console.log('No active session.');
     }
   }
+
+  // إذا لم توجد جلسة نشطة، أظهر صندوق الدخول حتماً وأضف زر مسح الكاش الاحتياطي
+  if (loginBox) {
+    loginBox.classList.remove('hidden');
+    // إضافة زر مسح الجلسة يدوياً داخل صندوق الدخول لضمان ظهور الحقول دائماً
+    if (!document.getElementById('force-logout-btn')) {
+      const clearBtn = document.createElement('button');
+      clearBtn.id = 'force-logout-btn';
+      clearBtn.type = 'button';
+      clearBtn.className = 'nav-btn';
+      clearBtn.style.cssText = 'width:100%; margin-top:8px; background:#991b1b; color:#fff;';
+      clearBtn.innerHTML = '🔄 مسح الذاكرة المؤقتة وإظهار الحقول';
+      clearBtn.onclick = async () => {
+        if (supabaseClient && supabaseClient.auth) await supabaseClient.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        location.reload();
+      };
+      loginBox.appendChild(clearBtn);
+    }
+  }
+  if (dashboardArea) dashboardArea.classList.add('hidden');
 });
 
 async function loginUser() {
@@ -93,6 +113,7 @@ async function loginUser() {
 
 async function logoutUser() {
   if (supabaseClient && supabaseClient.auth) await supabaseClient.auth.signOut();
+  localStorage.clear();
   location.reload();
 }
 
@@ -339,7 +360,7 @@ function openPartnerRegister() {
 }
 
 async function submitPartnerRegisterToSupabase() {
-  const role = document.getElementById('reg-role').value;
+  const role = document.getElementById('reg-role'].value;
   const name = document.getElementById('reg-name').value.trim();
   const phone = document.getElementById('reg-phone').value.trim();
   const email = document.getElementById('reg-email').value.trim();
