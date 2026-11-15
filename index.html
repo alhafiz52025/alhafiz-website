@@ -353,5 +353,29 @@
       if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
     });
   </script>
+  // دالة عرض وتخفيض الأقسام الرئيسية في الموقع
+    function showSection(sectionId) {
+      // إخفاء جميع الأقسام التي تبدأ بـ section-
+      document.querySelectorAll('section[id^="section-"]').forEach(sec => {
+        sec.classList.add('hidden');
+      });
+      
+      // إظهار القسم المطلوب فقط
+      const target = document.getElementById('section-' + sectionId);
+      if (target) {
+        target.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // إذا كان القسم هو لوحة التحكم أو الدخول
+      const loginSec = document.getElementById('section-login');
+      if (loginSec) {
+        if (sectionId === 'login') {
+          loginSec.classList.remove('hidden');
+        } else {
+          loginSec.classList.add('hidden');
+        }
+      }
+    }
 </body>
 </html>
