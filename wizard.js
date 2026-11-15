@@ -1,4 +1,4 @@
-const WIZARD_SB_URL = 'https://supabase.co';
+const WIZARD_SB_URL = https://fwyacpvbhwdlivzeiper.supabase.co
 const WIZARD_SB_KEY = sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz
 const wizardDb = window.supabase
   ? window.supabase.createClient(WIZARD_SB_URL, WIZARD_SB_KEY)
