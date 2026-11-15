@@ -1,5 +1,5 @@
-// egypt-data.js - البيانات الجغرافية والمهنية والطبية لمؤسسة الحافظ
-let EGYPT_LOCATIONS = {
+// egypt-data.js - البيانات الجغرافية والمهنية والطبية لمؤسسة الحافظ (نسخة آمنة ضد التكرار)
+window.EGYPT_LOCATIONS = window.EGYPT_LOCATIONS || {
   "بني سويف": {
     "إهناسيا": [
       "مدينة إهناسيا", "منشأة عبدالصمد", "براوة الوقف",
@@ -51,7 +51,7 @@ let EGYPT_LOCATIONS = {
   }
 };
 
-const AID_TYPES = [
+window.AID_TYPES = window.AID_TYPES || [
   "كفالة أيتام شهرية",
   "إعانة أسرة متعففة (امرأة معيلة / مسنين / عجز كلي)",
   "تجهيز عروسة (أجهزة كهربائية / مفروشات)",
@@ -70,7 +70,7 @@ const AID_TYPES = [
   "مشروع تمكين اقتصادي صغير"
 ];
 
-const EGYPT_JOBS = [
+window.EGYPT_JOBS = window.EGYPT_JOBS || [
   "لا يعمل / عاطل عن العمل",
   "بالمعاش",
   "غير قادر على العمل (عجز كلي / مرض مزمن)",
@@ -90,7 +90,7 @@ const EGYPT_JOBS = [
   "أعمال حرة أخرى"
 ];
 
-const EDUCATION_LEVELS = [
+window.EDUCATION_LEVELS = window.EDUCATION_LEVELS || [
   { value: "illiterate", label: "غير متعلم (لا يقرأ ولا يكتب)" },
   { value: "literate", label: "يقرأ ويكتب (محو أمية)" },
   { value: "primary", label: "حاصل على الابتدائية" },
@@ -103,7 +103,7 @@ const EDUCATION_LEVELS = [
   { value: "phd", label: "دكتوراه" }
 ];
 
-const MEDICAL_NEEDS = [
+window.MEDICAL_NEEDS = window.MEDICAL_NEEDS || [
   "إجراء عملية جراحية",
   "دواء وعلاج شهري مزمن",
   "جلسات غسيل كلوي أو علاج كيماوي",
