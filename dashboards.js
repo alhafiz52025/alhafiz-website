@@ -291,3 +291,70 @@ window.exportToExcel = function(filename) {
   let csv = "\uFEFFكود,القرية,نوع المساعدة,الدخل,المصروفات,الحالة\n";
   globalFamilies.forEach(f => {
     csv += `"${f.tracking_code}","${f.village_hamlet}","${f.aid_type}","${f.total_income}","${f.total_expenses}","${f.status}"\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename + ".csv";
+  link.click();
+}
+
+window.exportToPDF = function() {
+  const content = document.getElementById('printable-area');
+  if (!content) return alert('افتح جدول الحالات أولاً.');
+  const win = window.open('', '', 'height=700,width=900');
+  win.document.write('<html dir="rtl"><body><h2>تقرير مؤسسة الحافظ</h2>' + content.innerHTML + '</body></html>');
+  win.document.close();
+  win.print();
+}
+
+function translateRole(role) {
+  return { 'admin': 'إدارة عليا', 'grassroots_partner': 'جمعية شريكة', 'researcher': 'باحث' }[role] || role;
+}
+function translateStatus(st) {
+  return { 'pending': 'قيد المراجعة', 'approved': 'مقبولة', 'rejected': 'مرفوضة' }[st] || st;
+}
+function getStatusColor(st) {
+  return st === 'approved' ? '#d1fae5; color:#065f46' : '#fef3c7; color:#92400e';
+}
+
+window.trackApplication = async function() {
+  const val = document.getElementById('track-input').value.trim();
+  if (!val) return;
+  const res = await supabaseClient.from('families').select('*').eq('tracking_code', val).maybeSingle();
+  const box = document.getElementById('track-result');
+  if (res.data) box.innerHTML = `<div style="padding:12px; background:#ecfdf5; border-radius:8px;">كود: ${res.data.tracking_code} | الحالة: <strong>${translateStatus(res.data.status)}</strong></div>`;
+  else box.innerHTML = '<p style="color:red;">لم يتم العثور على طلب.</p>';
+}
+
+window.submitGrievance = async function() {
+  const phone = document.getElementById('grievance-phone').value.trim();
+  const details = document.getElementById('grievance-details').value.trim();
+  if (!phone || !details) return alert('أدخل الهاتف والتفاصيل.');
+  await supabaseClient.from('grievances').insert([{ complaint_type: document.getElementById('grievance-type').value, phone, details }]);
+  alert('✅ تم إرسال رسالتك بسرية.');
+  showSection('home');
+}
+
+window.openPartnerRegister = function() {
+  const loginBox = document.getElementById('login-box');
+  if (loginBox) loginBox.classList.add('hidden');
+  const box = document.getElementById('partner-register-box');
+  if (!box) return;
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <h3 style="margin-bottom:10px;">طلب انضمام للمنظومة</h3>
+    <select id="reg-role" style="margin-bottom:8px;"><option value="grassroots_partner">جمعية شريكة</option><option value="researcher">باحث ميداني</option></select>
+    <input id="reg-name" placeholder="الاسم الكامل" style="margin-bottom:8px;">
+    <input id="reg-phone" placeholder="الهاتف" style="margin-bottom:8px;">
+    <input id="reg-email" placeholder="البريد الإلكتروني" style="margin-bottom:8px;">
+    <input type="password" id="reg-pass" placeholder="كلمة المرور" style="margin-bottom:10px;">
+    <button type="button" onclick="submitPartnerRegisterToSupabase()" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال</button>
+    <button type="button" onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
+}
+
+window.submitPartnerRegisterToSupabase = async function() {
+  const role = document.getElementById('reg-role').value;
+  const name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const email = document.getElementById
