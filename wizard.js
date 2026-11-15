@@ -1,8 +1,8 @@
-// wizard.js - المنظومة الذكية لاستمارة البحث الاجتماعي وبناء الأسر - مؤسسة الحافظ
+// wizard.js - المنظومة الذكية لاستمارة البحث الاجتماعي وبناء الأسر - مؤسسة الحافظ (نسخة آمنة)
 
-let currentStep = 1;
-const totalSteps = 6;
-let formData = {
+window.currentStep = window.currentStep || 1;
+const totalWizardSteps = 6;
+window.formData = window.formData || {
   husband: {},
   wife: {},
   children: [],
@@ -16,35 +16,35 @@ window.addEventListener('DOMContentLoaded', () => {
   renderWizardStep();
 });
 
-function renderWizardStep() {
+window.renderWizardStep = function() {
   const container = document.getElementById('wizard-container');
   if (!container) return;
 
   let html = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">
-      <span style="font-weight:800; color:var(--primary-dark);">الخطوة ${currentStep} من ${totalSteps}</span>
+      <span style="font-weight:800; color:var(--primary-dark);">الخطوة ${window.currentStep} من ${totalWizardSteps}</span>
       <div style="display:flex; gap:6px;">
-        ${Array.from({length: totalSteps}, (_, i) => `<span style="width:28px; height:8px; border-radius:4px; background:${i + 1 === currentStep ? 'var(--primary)' : '#cbd5e1'}"></span>`).join('')}
+        ${Array.from({length: totalWizardSteps}, (_, i) => `<span style="width:28px; height:8px; border-radius:4px; background:${i + 1 === window.currentStep ? 'var(--primary)' : '#cbd5e1'}"></span>`).join('')}
       </div>
     </div>
   `;
 
-  if (currentStep === 1) {
+  if (window.currentStep === 1) {
     html += `
       <h4 style="color:var(--primary-dark); margin-top:0;">👤 القسم الأول: بيانات الزوج (رب الأسرة)</h4>
       <div class="grid-3">
-        <div><label>الاسم الأول *</label><input id="h-name1" value="${formData.husband.name1 || ''}"></div>
-        <div><label>الاسم الثاني *</label><input id="h-name2" value="${formData.husband.name2 || ''}"></div>
-        <div><label>الاسم الثالث *</label><input id="h-name3" value="${formData.husband.name3 || ''}"></div>
+        <div><label>الاسم الأول *</label><input id="h-name1" value="${window.formData.husband.name1 || ''}"></div>
+        <div><label>الاسم الثاني *</label><input id="h-name2" value="${window.formData.husband.name2 || ''}"></div>
+        <div><label>الاسم الثالث *</label><input id="h-name3" value="${window.formData.husband.name3 || ''}"></div>
       </div>
       <div class="grid-2">
-        <div><label>رقم البطاقة (14 رقم) *</label><input id="h-nid" maxlength="14" value="${formData.husband.nid || ''}"></div>
-        <div><label>رقم التليفون *</label><input id="h-phone" value="${formData.husband.phone || ''}"></div>
+        <div><label>رقم البطاقة (14 رقم) *</label><input id="h-nid" maxlength="14" value="${window.formData.husband.nid || ''}"></div>
+        <div><label>رقم التليفون *</label><input id="h-phone" value="${window.formData.husband.phone || ''}"></div>
       </div>
       <div class="grid-2">
         <div>
           <label>المستوى التعليمي *</label>
-          <select id="h-edu" onchange="toggleEduDetails('h')">
+          <select id="h-edu">
             <option value="غير متعلم">غير متعلم (لا يقرا ولا يكتب)</option>
             <option value="ابتدائية">ابتدائية</option>
             <option value="إعدادية">إعدادية</option>
@@ -53,18 +53,18 @@ function renderWizardStep() {
             <option value="دكتوراه">دكتوراه</option>
           </select>
         </div>
-        <div><label>الوظيفة الحالية *</label><input id="h-job" value="${formData.husband.job || ''}" placeholder="مثال: عامل داي - باليومية - بدون..."></div>
+        <div><label>الوظيفة الحالية *</label><input id="h-job" value="${window.formData.husband.job || ''}" placeholder="مثال: عامل باليومية - مهني..."></div>
       </div>
       <div style="background:#f1f5f9; padding:14px; border-radius:10px; margin-bottom:12px;">
         <label style="font-weight:700;">الحالة الصحية:</label>
         <select id="h-health" onchange="toggleHealthDetails('h')">
-          <option value="سليم">سليم وبصحة جيدة</option>
-          <option value="مريض">مريض (يعاني من حالة مرضية)</option>
+          <option value="سليم" ${window.formData.husband.health === 'سليم' ? 'selected' : ''}>سليم وبصحة جيدة</option>
+          <option value="مريض" ${window.formData.husband.health === 'مريض' ? 'selected' : ''}>مريض (يعاني من حالة مرضية)</option>
         </select>
-        <div id="h-health-box" class="hidden" style="margin-top:10px;">
-          <input id="h-illness" placeholder="اسم الحالة المرضية / التشخيص" style="margin-bottom:6px;" value="${formData.husband.illness || ''}">
-          <input id="h-surgery" placeholder="نوع التدخل الجراحي أو العمليات المطلوبة إن وجد" style="margin-bottom:6px;" value="${formData.husband.surgery || ''}">
-          <input id="h-devices" placeholder="الأجهزة التعويضية أو المستلزمات الطبية المطلوبة إن وجد" value="${formData.husband.devices || ''}">
+        <div id="h-health-box" class="${window.formData.husband.health === 'مريض' ? '' : 'hidden'}" style="margin-top:10px;">
+          <input id="h-illness" placeholder="اسم الحالة المرضية / التشخيص" style="margin-bottom:6px;" value="${window.formData.husband.illness || ''}">
+          <input id="h-surgery" placeholder="نوع التدخل الجراحي أو العمليات المطلوبة إن وجد" style="margin-bottom:6px;" value="${window.formData.husband.surgery || ''}">
+          <input id="h-devices" placeholder="الأجهزة التعويضية أو المستلزمات الطبية المطلوبة إن وجد" value="${window.formData.husband.devices || ''}">
         </div>
       </div>
       <div class="grid-2">
@@ -74,17 +74,17 @@ function renderWizardStep() {
       <div><label>التقرير الطبي أو الأشعة أو التحاليل (في حالة مريض)</label><input type="file" id="h-medical-doc"></div>
     `;
   } 
-  else if (currentStep === 2) {
+  else if (window.currentStep === 2) {
     html += `
       <h4 style="color:var(--primary-dark); margin-top:0;">👩 القسم الثاني: بيانات الزوجة</h4>
       <div class="grid-3">
-        <div><label>الاسم الأول *</label><input id="w-name1" value="${formData.wife.name1 || ''}"></div>
-        <div><label>الاسم الثاني *</label><input id="w-name2" value="${formData.wife.name2 || ''}"></div>
-        <div><label>الاسم الثالث *</label><input id="w-name3" value="${formData.wife.name3 || ''}"></div>
+        <div><label>الاسم الأول *</label><input id="w-name1" value="${window.formData.wife.name1 || ''}"></div>
+        <div><label>الاسم الثاني *</label><input id="w-name2" value="${window.formData.wife.name2 || ''}"></div>
+        <div><label>الاسم الثالث *</label><input id="w-name3" value="${window.formData.wife.name3 || ''}"></div>
       </div>
       <div class="grid-2">
-        <div><label>رقم البطاقة (14 رقم) *</label><input id="w-nid" maxlength="14" value="${formData.wife.nid || ''}"></div>
-        <div><label>رقم التليفون</label><input id="w-phone" value="${formData.wife.phone || ''}"></div>
+        <div><label>رقم البطاقة (14 رقم) *</label><input id="w-nid" maxlength="14" value="${window.formData.wife.nid || ''}"></div>
+        <div><label>رقم التليفون</label><input id="w-phone" value="${window.formData.wife.phone || ''}"></div>
       </div>
       <div class="grid-2">
         <div>
@@ -97,18 +97,18 @@ function renderWizardStep() {
             <option value="جامعي">جامعي</option>
           </select>
         </div>
-        <div><label>الوظيفة / النشاط *</label><input id="w-job" value="${formData.wife.job || ''}" placeholder="ربة منزل / عمل حر..."></div>
+        <div><label>الوظيفة / النشاط *</label><input id="w-job" value="${window.formData.wife.job || ''}" placeholder="ربة منزل / عمل حر..."></div>
       </div>
       <div style="background:#f1f5f9; padding:14px; border-radius:10px; margin-bottom:12px;">
         <label style="font-weight:700;">الحالة الصحية:</label>
         <select id="w-health" onchange="toggleHealthDetails('w')">
-          <option value="سليم">سليم وبصحة جيدة</option>
-          <option value="مريض">مريض (تَعاني من حالة مرضية)</option>
+          <option value="سليم" ${window.formData.wife.health === 'سليم' ? 'selected' : ''}>سليم وبصحة جيدة</option>
+          <option value="مريض" ${window.formData.wife.health === 'مريض' ? 'selected' : ''}>مريض (تَعاني من حالة مرضية)</option>
         </select>
-        <div id="w-health-box" class="hidden" style="margin-top:10px;">
-          <input id="w-illness" placeholder="اسم الحالة المرضية / التشخيص" style="margin-bottom:6px;" value="${formData.wife.illness || ''}">
-          <input id="w-surgery" placeholder="نوع التدخل الجراحي أو العمليات المطلوبة" style="margin-bottom:6px;" value="${formData.wife.surgery || ''}">
-          <input id="w-devices" placeholder="الأجهزة التعويضية المطلوبة" value="${formData.wife.devices || ''}">
+        <div id="w-health-box" class="${window.formData.wife.health === 'مريض' ? '' : 'hidden'}" style="margin-top:10px;">
+          <input id="w-illness" placeholder="اسم الحالة المرضية / التشخيص" style="margin-bottom:6px;" value="${window.formData.wife.illness || ''}">
+          <input id="w-surgery" placeholder="نوع التدخل الجراحي أو العمليات المطلوبة" style="margin-bottom:6px;" value="${window.formData.wife.surgery || ''}">
+          <input id="w-devices" placeholder="الأجهزة التعويضية المطلوبة" value="${window.formData.wife.devices || ''}">
         </div>
       </div>
       <div class="grid-2">
@@ -118,12 +118,12 @@ function renderWizardStep() {
       <div><label>التقرير الطبي أو الروشتة (في حالة مرض الزوجة)</label><input type="file" id="w-medical-doc"></div>
     `;
   }
-  else if (currentStep === 3) {
+  else if (window.currentStep === 3) {
     html += `
       <h4 style="color:var(--primary-dark); margin-top:0;">👶 القسم الثالث: بيانات الأبناء والتابعين</h4>
       <p style="font-size:13px; color:#64748b;">قم بإضافة الأبناء أن وجدوا، مع إرفاق شهادة الميلاد لكل ابن.</p>
       <div id="children-list">
-        ${(formData.children || []).map((c, idx) => `
+        ${(window.formData.children || []).map((c, idx) => `
           <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:12px; border-radius:10px; margin-bottom:10px;">
             <strong>الابن رقم ${idx + 1}</strong>
             <div class="grid-3" style="margin-top:8px;">
@@ -146,32 +146,32 @@ function renderWizardStep() {
       <button type="button" onclick="addChildRow()" class="action-btn" style="background:#0f172a; margin-top:10px;">+ إضافة ابن آخر</button>
     `;
   }
-  else if (currentStep === 4) {
+  else if (window.currentStep === 4) {
     html += `
       <h4 style="color:var(--primary-dark); margin-top:0;">💸 القسم الرابع: المصروفات والأعباء الشهرية</h4>
       <p style="font-size:13px; color:#64748b;">سجل كافة المصروفات الشهرية لتحديد العجز المالي بدقة:</p>
       <div class="grid-2">
-        <div><label>قيمة الإيجار الشهري (إن وجد)</label><input type="number" id="exp-rent" value="${formData.expenses.rent || 0}" oninput="calcTotals()"></div>
-        <div><label>فواتير المرافق (مياه + كهرباء + غاز)</label><input type="number" id="exp-utilities" value="${formData.expenses.utilities || 0}" oninput="calcTotals()"></div>
-        <div><label>مصاريف تعليم الأبناء والمستلزمات</label><input type="number" id="exp-edu" value="${formData.expenses.edu || 0}" oninput="calcTotals()"></div>
-        <div><label>مصاريف العلاج والأدوية المزمنة</label><input type="number" id="exp-health" value="${formData.expenses.health || 0}" oninput="calcTotals()"></div>
-        <div><label>المستلزمات المعيشية الأساسية (مأكل ومسكن)</label><input type="number" id="exp-food" value="${formData.expenses.food || 0}" oninput="calcTotals()"></div>
-        <div><label>أقساط ديون / التزامات أخرى</label><input type="number" id="exp-debts" value="${formData.expenses.debts || 0}" oninput="calcTotals()"></div>
+        <div><label>قيمة الإيجار الشهري (إن وجد)</label><input type="number" id="exp-rent" value="${window.formData.expenses.rent || 0}" oninput="calcTotals()"></div>
+        <div><label>فواتير المرافق (مياه + كهرباء + غاز)</label><input type="number" id="exp-utilities" value="${window.formData.expenses.utilities || 0}" oninput="calcTotals()"></div>
+        <div><label>مصاريف تعليم الأبناء والمستلزمات</label><input type="number" id="exp-edu" value="${window.formData.expenses.edu || 0}" oninput="calcTotals()"></div>
+        <div><label>مصاريف العلاج والأدوية المزمنة</label><input type="number" id="exp-health" value="${window.formData.expenses.health || 0}" oninput="calcTotals()"></div>
+        <div><label>المستلزمات المعيشية الأساسية (مأكل ومسكن)</label><input type="number" id="exp-food" value="${window.formData.expenses.food || 0}" oninput="calcTotals()"></div>
+        <div><label>أقساط ديون / التزامات أخرى</label><input type="number" id="exp-debts" value="${window.formData.expenses.debts || 0}" oninput="calcTotals()"></div>
       </div>
       <div style="background:#fee2e2; border:1px solid #fecaca; padding:14px; border-radius:10px; margin-top:14px; text-align:center;">
         <span style="font-weight:700; color:#991b1b; font-size:16px;">إجمالي المصروفات الشهرية: <strong id="total-exp-display">0</strong> جنيه</span>
       </div>
     `;
   }
-  else if (currentStep === 5) {
+  else if (window.currentStep === 5) {
     html += `
       <h4 style="color:var(--primary-dark); margin-top:0;">💵 القسم الخامس: مصادر الدخل والفائض أو العجز</h4>
       <p style="font-size:13px; color:#64748b;">سجل كافة مصادر الدخل الشهرية الثابتة والمتغيرة للأسرة:</p>
       <div class="grid-2">
-        <div><label>دخل الزوج من العمل / المهنة</label><input type="number" id="inc-husband" value="${formData.incomes.husband || 0}" oninput="calcTotals()"></div>
-        <div><label>دخل الزوجة أو الأبناء العاملين</label><input type="number" id="inc-others" value="${formData.incomes.others || 0}" oninput="calcTotals()"></div>
-        <div><label>معاش حكومي / تضامن اجتماعي</label><input type="number" id="inc-pension" value="${formData.incomes.pension || 0}" oninput="calcTotals()"></div>
-        <div><label>مساعدات ثابتة من أهل الخير / الجمعيات</label><input type="number" id="inc-aid" value="${formData.incomes.aid || 0}" oninput="calcTotals()"></div>
+        <div><label>دخل الزوج من العمل / المهنة</label><input type="number" id="inc-husband" value="${window.formData.incomes.husband || 0}" oninput="calcTotals()"></div>
+        <div><label>دخل الزوجة أو الأبناء العاملين</label><input type="number" id="inc-others" value="${window.formData.incomes.others || 0}" oninput="calcTotals()"></div>
+        <div><label>معاش حكومي / تضامن اجتماعي</label><input type="number" id="inc-pension" value="${window.formData.incomes.pension || 0}" oninput="calcTotals()"></div>
+        <div><label>مساعدات ثابتة من أهل الخير / الجمعيات</label><input type="number" id="inc-aid" value="${window.formData.incomes.aid || 0}" oninput="calcTotals()"></div>
       </div>
       <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:14px; border-radius:10px; margin-top:14px; text-align:center;">
         <p style="margin:0 0 6px; font-weight:700; color:#065f46;">إجمالي الدخل الشهري: <strong id="total-inc-display">0</strong> جنيه</p>
@@ -180,7 +180,7 @@ function renderWizardStep() {
       </div>
     `;
   }
-  else if (currentStep === 6) {
+  else if (window.currentStep === 6) {
     html += `
       <h4 style="color:var(--primary-dark); margin-top:0;">📋 القسم السادس: المستندات الرسمية، وصف السكن، ورأي الباحث</h4>
       <div class="grid-2" style="margin-bottom:12px;">
@@ -193,11 +193,11 @@ function renderWizardStep() {
       </div>
       <div style="margin-bottom:10px;">
         <label style="font-weight:700;">وصف السكن والفرش وطبيعة المسكن *</label>
-        <textarea id="housing-desc" rows="3" placeholder="اكتب وصفاً مفصلاً لحالة السكن (ملك/إيجار/مضيف)، نوع الأسقف والجدران، ومستوى الأثاث والفرش والأجهزة المتوفرة...">${formData.housing.desc || ''}</textarea>
+        <textarea id="housing-desc" rows="3" placeholder="اكتب وصفاً مفصلاً لحالة السكن (ملك/إيجار/مضيف)، نوع الأسقف والجدران، ومستوى الأثاث والفرش والأجهزة المتوفرة...">${window.formData.housing.desc || ''}</textarea>
       </div>
       <div style="margin-bottom:10px;">
         <label style="font-weight:700;">رأي الباحث الميداني وتوصية الحالة *</label>
-        <textarea id="researcher-opinion" rows="3" placeholder="مدى استحقاق الأسرة، مدى صدق البيانات، ونوع المصلحة أو التدخل الأنسب...">${formData.housing.opinion || ''}</textarea>
+        <textarea id="researcher-opinion" rows="3" placeholder="مدى استحقاق الأسرة، مدى صدق البيانات، ونوع المصلحة أو التدخل الأنسب...">${window.formData.housing.opinion || ''}</textarea>
       </div>
       <div style="background:#fffbeb; border:1px solid #fde68a; padding:14px; border-radius:10px; margin-bottom:14px;">
         <label style="display:flex; align-items:center; gap:8px; font-weight:700; cursor:pointer; color:#92400e;">
@@ -209,30 +209,30 @@ function renderWizardStep() {
 
   html += `
     <div style="display:flex; justify-content:space-between; margin-top:20px;">
-      ${currentStep > 1 ? '<button type="button" onclick="prevWizardStep()" class="nav-btn" style="background:#334155; color:#fff;">السابق</button>' : '<div></div>'}
-      ${currentStep < totalSteps ? '<button type="button" onclick="nextWizardStep()" class="action-btn">التالي ➔</button>' : '<button type="button" onclick="submitFullWizardApplication()" class="action-btn" style="background:#15803d;">✅ تأكيد والرفع النهائي للحالة</button>'}
+      ${window.currentStep > 1 ? '<button type="button" onclick="prevWizardStep()" class="nav-btn" style="background:#334155; color:#fff;">السابق</button>' : '<div></div>'}
+      ${window.currentStep < totalWizardSteps ? '<button type="button" onclick="nextWizardStep()" class="action-btn">التالي ➔</button>' : '<button type="button" onclick="submitFullWizardApplication()" class="action-btn" style="background:#15803d;">✅ تأكيد والرفع النهائي للحالة</button>'}
     </div>
   `;
 
   container.innerHTML = html;
-  if (currentStep === 4 || currentStep === 5) calcTotals();
-}
+  if (window.currentStep === 4 || window.currentStep === 5) calcTotals();
+};
 
-function nextWizardStep() {
+window.nextWizardStep = function() {
   saveCurrentStepData();
-  currentStep++;
-  renderWizardStep();
-}
+  window.currentStep++;
+  window.renderWizardStep();
+};
 
-function prevWizardStep() {
+window.prevWizardStep = function() {
   saveCurrentStepData();
-  currentStep--;
-  renderWizardStep();
-}
+  window.currentStep--;
+  window.renderWizardStep();
+};
 
 function saveCurrentStepData() {
-  if (currentStep === 1) {
-    formData.husband = {
+  if (window.currentStep === 1) {
+    window.formData.husband = {
       name1: document.getElementById('h-name1')?.value || '',
       name2: document.getElementById('h-name2')?.value || '',
       name3: document.getElementById('h-name3')?.value || '',
@@ -245,8 +245,8 @@ function saveCurrentStepData() {
       surgery: document.getElementById('h-surgery')?.value || '',
       devices: document.getElementById('h-devices')?.value || ''
     };
-  } else if (currentStep === 2) {
-    formData.wife = {
+  } else if (window.currentStep === 2) {
+    window.formData.wife = {
       name1: document.getElementById('w-name1')?.value || '',
       name2: document.getElementById('w-name2')?.value || '',
       name3: document.getElementById('w-name3')?.value || '',
@@ -259,18 +259,18 @@ function saveCurrentStepData() {
       surgery: document.getElementById('w-surgery')?.value || '',
       devices: document.getElementById('w-devices')?.value || ''
     };
-  } else if (currentStep === 3) {
+  } else if (window.currentStep === 3) {
     const rows = document.querySelectorAll('#children-list > div');
-    formData.children = [];
+    window.formData.children = [];
     rows.forEach(r => {
-      formData.children.push({
+      window.formData.children.push({
         name: r.querySelector('.c-name')?.value || '',
         dob: r.querySelector('.c-dob')?.value || '',
         edu: r.querySelector('.c-edu')?.value || ''
       });
     });
-  } else if (currentStep === 4) {
-    formData.expenses = {
+  } else if (window.currentStep === 4) {
+    window.formData.expenses = {
       rent: parseFloat(document.getElementById('exp-rent')?.value) || 0,
       utilities: parseFloat(document.getElementById('exp-utilities')?.value) || 0,
       edu: parseFloat(document.getElementById('exp-edu')?.value) || 0,
@@ -278,40 +278,40 @@ function saveCurrentStepData() {
       food: parseFloat(document.getElementById('exp-food')?.value) || 0,
       debts: parseFloat(document.getElementById('exp-debts')?.value) || 0
     };
-  } else if (currentStep === 5) {
-    formData.incomes = {
+  } else if (window.currentStep === 5) {
+    window.formData.incomes = {
       husband: parseFloat(document.getElementById('inc-husband')?.value) || 0,
       others: parseFloat(document.getElementById('inc-others')?.value) || 0,
       pension: parseFloat(document.getElementById('inc-pension')?.value) || 0,
       aid: parseFloat(document.getElementById('inc-aid')?.value) || 0
     };
-  } else if (currentStep === 6) {
-    formData.housing = {
+  } else if (window.currentStep === 6) {
+    window.formData.housing = {
       desc: document.getElementById('housing-desc')?.value || '',
       opinion: document.getElementById('researcher-opinion')?.value || ''
     };
   }
 }
 
-function addChildRow() {
-  if (!formData.children) formData.children = [];
-  formData.children.push({ name: '', dob: '', edu: 'ابتدائي' });
-  renderWizardStep();
-}
+window.addChildRow = function() {
+  if (!window.formData.children) window.formData.children = [];
+  window.formData.children.push({ name: '', dob: '', edu: 'ابتدائي' });
+  window.renderWizardStep();
+};
 
-function removeChildRow(idx) {
-  formData.children.splice(idx, 1);
-  renderWizardStep();
-}
+window.removeChildRow = function(idx) {
+  window.formData.children.splice(idx, 1);
+  window.renderWizardStep();
+};
 
-function toggleHealthDetails(type) {
+window.toggleHealthDetails = function(type) {
   const val = document.getElementById(type + '-health').value;
   const box = document.getElementById(type + '-health-box');
   if (val === 'مريض') box.classList.remove('hidden');
   else box.classList.add('hidden');
-}
+};
 
-function calcTotals() {
+window.calcTotals = function() {
   const expRent = parseFloat(document.getElementById('exp-rent')?.value) || 0;
   const expUtil = parseFloat(document.getElementById('exp-utilities')?.value) || 0;
   const expEdu = parseFloat(document.getElementById('exp-edu')?.value) || 0;
@@ -341,9 +341,9 @@ function calcTotals() {
       balDisplay.innerHTML = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;">${balance} جنيه</span>`;
     }
   }
-}
+};
 
-async function submitFullWizardApplication() {
+window.submitFullWizardApplication = async function() {
   saveCurrentStepData();
   const check = document.getElementById('declaration-check');
   if (check && !check.checked) {
@@ -352,8 +352,8 @@ async function submitFullWizardApplication() {
 
   const trackingCode = 'HF-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
   
-  const totalExp = (formData.expenses.rent || 0) + (formData.expenses.utilities || 0) + (formData.expenses.edu || 0) + (formData.expenses.health || 0) + (formData.expenses.food || 0) + (formData.expenses.debts || 0);
-  const totalInc = (formData.incomes.husband || 0) + (formData.incomes.others || 0) + (formData.incomes.pension || 0) + (formData.incomes.aid || 0);
+  const totalExp = (window.formData.expenses.rent || 0) + (window.formData.expenses.utilities || 0) + (window.formData.expenses.edu || 0) + (window.formData.expenses.health || 0) + (window.formData.expenses.food || 0) + (window.formData.expenses.debts || 0);
+  const totalInc = (window.formData.incomes.husband || 0) + (window.formData.incomes.others || 0) + (window.formData.incomes.pension || 0) + (window.formData.incomes.aid || 0);
 
   const payload = {
     tracking_code: trackingCode,
@@ -364,10 +364,10 @@ async function submitFullWizardApplication() {
     total_income: totalInc,
     total_expenses: totalExp,
     status: 'pending',
-    husband_data: formData.husband,
-    wife_data: formData.wife,
-    children_data: formData.children,
-    housing_data: formData.housing
+    husband_data: window.formData.husband,
+    wife_data: window.formData.wife,
+    children_data: window.formData.children,
+    housing_data: window.formData.housing
   };
 
   if (window.supabaseClient) {
@@ -381,4 +381,4 @@ async function submitFullWizardApplication() {
   } else {
     alert(`✅ تم إنجاز الطلب محلياً بنجاح!\nكود المتابعة: ${trackingCode}`);
   }
-}
+};
