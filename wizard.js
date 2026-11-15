@@ -1,6 +1,9 @@
-// wizard.js - الاستمارة الذكية المتكاملة لمؤسسة الحافظ
+// wizard.js - إدارة التنقل والاستمارة الذكية لمؤسسة الحافظ
+
+const wizardDb = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
+
 function showSection(sectionName) {
-  const secs = ['home', 'about', 'apply', 'track', 'contact', 'privacy', 'login'];
+  const secs = ['home', 'about', 'achievements', 'faq', 'apply', 'track', 'contact', 'privacy', 'login'];
   secs.forEach(s => {
     const el = document.getElementById('section-' + s);
     if (el) el.classList.add('hidden');
@@ -10,6 +13,13 @@ function showSection(sectionName) {
   if (sectionName === 'apply') renderWizardStep(0);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+function copyText(text) {
+  navigator.clipboard.writeText(text);
+  alert('✅ تم نسخ النص بنجاح: ' + text);
+}
+
+// بقية دوال الاستمارة كما هي...
 
 const wizardDb = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
 
