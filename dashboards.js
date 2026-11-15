@@ -1,25 +1,63 @@
 // dashboards.js - المنظومة الإدارية الشاملة لمؤسسة الحافظ
 
-const supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
+const supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : {
+  auth: {
+    signInWithPassword: async () => ({ error: { message: 'Supabase client failed to load' } }),
+    signOut: async () => {},
+    getSession: async () => ({ data: { session: null } }),
+    resetPasswordForEmail: async () => ({ error: null }),
+    signUp: async () => ({ error: { message: 'Not initialized' } })
+  },
+  from: () => ({ select: () => ({ order: () => ({ data: [] }) }), update: () => ({ eq: () => {} }), delete: () => ({ eq: () => {} }), insert: () => {} })
+});
 
 let globalFamilies = [];
 let globalUsers = [];
 let globalGrievances = [];
 
-// تفريغ حقول الدخول فور تحميل الصفحة لمنع الحفظ التلقائي
-window.addEventListener('DOMContentLoaded', () => {
+// استعادة الجلسة تلقائياً عند فتح أو تحديث الصفحة لمنع الخروج غير المبرر
+window.addEventListener('DOMContentLoaded', async () => {
   const emailEl = document.getElementById('login-email');
   const passEl = document.getElementById('login-pass');
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
+
+  if (supabaseClient && supabaseClient.auth) {
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        const profRes = await supabaseClient
+          .from('users_profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profRes.data && profRes.data.account_status === 'approved') {
+          const loginBox = document.getElementById('login-box');
+          if (loginBox) loginBox.classList.add('hidden');
+          const area = document.getElementById('dashboard-area');
+          if (area) {
+            area.classList.remove('hidden');
+            if (profRes.data.role === 'admin') {
+              await renderFullAdminDashboard(area, profRes.data);
+            } else {
+              await renderPartnerDashboard(area, profRes.data);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Session restore check error:', e);
+    }
+  }
 });
 
 async function loginUser() {
   try {
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-pass');
-    const email = emailInput.value.trim();
-    const pass = passInput.value;
+    const email = emailInput ? emailInput.value.trim() : '';
+    const pass = passInput ? passInput.value : '';
 
     if (!email || !pass) return alert('⚠️ أدخل البريد الإلكتروني وكلمة المرور.');
     if (!supabaseClient) return alert('⚠️ تعذر الاتصال بقاعدة البيانات.');
@@ -27,9 +65,8 @@ async function loginUser() {
     const res = await supabaseClient.auth.signInWithPassword({ email, password: pass });
     if (res.error) return alert('❌ خطأ في الدخول: ' + res.error.message);
 
-    // مسح الحقول من الذاكرة فور نجاح الدخول
-    emailInput.value = '';
-    passInput.value = '';
+    if (emailInput) emailInput.value = '';
+    if (passInput) passInput.value = '';
 
     const profRes = await supabaseClient
       .from('users_profiles')
@@ -59,7 +96,9 @@ async function loginUser() {
 }
 
 async function logoutUser() {
-  if (supabaseClient) await supabaseClient.auth.signOut();
+  if (supabaseClient && supabaseClient.auth) {
+    await supabaseClient.auth.signOut();
+  }
   location.reload();
 }
 
@@ -144,7 +183,6 @@ function switchAdminTab(tabName) {
   // --- التبويب 1: الحالات والإسناد ---
   if (tabName === 'families') {
     const researchers = globalUsers.filter(u => u.account_status === 'approved');
-    const researcherOptions = researchers.map(r => `<option value="${r.id}">${r.full_name} (${translateRole(r.role)})</option>`).join('');
 
     let rows = globalFamilies.map(f => {
       const assignedUser = globalUsers.find(u => u.id === f.assigned_to);
@@ -340,7 +378,6 @@ async function deleteUserAccount(userId) {
 async function renderPartnerDashboard(container, profile) {
   const famRes = await supabaseClient.from('families').select('*').order('created_at', { ascending: false });
   const allFamilies = famRes.data || [];
-  // عرض الحالات المسندة لهذا العضو أو التي قام بإدخالها
   const myCases = allFamilies.filter(f => f.assigned_to === profile.id || f.created_by === profile.id);
 
   let rows = myCases.map(f => `
