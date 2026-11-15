@@ -343,3 +343,41 @@
   </script>
 </body>
 </html>
+let currentLang = 'ar';
+    
+    function toggleLanguage() {
+      currentLang = currentLang === 'ar' ? 'en' : 'ar';
+      const root = document.getElementById('html-root');
+      root.setAttribute('lang', currentLang);
+      root.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+      
+      // تغيير نص زر اللغة العلوى
+      const langBtn = document.getElementById('lang-toggle-btn');
+      if (langBtn) langBtn.innerText = currentLang === 'ar' ? 'English' : 'عربي';
+
+      // 1. ترجمة العناصر التي تحمل data-ar و data-en
+      document.querySelectorAll('[data-ar]').forEach(el => {
+        const text = el.getAttribute('data-' + currentLang);
+        if (text) el.innerText = text;
+      });
+
+      // 2. ترجمة أزرار القائمة العلوية Navigation تلقائياً لضمان الاستجابة الفورية
+      const navTranslations = {
+        'الرئيسية': { ar: 'الرئيسية', en: 'Home' },
+        'من نحن': { ar: 'من نحن', en: 'About Us' },
+        '🏆 الإنجازات': { ar: '🏆 الإنجازات', en: '🏆 Achievements' },
+        '❓ الأسئلة الشائعة': { ar: '❓ الأسئلة الشائعة', en: '❓ FAQ' },
+        '+ طلب مساعدة': { ar: '+ طلب مساعدة', en: '+ Request Aid' },
+        '🔍 استعلام': { ar: '🔍 استعلام', en: '🔍 Track Request' },
+        '📞 اتصل بنا': { ar: '📞 اتصل بنا', en: '📞 Contact Us' },
+        '🔒 الخصوصية': { ar: '🔒 الخصوصية', en: '🔒 Privacy' },
+        '🔐 دخول': { ar: '🔐 دخول', en: '🔐 Login' }
+      };
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        const cleanText = btn.innerText.trim();
+        if (navTranslations[cleanText]) {
+          btn.innerText = navTranslations[cleanText][currentLang];
+        }
+      });
+    }
