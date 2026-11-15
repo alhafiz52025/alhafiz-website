@@ -1,11 +1,10 @@
-// dashboards.js - المنظومة الإدارية الشاملة وإدارة الإنجازات لمؤسسة الحافظ
+// dashboards.js - المنظومة الإدارية الشاملة لمؤسسة الحافظ
 
 const supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
 
 let globalFamilies = [];
 let globalUsers = [];
 let globalGrievances = [];
-let globalAchievements = [];
 
 window.addEventListener('DOMContentLoaded', async () => {
   const emailEl = document.getElementById('login-email');
@@ -13,9 +12,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
 
+  // فحص آمن للجلسة دون قطع التنفيذ
   if (supabaseClient && supabaseClient.auth) {
     try {
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      const { data } = await supabaseClient.auth.getSession();
+      const session = data ? data.session : null;
       if (session && session.user) {
         const profRes = await supabaseClient
           .from('users_profiles')
@@ -38,7 +39,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       }
     } catch (e) {
-      console.error('Session restore error:', e);
+      console.log('Session check skipped or not logged in.');
     }
   }
 });
@@ -105,7 +106,6 @@ async function renderFullAdminDashboard(container, profile) {
   globalFamilies = famRes.data || [];
   globalUsers = usersRes.data || [];
   globalGrievances = grievRes.data || [];
-  globalAchievements = achRes.data ? [achRes.data] : [];
 
   const pendingUsersCount = globalUsers.filter(u => u.account_status === 'pending').length;
   const activeUsersCount = globalUsers.filter(u => u.account_status === 'approved').length;
@@ -125,7 +125,6 @@ async function renderFullAdminDashboard(container, profile) {
         </div>
       </div>
 
-      <!-- الإحصائيات -->
       <div class="grid-4" style="margin-bottom:20px; text-align:center;">
         <div style="background:#ecfdf5; padding:14px; border-radius:12px; border:1px solid #a7f3d0;"><p style="font-size:12px; font-weight:700; margin:0;">إجمالي الحالات</p><strong style="font-size:24px; color:#065f46;">${globalFamilies.length}</strong></div>
         <div style="background:#eff6ff; padding:14px; border-radius:12px; border:1px solid #bfdbfe;"><p style="font-size:12px; font-weight:700; margin:0;">الأعضاء النشطون</p><strong style="font-size:24px; color:#1e40af;">${activeUsersCount}</strong></div>
@@ -133,7 +132,6 @@ async function renderFullAdminDashboard(container, profile) {
         <div style="background:#fef2f2; padding:14px; border-radius:12px; border:1px solid #fecaca;"><p style="font-size:12px; font-weight:700; margin:0;">التظلمات</p><strong style="font-size:24px; color:#991b1b;">${globalGrievances.length}</strong></div>
       </div>
 
-      <!-- التبويبات -->
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">
         <button type="button" onclick="switchAdminTab('families')" class="action-btn" id="tab-btn-families">📋 إدارة الحالات (${globalFamilies.length})</button>
         <button type="button" onclick="switchAdminTab('users')" class="nav-btn" id="tab-btn-users">👥 الأعضاء (${globalUsers.length})</button>
@@ -246,7 +244,6 @@ async function loadPublicAchievements() {
     </div>`).join('');
 }
 
-// دوال إسناد وتصدير
 async function assignCaseToUser(famId, userId) {
   await supabaseClient.from('families').update({ assigned_to: userId || null }).eq('id', famId);
   alert('✅ تم إسناد الحالة.');
@@ -321,8 +318,10 @@ async function submitGrievance() {
 }
 
 function openPartnerRegister() {
-  document.getElementById('login-box').classList.add('hidden');
+  const loginBox = document.getElementById('login-box');
+  if (loginBox) loginBox.classList.add('hidden');
   const box = document.getElementById('partner-register-box');
+  if (!box) return;
   box.classList.remove('hidden');
   box.innerHTML = `
     <h3 style="margin-bottom:10px;">طلب انضمام للمنظومة</h3>
