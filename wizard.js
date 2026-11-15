@@ -1,4 +1,4 @@
-// wizard.js - المنظومة الذكية لاستمارة البحث الاجتماعي وبناء الأسر - مؤسسة الحافظ (نسخة شاملة وموسعة بالاختيارات)
+// wizard.js - المنظومة الذكية لاستمارة البحث الاجتماعي وبناء الأسر - مؤسسة الحافظ (نسخة نهائية شاملة)
 
 window.currentStep = window.currentStep || 1;
 const totalWizardSteps = 6;
@@ -12,7 +12,7 @@ window.formData = window.formData || {
   housing: {}
 };
 
-// 1. قاعدة بيانات جغرافية موسعة (المحافظات، المراكز، والقرى والتوابع الرئيسية)
+// 1. قاعدة بيانات جغرافية شاملة لمحافظات مصر ومراكزها وتوابعها
 const EGYPT_GEO_DATABASE = {
   "بني سويف": {
     "إهناسيا": ["مدينة إهناسيا", "منشأة عبدالصمد", "براوة", "براوة الوقف", "العواونة", "قاي", "ننا", "ميانة", "طما فيوم", "النويرة", "سدمنت الجبل", "قلة", "بني هاني", "معصرة نعسان", "منشأة الحاج", "كوم الرمل", "شارونة", "منيل هاني", "بني سليمان", "المسيد الأبيض", "الحمام", "شاويش", "الدير", "بهنموه", "منيل غيضان", "عزبة يعقوب", "عزبة التل"],
@@ -53,126 +53,93 @@ const EGYPT_GEO_DATABASE = {
     "ملوي": ["مدينة ملوي", "الروضة", "ديروط أم نخلة", "أبوقلتة", "المقلز"],
     "أبو قرقاص": ["مدينة أبو قرقاص", "اتليدم", "بني عبيد", "أبيوها", "نزلة أسمنت"],
     "دير مواس": ["مدينة دير مواس", "دلجا", "تل العمارنة", "نزلة البدرمان"]
-  }
-  // (ويمكن إضافة باقي الـ 27 محافظة بنفس الدقة)
+  },
+  "أسيوط": { "أسيوط": ["أسيوط", "ديروط", "منفلوط", "ابيج", "ابوتيج", "صدفا", "الغنايم", "ساحل سليم", "البداري", "فتح"] },
+  "سوهاج": { "سوهاج": ["سوهاج", "أخميم", "المنشأة", "جهينة", "ساقلعة", "جرجا", "البلينا", "دار السلام", "الطهطاوي"] },
+  "قنا": { "قنا": ["قنا", "ابوتشت", "نجع حمادي", "دشنا", "قفط", "قوص", "الوقف", "فرشوط"] },
+  "الأقصر": { "الأقصر": ["الأقصر", "إسنا", "أرمنت", "القرنة", "بياضية"] },
+  "أسوان": { "أسوان": ["أسوان", "إدفو", "كوم امبو", "دراو", "نصر النوبة"] },
+  "البحر الأحمر": { "الغردقة": ["الغردقة", "سفاجا", "القصير", "مرسى علم", "شلاتين", "حلايب"] },
+  "الوادي الجديد": { "الخارجة": ["الخارجة", "الداخلة", "باريس", "الفرافرة", "بلاط"] },
+  "مطروح": { "مرسى مطروح": ["مرسى مطروح", "الحمام", "العميد", "الضبعة", "سيدي براني", "السلوم", "سيوة"] },
+  "شمال سيناء": { "العريش": ["العريش", "بئر العبد", "الشيخ زويد", "رفح", "نخل", "حسن"] },
+  "جنوب سيناء": { "الطور": ["الطور", "شرم الشيخ", "دهب", "نويبع", "طابا", "رأس سدر", "أبو رديس"] },
+  "الإسماعيلية": { "الإسماعيلية": ["الإسماعيلية", "التل الكبير", "فردان", "القنطرة شرق", "القنطرة غرب", "فايد", "القصاصين"] },
+  "السويس": { "السويس": ["حي السويس", "حي الأربعين", "حي عتاقة", "حي الجناين", "حي بور توفيق"] },
+  "بورسعيد": { "بورسعيد": ["حي الشرق", "حي العرب", "حي الضواحي", "حي المناصرة", "حي الزهور", "حي بورفؤاد"] },
+  "دمياط": { "دمياط": ["دمياط", "فارسكور", "الزرقا", "كفر البطيخ", "السرو", "رأس البر", "كفر سعد"] },
+  "الدقهلية": { "المنصورة": ["المنصورة", "ميت غمر", "دكرنس", "بلقاس", "سنبلاوين", "أجا", "طلخا", "المطرية", "منية النصر", "شربين"] },
+  "الشرقية": { "زقازيق": ["العاشر من رمضان", "بلبيس", "مشتول السوق", "أبو حماد", "الإبراهيمية", "ديرب نجم", "منيا القمح", "فاقوس", "الحسينية"] },
+  "القليوبية": { "بنها": ["بنها", "قليوب", "شبرا الخيمة", "القناطر الخيرية", "الخانكة", "توخ", "شبين القناطر", "كفر شكر"] },
+  "الغربية": { "طنطا": ["طنطا", "المحلة الكبرى", "الزفتى", "كفر الزيات", "بسيون", "سمنود", "قطور", "صفت تراب"] },
+  "المنوفية": { "شبين الكوم": ["شبين الكوم", "منوف", "السادات", "قويسنا", "بركة السبع", "أشمون", "الشهداء", "تلا"] },
+  "بحيرة": { "دمنهور": ["دمنهور", "كفر الدوار", "رشيد", "إدكو", "أبو حمص", "المحمودية", "كوم حمادة", "حوش عيسى", "الدلنجات"] },
+  "كفر الشيخ": { "كفر الشيخ": ["دسوق", "فوة", "مطوبس", "بيلا", "الحامول", "بلطيم", "سيدي سالم", "الرياض"] }
 };
 
-// 2. قوائم الوظائف الشاملة في مصر
+// 2. الوظائف الشاملة
 const ALL_EGYPT_JOBS = [
-  "لا يعمل / عاطل عن العمل",
-  "بالمعاش / تقاعد",
-  "غير قادر على العمل (عجز كلي / مرض مزمن مستقر)",
-  "ربة منزل",
-  "عامل باليومية (أرزقي)",
-  "عامل زراعي / فلاح / مزارع",
-  "نجار مسلح / نجار أثاث",
-  "سباك صحي ومقاولات",
-  "فني كهرباء منازل وصناعي",
-  "نقاش / دهان واجهات",
-  "حداد وسيار / ترابيز",
-  "بناء / مقاول أنفار",
-  "ميكانيكي سيارات / معدات",
-  "فني تكييف وتبريد وتبريد",
-  "خياط / ترزي / تفصيل ملابس",
-  "سائق توك توك / تروسيكل",
-  "سائق ميكروباص / تاكسي",
-  "سائق نقل ثقيل / سيارة نقل",
-  "موظف حكومي (قطاع عام / إداري)",
-  "موظف قطاع خاص / شركة",
-  "مدرس / أستاذ / إداري تعليمي",
-  "عامل نظافة / خدمات / بواب",
-  "فرد أمن / حراسة",
-  "بائع متجول / صاحب كشك صغير",
-  "صياد أسماك",
-  "حرفي ومهني آخر",
-  "صاحب ورشة / محل تجاري صغير",
-  "مربي مواشی / طيور (نشاط منزلي)"
+  "لا يعمل / عاطل عن العمل", "بالمعاش / تقاعد", "غير قادر على العمل (عجز كلي / مرض مزمن)", "ربة منزل",
+  "عامل باليومية (أرزقي)", "عامل زراعي / فلاح", "نجار مسلح / أثاث", "سباك صحي ومقاولات", "فني كهرباء",
+  "نقاش / دهان", "حداد وتربيز", "بناء / مقاول أنفار", "ميكانيكي سيارات / معدات", "فني تكييف وتبريد",
+  "خياط / ترزي", "سائق توك توك / تروسيكل", "سائق ميكروباص / تاكسي", "سائق نقل ثقيل",
+  "موظف حكومي / قطاع عام", "موظف قطاع خاص", "مدرس / إداري تعليمي", "عامل نظافة / خدمات",
+  "فرد أمن / حراسة", "بائع متجول / كشك صغير", "صياد أسماك", "صاحب ورشة / محل تجاري", "أعمال حرة أخرى"
 ];
 
-// 3. المستويات التعليمية الشاملة من محو الأمية للدكتوراه
+// 3. المستويات التعليمية (من محو الأمية للدكتوراه)
 const ALL_EDUCATION_LEVELS = [
   { value: "غير متعلم", label: "غير متعلم (لا يقرأ ولا يكتب)" },
   { value: "محو أمية", label: "شهادة محو الأمية وتعمير الكبار" },
   { value: "ابتدائية", label: "شهادة التعليم الابتدائي" },
   { value: "إعدادية", label: "شهادة الإعدادية العامة" },
-  { value: "دبلوم صناعي", label: "دبلوم الثانوي الصناعي (3/5 سنوات)" },
-  { value: "دبلوم تجاري", label: "دبلوم الثانوي التجاري" },
-  { value: "دبلوم زراعي", label: "دبلوم الثانوي الزراعي" },
-  { value: "دبلوم فني سياحي/فندقي", label: "دبلوم فني سياحي / فندقي" },
+  { value: "دبلوم فني", label: "دبلوم الثانوي (صناعي / تجاري / زراعي)" },
   { value: "ثانوية عامة", label: "الثانوية العامة / الأزهرية" },
   { value: "معهد متوسط", label: "معهد فوق متوسط (سنتين)" },
-  { value: "جامعي بكالوريوس", label: "مؤهل جامعي بكالوريوس (هندسة، طب، تجارة، حقوق...)" },
-  { value: "جامعي ليسانس", label: "مؤهل جامعي ليسانس آداب / لغات" },
+  { value: "جامعي", label: "مؤهل جامعي (بكالوريوس / ليسانس)" },
   { value: "ماجستير", label: "درجة الماجستير" },
   { value: "دكتوراه", label: "درجة الدكتوراه" }
 ];
 
-// 4. الأمراض المؤقتة الشاملة (حتى الصداع والإصابات العارضة)
+// 4. الأمراض المؤقتة الشاملة
 const ALL_TEMP_ILLNESSES = [
-  "صداع نصفي أو مزمن عارض",
-  "إصابة عارضة / كسر في العظام أو الأطراف",
-  "نزلة برد حادة / التهاب شعب هوائية مؤقت",
-  "التهاب معدي معوي / نزلة معوية حادة",
-  "التهاب الحلق واللوزتين الحاد",
-  "إرهاق عضلي وإصابة ملاعب",
-  "التهاب جيوب أنفية حاد",
-  "حصوات الكلى المغص الكلوي المؤقت",
-  "التهاب أسنان حاد وتورم",
-  "حروق سطحية أو إصابات عمل مؤقتة",
-  "ارتفاع درجات الحرارة والتهاب فايروسي مؤقت",
-  "أخرى (إصابة مؤقتة عارضة)"
+  "صداع نصفي أو مزمن عارض", "إصابة عارضة / كسر في العظام", "نزلة برد حادة / التهاب شعب",
+  "نزلة معوية حادة", "التهاب الحلق واللوزتين", "إرهاق عضلي وإصابة ملاعب", "التهاب جيوب أنفية",
+  "مغص كلوي وحصوات مؤقتة", "التهاب أسنان حاد وتورم", "حروق سطحية وعارضة", "ارتفاع حرارة وفيروس عارض", "أخرى"
 ];
 
 // 5. الأمراض المزمنة الشاملة
 const ALL_CHRONIC_ILLNESSES = [
-  "الفشل الكلوي المزمن (تحتاج جلسات غسيل كلوي أسبوعية)",
-  "أمراض القلب المزمنة والقصور الشرياني",
-  "ارتفاع ضغط الدم المزمن المتقدم",
-  "مرض السكري المتقدم (نوع 1 أو 2 مع مضاعفات)",
-  "الأورام السرطانية الخبيثة (تحتاج علاج كيماوي وإشعاعي)",
-  "أمراض الكبد المزمنة وتليف الكبد وفيروس سي / بي",
-  "أمراض الجهاز التنفسي المزمنة (الانسداد الرئوي/التليف)",
-  "الروماتويد والتهاب المفاصل الروماتويدي المزمن",
-  "الصرع والتشنجات العصبية المزمنة",
-  "أمراض الدم المزمنة (أنيميا البحر المتوسط/الثلاسيميا)",
-  "الإعاقة الحركية الكاملة أو الشلل المزمن",
-  "أمراض المناعة الذاتية المزمنة"
+  "الفشل الكلوي المزمن (غسيل كلوي أسبوعي)", "أمراض القلب المزمنة والجلطات", "ارتفاع ضغط الدم المزمن المتقدم",
+  "مرض السكري المتقدم بمضاعفات", "الأورام السرطانية وعلاج كيماوي", "أمراض الكبد المزمنة والتليف",
+  "أمراض الجهاز التنفسي والانسداد الرئوي", "الروماتويد والتهاب المفاصل المزمن", "الصرع والتشنجات العصبية",
+  "أنيميا البحر المتوسط (ثلاسيميا)", "الإعاقة الحركية الكاملة / الشلل", "أمراض المناعة المزمنة"
 ];
 
 // 6. العمليات الجراحية الشاملة
 const ALL_SURGERIES_LIST = [
-  "عملية قلب مفتوح / تركيب قسطرة وشرايين تاجية",
-  "عملية تغيير مفاصل (ركبة أو حوض صناعي)",
-  "عملية جراحية لإزالة الأورام السرطانية",
-  "عملية استئصال الزائدة الدودية أو المرارة بالمنظار",
-  "عملية فتق إربي أو جراحي بطني",
-  "عملية جراحة المخ والأعصاب والفقرات",
-  "عملية جراحية للعيون (مياه بيضاء، زرقاء، شبكية)",
-  "عملية جراحية للأنف والأذن والحخارة (لحمية، حاجز أنفي)",
-  "عملية جراحية لعظام ومفاصل الكسور المعقدة",
-  "عملية استئصال اللوزتين واللحمية للأطفال",
-  "عملية جراحية نسائية / قيصرية طارئة",
-  "عملية جراحية لدوالي الساقين أو البواسير",
-  "عملية جراحية زراعة أو استئصال كلي/جزئي",
-  "أخرى (عملية جراحية متخصصة مطلوبة)"
+  "عملية قلب مفتوح / شرايين تاجية", "تغيير مفاصل (ركبة أو حوض)", "استئصال أورام سرطانية",
+  "استئصال الزائدة أو المرارة بالمنظار", "فتق إربي أو بطني", "جراحة المخ والأعصاب والفقرات",
+  "جراحة العيون (مياه بيضاء / شبكية)", "جراحة الأنف والأذن والحنجرة", "جسور وكسور العظام المعقدة",
+  "استئصال اللوزتين للأطفال", "جراحة نسائية / قيصرية طارئة", "دوالي الساقين والبواسير", "أخرى"
 ];
 
-// 7. الأطراف الصناعية والأجهزة التعويضية المفصلة
 const PROSTHETIC_PARTS = [
-  "طرف صناعي سفلي: قدم صناعي تحت الركبة",
-  "طرف صناعي سفلي: ساق كاملة فوق الركبة",
-  "طرف صناعي علوي: يد صناعية تجميلية / ميكانيكية",
-  "طرف صناعي علوي: ذراع كامل صناعي"
+  "طرف صناعي سفلي: قدم صناعي تحت الركبة", "طرف صناعي سفلي: ساق كاملة فوق الركبة",
+  "طرف صناعي علوي: يد صناعية تجميلية / ميكانيكية", "طرف صناعي علوي: ذراع كامل صناعي"
 ];
 
 const COMPENSATORY_DEVICES = [
-  "كرسي متحرك عادي أو طبي",
-  "سماعة أذن طبية رقمية للضعف السمعي",
-  "مرتبة هوائية طبية لمنع تقرحات الفراش",
-  "عكاز طبي زوجي / مشاية ألومنيوم متحركة",
-  "حزام دعم فقرات الظهر أو الرقبة الطبي",
-  "نظارات طبية مخصصة لضعف النظر الشديد"
+  "كرسي متحرك عادي أو طبي", "سماعة أذن طبية رقمية", "مرتبة هوائية طبية",
+  "عكاز طبي / مشاية ألومنيوم", "حزام دعم فقرات الظهر الرقبة", "نظارات طبية متقدمة"
 ];
+
+// 7. اختيارات وصف السكن الدقيقة والمفصلة (بدون كتابة حرة)
+const HOUSING_TYPES = ["ملك", "إيجار قانوني", "عشة / صفيح / خيام", "حق انتفاع", "إقامة عائلية مشتركة (مضيفة)"];
+const ROOF_TYPES = ["خرسانة مسلحة", "خشب وجريد وعروق", "صاج أو أطيان", "عريشة خوص / بلاستيك"];
+const WALL_TYPES = ["طوب أحمر ومحارة تشطيب", "طوب لبن وأدون قديمة", "أخشاب وصفيح وبوص", "بدون تشطيب نهائي"];
+const DOOR_TYPES = ["باب خشب متين ومحكم", "باب حديد", "ستارة قماش أو بدون باب خارجي"];
+const FLOOR_FLOORS_COUNT = ["دور أرضي واحد", "دورين", "ثلاثة أدوار فأكثر", "منزل عشوائي مؤقت"];
 
 window.addEventListener('DOMContentLoaded', () => {
   renderWizardStep();
@@ -209,28 +176,22 @@ window.renderWizardStep = function() {
 
       <div class="grid-2">
         <div><label>رقم البطاقة (14 رقم إلزامي) *</label><input id="h-nid" maxlength="14" value="${h.nid || ''}" placeholder="أدخل 14 رقماً بدقة" required></div>
-        <div>
-          <label>رقم التليفون الأساسي (11 رقم) *</label>
-          <input id="h-phone" maxlength="11" value="${h.phone || ''}" placeholder="01xxxxxxxxx" required>
-        </div>
+        <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" value="${h.phone || ''}" placeholder="01xxxxxxxxx" required></div>
       </div>
 
       <div class="grid-2" style="margin-top:10px;">
+        <div><label>رقم واتساب / تليفون إضافي</label><input id="h-whatsapp" maxlength="11" value="${h.whatsapp || ''}" placeholder="01xxxxxxxxx"></div>
         <div>
-          <label>رقم تليفون إضافي / أو رقم واتساب *</label>
-          <input id="h-whatsapp" maxlength="11" value="${h.whatsapp || ''}" placeholder="01xxxxxxxxx (للتواصل السريع)">
-        </div>
-        <div>
-          <label>المستوى التعليمي (بالاختيار) *</label>
+          <label>المستوى التعليمي *</label>
           <select id="h-edu">
             ${ALL_EDUCATION_LEVELS.map(e => `<option value="${e.value}" ${h.edu === e.value ? 'selected' : ''}>${e.label}</option>`).join('')}
           </select>
         </div>
       </div>
 
-      <!-- العنوان الجغرافي التفاعلي بالكامل -->
+      <!-- العنوان الجغرافي الشامل للجمهورية -->
       <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin:16px 0;">
-        <label style="font-weight:800; color:#064e3b; margin-bottom:10px; display:block;">📍 العنوان الجغرافي (تحديث تلقائي للمراكز والقرى):</label>
+        <label style="font-weight:800; color:#064e3b; margin-bottom:10px; display:block;">📍 العنوان الجغرافي (تحديث تلقائي للمحافظات والمراكز والقرى):</label>
         <div class="grid-3">
           <div>
             <label>المحافظة *</label>
@@ -255,7 +216,7 @@ window.renderWizardStep = function() {
       </div>
 
       <div>
-        <label>الوظيفة الحالية (من القائمة الشاملة) *</label>
+        <label>الوظيفة الحالية *</label>
         <select id="h-job">
           ${ALL_EGYPT_JOBS.map(j => `<option value="${j}" ${h.job === j ? 'selected' : ''}>${j}</option>`).join('')}
         </select>
@@ -276,7 +237,6 @@ window.renderWizardStep = function() {
             <option value="موقت" ${h.illnessType === 'موقت' ? 'selected' : ''}>مرض مؤقت أو إصابة عارضة</option>
           </select>
 
-          <!-- قائمة الأمراض المزمنة -->
           <div id="h-chronic-box" style="margin-top:8px;">
             <label>اختر المرض المزمن:</label>
             <select id="h-chronic-name">
@@ -284,17 +244,15 @@ window.renderWizardStep = function() {
             </select>
           </div>
 
-          <!-- قائمة الأمراض المؤقتة (تشمل كل شيء حتى الصداع) -->
           <div id="h-temp-box" class="hidden" style="margin-top:8px;">
-            <label>اختر المرض المؤقت أو الإصابة العارضة:</label>
+            <label>اختر المرض المؤقت:</label>
             <select id="h-temp-name">
               ${ALL_TEMP_ILLNESSES.map(t => `<option value="${t}" ${h.tempName === t ? 'selected' : ''}>${t}</option>`).join('')}
             </select>
           </div>
 
-          <!-- الاحتياجات الطبية -->
           <div style="margin-top:12px;">
-            <label style="font-weight:700; color:#b45309;">الاحتياج الطبي المطلوب (باختيار دقيق):</label>
+            <label style="font-weight:700; color:#b45309;">الاحتياج الطبي المطلوب:</label>
             <select id="h-medical-need" onchange="toggleMedicalNeeds('h')">
               <option value="لا يوجد" ${h.medicalNeed === 'لا يوجد' ? 'selected' : ''}>لا يوجد احتياج طبي حالي</option>
               <option value="عملية جراحية" ${h.medicalNeed === 'عملية جراحية' ? 'selected' : ''}>عملية جراحية</option>
@@ -304,7 +262,6 @@ window.renderWizardStep = function() {
               <option value="روشتة علاج شهري" ${h.medicalNeed === 'روشتة علاج شهري' ? 'selected' : ''}>روشتة علاج شهري مزمن</option>
             </select>
 
-            <!-- العمليات الجراحية -->
             <div id="h-surgery-box" class="hidden" style="margin-top:8px;">
               <label>اختر العملية الجراحية المطلوبة:</label>
               <select id="h-surgery-name">
@@ -312,7 +269,6 @@ window.renderWizardStep = function() {
               </select>
             </div>
 
-            <!-- الأطراف الصناعية -->
             <div id="h-prosthetic-box" class="hidden" style="margin-top:8px;">
               <label>اختر الطرف الصناعي المطلوب:</label>
               <select id="h-prosthetic-sub">
@@ -320,7 +276,6 @@ window.renderWizardStep = function() {
               </select>
             </div>
 
-            <!-- الأجهزة التعويضية -->
             <div id="h-device-box" class="hidden" style="margin-top:8px;">
               <label>اختر الجهاز التعويضي المطلوب:</label>
               <select id="h-device-sub">
@@ -331,7 +286,7 @@ window.renderWizardStep = function() {
         </div>
       </div>
 
-      <!-- صور البطاقة وش وظهر إلزامي + التقرير الطبي الشرطي -->
+      <!-- صور البطاقة إلزامي -->
       <div style="background:#fef3c7; padding:16px; border-radius:12px; border:1px solid #fde68a; margin-bottom:14px;">
         <label style="font-weight:800; color:#92400e; margin-bottom:8px; display:block;">📁 المستندات والصور الإلزامية للزوج:</label>
         <div class="grid-2">
@@ -339,7 +294,7 @@ window.renderWizardStep = function() {
           <div><label>صورة بطاقة الرقم القومي (ظهر) * [إلزامي]</label><input type="file" id="h-id-back" required></div>
         </div>
         <div id="h-medical-doc-container" class="${h.health === 'مريض' ? '' : 'hidden'}" style="margin-top:12px;">
-          <label style="color:#b91c1c; font-weight:700;">التقرير الطبي أو الروشتة أو الأشعة الحديثة * [إلزامي لحالة المريض]</label>
+          <label style="color:#b91c1c; font-weight:700;">التقرير الطبي أو الروشتة * [إلزامي لحالة المريض]</label>
           <input type="file" id="h-medical-doc">
         </div>
       </div>
@@ -347,7 +302,7 @@ window.renderWizardStep = function() {
   }
 
   // ==========================================
-  // القسم الثاني: بيانات الزوجة (مطابق تماماً لمعايير الزوج)
+  // القسم الثاني: بيانات الزوجة
   // ==========================================
   else if (window.currentStep === 2) {
     const w = window.formData.wife || {};
@@ -369,7 +324,7 @@ window.renderWizardStep = function() {
 
       <div class="grid-2" style="margin-top:10px;">
         <div>
-          <label>المستوى التعليمي (بالاختيار) *</label>
+          <label>المستوى التعليمي *</label>
           <select id="w-edu">
             ${ALL_EDUCATION_LEVELS.map(e => `<option value="${e.value}" ${w.edu === e.value ? 'selected' : ''}>${e.label}</option>`).join('')}
           </select>
@@ -382,7 +337,6 @@ window.renderWizardStep = function() {
         </div>
       </div>
 
-      <!-- الحالة الصحية للزوجة -->
       <div style="background:#f1f5f9; padding:16px; border-radius:12px; margin:16px 0; border:1px solid #cbd5e1;">
         <label style="font-weight:800; color:var(--primary-dark);">الحالة الصحية للزوجة *</label>
         <select id="w-health" onchange="toggleHealthDetails('w')">
@@ -405,7 +359,7 @@ window.renderWizardStep = function() {
           </div>
 
           <div id="w-temp-box" class="hidden" style="margin-top:8px;">
-            <label>اختر المرض المؤقت أو الإصابة:</label>
+            <label>اختر المرض المؤقت:</label>
             <select id="w-temp-name">
               ${ALL_TEMP_ILLNESSES.map(t => `<option value="${t}" ${w.tempName === t ? 'selected' : ''}>${t}</option>`).join('')}
             </select>
@@ -547,14 +501,57 @@ window.renderWizardStep = function() {
   }
 
   // ==========================================
-  // القسم السادس: المستندات الرسمية، وصف السكن، ورأي الباحث، والتأكيد
+  // القسم السادس: المستندات ووصف السكن (باختيارات دقيقة) ورأي الباحث والتأكيد
   // ==========================================
   else if (window.currentStep === 6) {
+    const hs = window.formData.housing || {};
     html += `
       <h3 style="color:var(--primary-dark); text-align:center; font-weight:900; margin:15px 0 25px; border-bottom:2px solid #059669; padding-bottom:8px;">
-        📋 القسم السادس: المستندات الرسمية، وصف السكن، وتأكيد الطلب
+        📋 القسم السادس: المستندات الرسمية، وصف السكن التفصيلي، وتأكيد الطلب
       </h3>
       
+      <!-- وصف السكن عبر اختيارات دقيقة ومنسدلة منعاً للأخطاء -->
+      <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:16px;">
+        <label style="font-weight:900; color:#064e3b; margin-bottom:12px; display:block; font-size:15px;">🏠 وصف السكن وطبيعة المسكن (باختيارات دقيقة):</label>
+        
+        <div class="grid-2">
+          <div>
+            <label>نوع السكن *</label>
+            <select id="house-type">
+              ${HOUSING_TYPES.map(t => `<option value="${t}" ${hs.houseType === t ? 'selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label>وصف السقف *</label>
+            <select id="roof-type">
+              ${ROOF_TYPES.map(r => `<option value="${r}" ${hs.roofType === r ? 'selected' : ''}>${r}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:10px;">
+          <div>
+            <label>وصف الحوائط *</label>
+            <select id="wall-type">
+              ${WALL_TYPES.map(w => `<option value="${w}" ${hs.wallType === w ? 'selected' : ''}>${w}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label>وصف الباب الخارجي *</label>
+            <select id="door-type">
+              ${DOOR_TYPES.map(d => `<option value="${d}" ${hs.doorType === d ? 'selected' : ''}>${d}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>طبيعة المبنى وعدد الأدوار *</label>
+          <select id="floors-count">
+            ${FLOOR_FLOORS_COUNT.map(f => `<option value="${f}" ${hs.floorsCount === f ? 'selected' : ''}>${f}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
       <div class="grid-2" style="margin-bottom:16px;">
         <div><label>البحث الاجتماعي (مختوم من الشؤون) *</label><input type="file" id="doc-social-research" required></div>
         <div><label>جواب الحيازة الزراعية (إن وجد)</label><input type="file" id="doc-land-tenure"></div>
@@ -565,13 +562,8 @@ window.renderWizardStep = function() {
       </div>
 
       <div style="margin-bottom:12px;">
-        <label style="font-weight:800; color:#064e3b;">وصف السكن والفرش وطبيعة المسكن *</label>
-        <textarea id="housing-desc" rows="3" placeholder="اكتب وصفاً مفصلاً لحالة السكن (ملك/إيجار)، الأسقف، الجدران، ومستوى الأثاث...">${window.formData.housing.desc || ''}</textarea>
-      </div>
-
-      <div style="margin-bottom:12px;">
         <label style="font-weight:800; color:#064e3b;">رأي الباحث الميداني وتوصية الحالة *</label>
-        <textarea id="researcher-opinion" rows="3" placeholder="مدى استحقاق الأسرة، مدى صدق البيانات، ونوع المصلحة أو التدخل الأنسب...">${window.formData.housing.opinion || ''}</textarea>
+        <textarea id="researcher-opinion" rows="3" placeholder="مدى استحقاق الأسرة، مدى صدق البيانات، ونوع المصلحة أو التدخل الأنسب...">${hs.opinion || ''}</textarea>
       </div>
 
       <div style="background:#fffbeb; border:1px solid #fde68a; padding:16px; border-radius:12px; margin-bottom:16px;">
@@ -583,7 +575,6 @@ window.renderWizardStep = function() {
     `;
   }
 
-  // أزرار التنقل السفلية
   html += `
     <div style="display:flex; justify-content:space-between; margin-top:25px; border-top:1px solid #cbd5e1; padding-top:15px;">
       ${window.currentStep > 1 ? '<button type="button" onclick="prevWizardStep()" class="nav-btn" style="background:#334155; color:#fff;">السابق</button>' : '<div></div>'}
@@ -605,7 +596,7 @@ window.renderWizardStep = function() {
   }
 };
 
-// 8. دوال الربط الجغرافي التفاعلي (محافظة -> مركز -> قرية)
+// 8. دوال الربط الجغرافي التفاعلي
 window.onGovernorateChange = function(type) {
   const govSelect = document.getElementById(type + '-gov');
   const centerSelect = document.getElementById(type + '-center');
@@ -640,7 +631,7 @@ window.onCenterChange = function(type) {
   }
 };
 
-// 9. دوال التحكم الصحي والتفاعلي الدقيق
+// 9. دوال التحكم الصحي
 window.toggleHealthDetails = function(type) {
   const val = document.getElementById(type + '-health')?.value;
   const box = document.getElementById(type + '-health-box');
@@ -696,7 +687,7 @@ window.removeChildRow = function(idx) {
   window.renderWizardStep();
 };
 
-// 11. حساب الإجماليات والفائض / العجز المالي
+// 11. حساب الفائض والعجز
 window.calcTotals = function() {
   const expRent = parseFloat(document.getElementById('exp-rent')?.value) || 0;
   const expUtil = parseFloat(document.getElementById('exp-utilities')?.value) || 0;
@@ -729,7 +720,7 @@ window.calcTotals = function() {
   }
 };
 
-// 12. التنقل والتحقق الإجباري الصارم لعدم الانتقال إلا باكتمال القسم
+// 12. التحقق الإجباري والتنقل
 window.nextWizardStep = function() {
   if (window.currentStep === 1) {
     const name1 = document.getElementById('h-name1')?.value.trim();
@@ -740,13 +731,13 @@ window.nextWizardStep = function() {
     const village = document.getElementById('h-village')?.value;
 
     if (!name1 || !nid || !phone || !gov || !center || !village) {
-      return alert('⚠️ برجاء استيفاء جميع الحقول الإجبارية والعنوان الجغرافي الكامل في القسم الأول قبل الانتقال.');
+      return alert('⚠️ برجاء استيفاء جميع الحقول الإجبارية والعنوان الجغرافي الكامل في القسم الأول.');
     }
     if (nid.length !== 14) {
       return alert('⚠️ رقم البطاقة الشخصية للزوج يجب أن يكون 14 رقماً بدقة.');
     }
     if (phone.length !== 11) {
-      return alert('⚠️ رقم التليفون يجب أن يكون 11 رقماً.');
+      return alert('⚠️ رقم التليفون الأساسي يجب أن يكون 11 رقماً.');
     }
   } else if (window.currentStep === 2) {
     const name1 = document.getElementById('w-name1')?.value.trim();
@@ -772,7 +763,7 @@ window.prevWizardStep = function() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
-// 13. حفظ بيانات الخطوات الحالية
+// 13. حفظ البيانات
 function saveCurrentStepData() {
   if (window.currentStep === 1) {
     window.formData.husband = {
@@ -832,13 +823,17 @@ function saveCurrentStepData() {
     };
   } else if (window.currentStep === 6) {
     window.formData.housing = {
-      desc: document.getElementById('housing-desc')?.value || '',
+      houseType: document.getElementById('house-type')?.value || '',
+      roofType: document.getElementById('roof-type')?.value || '',
+      wallType: document.getElementById('wall-type')?.value || '',
+      doorType: document.getElementById('door-type')?.value || '',
+      floorsCount: document.getElementById('floors-count')?.value || '',
       opinion: document.getElementById('researcher-opinion')?.value || ''
     };
   }
 }
 
-// 14. التأكيد والرفع النهائي لقاعدة البيانات
+// 14. التأكيد والرفع النهائي مع التوافق الكامل مع أعمدة قاعدة البيانات
 window.submitFullWizardApplication = async function() {
   saveCurrentStepData();
   const check = document.getElementById('declaration-check');
@@ -856,10 +851,12 @@ window.submitFullWizardApplication = async function() {
     governorate: window.formData.husband.gov || 'بني سويف',
     center_city: window.formData.husband.center || 'إهناسيا',
     village_hamlet: window.formData.husband.village || 'منشأة عبدالصمد',
+    detailed_address: (window.formData.husband.gov || '') + ' - ' + (window.formData.husband.center || '') + ' - ' + (window.formData.husband.village || ''),
     aid_type: 'بحث اجتماعي شامل وموثق',
     total_income: totalInc,
     total_expenses: totalExp,
     status: 'pending',
+    source_type: 'online_form',
     husband_data: window.formData.husband,
     wife_data: window.formData.wife,
     children_data: window.formData.children,
