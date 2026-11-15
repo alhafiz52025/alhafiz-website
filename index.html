@@ -314,54 +314,8 @@
   <script src="dashboards.js"></script>
   <script src="wizard.js"></script>
   <script>
-    let currentLang = 'ar';
-    function toggleLanguage() {
-      currentLang = currentLang === 'ar' ? 'en' : 'ar';
-      const root = document.getElementById('html-root');
-      root.setAttribute('lang', currentLang);
-      root.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
-      
-      const langBtn = document.getElementById('lang-toggle-btn');
-      if (langBtn) langBtn.innerText = currentLang === 'ar' ? 'English' : 'عربي';
-
-      document.querySelectorAll('[data-ar]').forEach(el => {
-        const text = el.getAttribute('data-' + currentLang);
-        if (text) {
-          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-            el.placeholder = text;
-          } else {
-            el.innerText = text;
-          }
-        }
-      });
-    }
-
-    let fontSizeLevel = 16;
-    function adjustFontSize(change) {
-      fontSizeLevel += change;
-      if (fontSizeLevel < 12) fontSizeLevel = 12;
-      if (fontSizeLevel > 22) fontSizeLevel = 22;
-      document.body.style.fontSize = fontSizeLevel + 'px';
-    }
-
-    function toggleDarkMode() {
-      document.body.classList.toggle('dark-mode');
-    }
-
-    document.addEventListener("DOMContentLoaded", function() {
-      if (typeof showSection === 'function') showSection('home');
-      if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
-    });
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="egypt-data.js"></script>
-  <script src="dashboards.js"></script>
-  <script src="wizard.js"></script>
-  <script>
-    // 1. دالة التنقل وعرض الأقسام الشاملة (لحل خطأ showSection)
-    function showSection(sectionId) {
-      // إخفاء جميع الأقسام الرئيسية
+    // 1. دالة التنقل وعرض الأقسام عالمياً
+    window.showSection = function(sectionId) {
       const sections = ['home', 'about', 'achievements', 'faq', 'apply', 'track', 'contact', 'privacy', 'login'];
       sections.forEach(s => {
         const el = document.getElementById('section-' + s);
@@ -374,25 +328,19 @@
         }
       });
 
-      // إذا كان القسم هو الدخول
       const loginBox = document.getElementById('login-box');
       const partnerBox = document.getElementById('partner-register-box');
-      const dashArea = document.getElementById('dashboard-area');
-      
       if (sectionId === 'login') {
         if (loginBox) loginBox.classList.remove('hidden');
         if (partnerBox) partnerBox.classList.add('hidden');
-        if (dashArea && dashArea.innerHTML.trim() === '') {
-          // عرض شاشة تسجيل الدخول العادية
-        }
       }
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    };
 
     // 2. دالة تبديل اللغة (عربي / إنجليزي)
     let currentLang = 'ar';
-    function toggleLanguage() {
+    window.toggleLanguage = function() {
       currentLang = currentLang === 'ar' ? 'en' : 'ar';
       const root = document.getElementById('html-root');
       root.setAttribute('lang', currentLang);
@@ -411,30 +359,29 @@
           }
         }
       });
-    }
+    };
 
     // 3. أدوات التحكم في الوصول (حجم الخط والمظهر)
     let fontSizeLevel = 16;
-    function adjustFontSize(change) {
+    window.adjustFontSize = function(change) {
       fontSizeLevel += change;
       if (fontSizeLevel < 12) fontSizeLevel = 12;
       if (fontSizeLevel > 22) fontSizeLevel = 22;
       document.body.style.fontSize = fontSizeLevel + 'px';
-    }
+    };
 
-    function toggleDarkMode() {
+    window.toggleDarkMode = function() {
       document.body.classList.toggle('dark-mode');
-    }
+    };
 
-    // 4. نسخ النصوص
-    function copyText(txt) {
+    window.copyText = function(txt) {
       navigator.clipboard.writeText(txt);
       alert('✅ تم النسخ بنجاح: ' + txt);
-    }
+    };
 
-    // التشغيل التلقائي عند تحميل الصفحة
+    // التشغيل التلقائي عند التحميل
     document.addEventListener("DOMContentLoaded", function() {
-      showSection('home');
+      window.showSection('home');
       if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
     });
   </script>
