@@ -1,7 +1,11 @@
 // dashboards.js - المنظومة الإدارية الشاملة لمؤسسة الحافظ
 
-const supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
+// dashboards.js - المنظومة الإدارية الشاملة لمؤسسة الحافظ
+window.supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
 
+window.globalFamilies = window.globalFamilies || [];
+window.globalUsers = window.globalUsers || [];
+window.globalGrievances = window.globalGrievances || [];
 let globalFamilies = [];
 let globalUsers = [];
 let globalGrievances = [];
