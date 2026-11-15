@@ -12,7 +12,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (emailEl) emailEl.value = '';
   if (passEl) passEl.value = '';
 
-  // فحص آمن للجلسة دون قطع التنفيذ
+  // التأكد من إظهار صندوق الدخول افتراضياً
+  const loginBox = document.getElementById('login-box');
+  const dashboardArea = document.getElementById('dashboard-area');
+  if (loginBox) loginBox.classList.remove('hidden');
+  if (dashboardArea) dashboardArea.classList.add('hidden');
+
+  // فحص هادئ للجلسة السابقة
   if (supabaseClient && supabaseClient.auth) {
     try {
       const { data } = await supabaseClient.auth.getSession();
@@ -25,21 +31,19 @@ window.addEventListener('DOMContentLoaded', async () => {
           .single();
 
         if (profRes.data && profRes.data.account_status === 'approved') {
-          const loginBox = document.getElementById('login-box');
           if (loginBox) loginBox.classList.add('hidden');
-          const area = document.getElementById('dashboard-area');
-          if (area) {
-            area.classList.remove('hidden');
+          if (dashboardArea) {
+            dashboardArea.classList.remove('hidden');
             if (profRes.data.role === 'admin') {
-              await renderFullAdminDashboard(area, profRes.data);
+              await renderFullAdminDashboard(dashboardArea, profRes.data);
             } else {
-              await renderPartnerDashboard(area, profRes.data);
+              await renderPartnerDashboard(dashboardArea, profRes.data);
             }
           }
         }
       }
     } catch (e) {
-      console.log('Session check skipped or not logged in.');
+      console.log('No active session, showing login box.');
     }
   }
 });
@@ -214,7 +218,7 @@ async function saveAchievement() {
   const desc = document.getElementById('ach-desc').value.trim();
   const imgUrl = document.getElementById('ach-img').value.trim();
 
-  if (!title || !desc) return alert('⚠️ أخل عنوان الإنجاز والشرح.');
+  if (!title || !desc) return alert('⚠️ أدخل عنوان الإنجاز والشرح.');
 
   const res = await supabaseClient.from('achievements').insert([{ title, description: desc, image_url: imgUrl }]);
   if (res.error) alert('❌ خطأ: ' + res.error.message);
