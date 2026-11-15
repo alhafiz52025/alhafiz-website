@@ -15,7 +15,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   const loginBox = document.getElementById('login-box');
   const dashboardArea = document.getElementById('dashboard-area');
 
-  // تحقق من وجود جلسة نشطة سابقة
   if (supabaseClient && supabaseClient.auth) {
     try {
       const { data } = await supabaseClient.auth.getSession();
@@ -36,7 +35,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             } else {
               await renderPartnerDashboard(dashboardArea, profRes.data);
             }
-            return; // توقف هنا واعرض اللوحة
+            return;
           }
         }
       }
@@ -45,10 +44,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // إذا لم توجد جلسة نشطة، أظهر صندوق الدخول حتماً وأضف زر مسح الكاش الاحتياطي
   if (loginBox) {
     loginBox.classList.remove('hidden');
-    // إضافة زر مسح الجلسة يدوياً داخل صندوق الدخول لضمان ظهور الحقول دائماً
     if (!document.getElementById('force-logout-btn')) {
       const clearBtn = document.createElement('button');
       clearBtn.id = 'force-logout-btn';
@@ -68,7 +65,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (dashboardArea) dashboardArea.classList.add('hidden');
 });
 
-async function loginUser() {
+window.loginUser = async function() {
   try {
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-pass');
@@ -111,15 +108,12 @@ async function loginUser() {
   }
 }
 
-async function logoutUser() {
+window.logoutUser = async function() {
   if (supabaseClient && supabaseClient.auth) await supabaseClient.auth.signOut();
   localStorage.clear();
   location.reload();
 }
 
-// ==========================================
-// 1. غرفة العمليات والإدارة العليا
-// ==========================================
 async function renderFullAdminDashboard(container, profile) {
   const [famRes, usersRes, grievRes, achRes] = await Promise.all([
     supabaseClient.from('families').select('*').order('created_at', { ascending: false }),
@@ -170,7 +164,7 @@ async function renderFullAdminDashboard(container, profile) {
   switchAdminTab('families');
 }
 
-function switchAdminTab(tabName) {
+window.switchAdminTab = function(tabName) {
   ['families', 'users', 'achievements', 'grievances'].forEach(t => {
     const btn = document.getElementById('tab-btn-' + t);
     if (btn) btn.className = (t === tabName) ? 'action-btn' : 'nav-btn';
@@ -234,7 +228,7 @@ function switchAdminTab(tabName) {
   }
 }
 
-async function saveAchievement() {
+window.saveAchievement = async function() {
   const title = document.getElementById('ach-title').value.trim();
   const desc = document.getElementById('ach-desc').value.trim();
   const imgUrl = document.getElementById('ach-img').value.trim();
@@ -269,108 +263,31 @@ async function loadPublicAchievements() {
     </div>`).join('');
 }
 
-async function assignCaseToUser(famId, userId) {
+window.assignCaseToUser = async function(famId, userId) {
   await supabaseClient.from('families').update({ assigned_to: userId || null }).eq('id', famId);
   alert('✅ تم إسناد الحالة.');
 }
-async function updateFamilyStatus(famId, newStatus) {
+window.updateFamilyStatus = async function(famId, newStatus) {
   const note = newStatus === 'rejected' ? prompt('سبب الرفض:') : 'معتمد';
   await supabaseClient.from('families').update({ status: newStatus, rejection_or_action_note: note }).eq('id', famId);
   location.reload();
 }
-async function deleteFamilyRecord(famId) {
+window.deleteFamilyRecord = async function(famId) {
   if (!confirm('هل أنت متأكد من الحذف؟')) return;
   await supabaseClient.from('families').delete().eq('id', famId);
   location.reload();
 }
-async function toggleUserActiveStatus(userId, status) {
+window.toggleUserActiveStatus = async function(userId, status) {
   await supabaseClient.from('users_profiles').update({ account_status: status }).eq('id', userId);
   location.reload();
 }
-async function deleteUserAccount(userId) {
+window.deleteUserAccount = async function(userId) {
   if (!confirm('حذف العضو؟')) return;
   await supabaseClient.from('users_profiles').delete().eq('id', userId);
   location.reload();
 }
 
-function exportToExcel(filename) {
+window.exportToExcel = function(filename) {
   let csv = "\uFEFFكود,القرية,نوع المساعدة,الدخل,المصروفات,الحالة\n";
   globalFamilies.forEach(f => {
     csv += `"${f.tracking_code}","${f.village_hamlet}","${f.aid_type}","${f.total_income}","${f.total_expenses}","${f.status}"\n`;
-  });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename + ".csv";
-  link.click();
-}
-
-function exportToPDF() {
-  const content = document.getElementById('printable-area');
-  if (!content) return alert('افتح جدول الحالات أولاً.');
-  const win = window.open('', '', 'height=700,width=900');
-  win.document.write('<html dir="rtl"><body><h2>تقرير مؤسسة الحافظ</h2>' + content.innerHTML + '</body></html>');
-  win.document.close();
-  win.print();
-}
-
-function translateRole(role) {
-  return { 'admin': 'إدارة عليا', 'grassroots_partner': 'جمعية شريكة', 'researcher': 'باحث' }[role] || role;
-}
-function translateStatus(st) {
-  return { 'pending': 'قيد المراجعة', 'approved': 'مقبولة', 'rejected': 'مرفوضة' }[st] || st;
-}
-function getStatusColor(st) {
-  return st === 'approved' ? '#d1fae5; color:#065f46' : '#fef3c7; color:#92400e';
-}
-
-async function trackApplication() {
-  const val = document.getElementById('track-input').value.trim();
-  if (!val) return;
-  const res = await supabaseClient.from('families').select('*').eq('tracking_code', val).maybeSingle();
-  const box = document.getElementById('track-result');
-  if (res.data) box.innerHTML = `<div style="padding:12px; background:#ecfdf5; border-radius:8px;">كود: ${res.data.tracking_code} | الحالة: <strong>${translateStatus(res.data.status)}</strong></div>`;
-  else box.innerHTML = '<p style="color:red;">لم يتم العثور على طلب.</p>';
-}
-
-async function submitGrievance() {
-  const phone = document.getElementById('grievance-phone').value.trim();
-  const details = document.getElementById('grievance-details').value.trim();
-  if (!phone || !details) return alert('أدخل الهاتف والتفاصيل.');
-  await supabaseClient.from('grievances').insert([{ complaint_type: document.getElementById('grievance-type').value, phone, details }]);
-  alert('✅ تم إرسال رسالتك بسرية.');
-  showSection('home');
-}
-
-function openPartnerRegister() {
-  const loginBox = document.getElementById('login-box');
-  if (loginBox) loginBox.classList.add('hidden');
-  const box = document.getElementById('partner-register-box');
-  if (!box) return;
-  box.classList.remove('hidden');
-  box.innerHTML = `
-    <h3 style="margin-bottom:10px;">طلب انضمام للمنظومة</h3>
-    <select id="reg-role" style="margin-bottom:8px;"><option value="grassroots_partner">جمعية شريكة</option><option value="researcher">باحث ميداني</option></select>
-    <input id="reg-name" placeholder="الاسم الكامل" style="margin-bottom:8px;">
-    <input id="reg-phone" placeholder="الهاتف" style="margin-bottom:8px;">
-    <input id="reg-email" placeholder="البريد الإلكتروني" style="margin-bottom:8px;">
-    <input type="password" id="reg-pass" placeholder="كلمة المرور" style="margin-bottom:10px;">
-    <button type="button" onclick="submitPartnerRegisterToSupabase()" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال</button>
-    <button type="button" onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
-}
-
-async function submitPartnerRegisterToSupabase() {
-  const role = document.getElementById('reg-role'].value;
-  const name = document.getElementById('reg-name').value.trim();
-  const phone = document.getElementById('reg-phone').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pass = document.getElementById('reg-pass').value;
-
-  const authRes = await supabaseClient.auth.signUp({ email, password: pass });
-  if (authRes.error) return alert(authRes.error.message);
-  if (authRes.data.user) {
-    await supabaseClient.from('users_profiles').insert([{ id: authRes.data.user.id, full_name: name, email, role, phone, account_status: 'pending' }]);
-  }
-  alert('✅ تم إرسال طلبك بانتظار الاعتماد.');
-  location.reload();
-}
