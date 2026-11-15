@@ -32,6 +32,9 @@
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
     .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 12px; text-align: right; font-size: 13px; }
+    th { background: #064e3b; color: #ffffff; }
     footer { background: #064e3b; color: #ecfdf5; padding: 32px 20px; margin-top: 40px; font-size: 13px; }
     footer a { color: #fde68a; display: block; margin-bottom: 6px; text-decoration: none; }
   </style>
@@ -219,64 +222,4 @@
       <div class="card">
         <h3 style="color: #064e3b; margin-top: 0;">سياسة الخصوصية وشروط استخدام الخدمات</h3>
         <p style="font-size: 14px; line-height: 1.7;"><strong>1. حماية البيانات الشخصية:</strong> تُستخدم كافة البيانات القومية والاجتماعية والطبية المسجلة في المنصة حصرياً لأغراض البحث الميداني ودراسة الاستحقاق وتقديم المساعدات الخيرية، ولا يتم بيعها أو مشاركتها مع أي طرف تجاري.</p>
-        <p style="font-size: 14px; line-height: 1.7;"><strong>2. المشاركة الرقابية مع الشركاء:</strong> يوافق مقدم الطلب على اطلاع إدارة مؤسسة الحافظ والجمعيات القاعدية والمؤسسات المانحة الشريكة الموقعة لبروتوكولات تعاون على ملف الحالة لضمان الحوكمة ومنع ازدواجية الصرف.</p>
-      </div>
-    </section>
-
-    <!-- 7. قسم بوابة الدخول ولوحات التحكم -->
-    <section id="section-login" class="hidden">
-      <div id="login-box" class="card" style="max-width: 440px; margin: 20px auto; text-align: center;">
-        <h3 style="color: #064e3b; margin-top: 0;">🔐 بوابة الدخول الموحدة</h3>
-        <p style="font-size: 12px; color: #64748b; margin-bottom: 16px;">للإدارة العليا، المؤسسات المانحة، الجمعيات القاعدية، الباحثين، والمتطوعين</p>
-        <input id="login-email" type="email" placeholder="البريد الإلكتروني">
-        <input id="login-pass" type="password" placeholder="كلمة المرور">
-        <button type="button" onclick="loginUser()" class="action-btn" style="width: 100%; margin-bottom: 10px;">تسجيل الدخول</button>
-        <button type="button" onclick="openPartnerRegister()" class="nav-btn" style="width: 100%;">+ طلب انضمام جديد (جمعية / باحث / متطوع)</button>
-      </div>
-      <div id="partner-register-box" class="card hidden" style="max-width: 480px; margin: 20px auto;"></div>
-      <div id="dashboard-area" class="hidden"></div>
-    </section>
-
-  </div>
-
-  <!-- التذييل -->
-  <footer>
-    <div style="max-width: 1100px; margin: auto;" class="grid-3">
-      <div>
-        <h4 style="color: #fde68a; margin-top: 0;">مؤسسة الحافظ للتنمية والخدمات</h4>
-        <p style="line-height: 1.6;">مؤسسة أهلية تنموية مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي. نعمل لخدمة الأسر المتعففة والأيتام بمركز إهناسيا ومحافظة بني سويف.</p>
-      </div>
-      <div>
-        <h4 style="color: #fde68a; margin-top: 0;">روابط سريعة</h4>
-        <a href="javascript:void(0)" onclick="showSection('about')">من نحن والهيكل التنظيمي</a>
-        <a href="javascript:void(0)" onclick="showSection('apply')">تقديم طلب مساعدة للأسرة</a>
-        <a href="javascript:void(0)" onclick="showSection('track')">الاستعلامات عن الطلبات</a>
-        <a href="javascript:void(0)" onclick="showSection('privacy')">سياسة الخصوصية</a>
-      </div>
-      <div>
-        <h4 style="color: #fde68a; margin-top: 0;">التواصل والقنوات الرسمية</h4>
-        <p>📍 منشأة عبدالصمد - إهناسيا - بني سويف</p>
-        <p>📞 إدارة المؤسسة: 01155540066</p>
-        <a href="https://wa.me/201000880156" target="_blank">💬 واتساب: 01000880156</a>
-      </div>
-    </div>
-    <p style="text-align: center; border-top: 1px solid #047857; padding-top: 16px; margin-top: 20px;">
-      © 2026 جميع الحقوق محفوظة لمؤسسة الحافظ للتنمية والخدمات - إشهار 2202 لسنة 2025
-    </p>
-  </footer>
-
-  <!-- استدعاء المكتبات والملفات بالترتيب الصحيح -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="egypt-data.js"></script>
-  <script src="dashboards.js"></script>
-  <script src="wizard.js"></script>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      if (typeof showSection === 'function') {
-        showSection('home');
-      }
-    });
-  </script>
-</body>
-</html>
+        <p style="font-size: 14px; line-height: 1.7;">
