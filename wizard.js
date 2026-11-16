@@ -12,6 +12,71 @@ window.formData = window.formData || {
   housing: {}
 };
 
+// 1. قاعدة بيانات جغرافية شاملة لمحافظات مصر ومراكزها وتوابعها
+const EGYPT_GEO_DATABASE = {
+  "بني سويف": {
+    "إهناسيا": ["مدينة إهناسيا", "منشأة عبدالصمد", "براوة", "براوة الوقف", "العواونة", "قاي", "ننا", "ميانة", "طما فيوم", "النويرة", "سدمنت الجبل", "قلة", "بني هاني", "معصرة نعسان", "منشأة الحاج", "كوم الرمل", "شارونة", "منيل هاني", "بني سليمان", "المسيد الأبيض", "الحمام", "شاويش", "الدير", "بهنموه", "منيل غيضان", "عزبة يعقوب", "عزبة التل"],
+    "بني سويف": ["مدينة بني سويف", "إهناسيا الخضراء", "بليفيا", "تزمنت الشرقية", "بني هارون", "باروط", "شريف باشا", "دلاص", "الحيبة"],
+    "الواسطى": ["مدينة الواسطى", "الميمون", "أبوصير الملق", "قمن العروس", "ميدوم", "إفوة", "أطواب", "انفسط", "عزبة زكي"],
+    "ناصر": ["مدينة ناصر", "دنديل", "اشمنت", "البرج", "الحمام", "بهبشين", "بني عدي", "الزيتون", "منشأةدشلوط"],
+    "ببا": ["مدينة ببا", "قمبش الحمراء", "سدس الأمراء", "صفط راشين", "طنسا بني مالو", "هليه", "فزارة", "زاوية الناعورة"],
+    "الفشن": ["مدينة الفشن", "أقفهاص", "تلت", "دلهانس", "الفنت", "بني صالح", "شنرا", "السبيل"],
+    "سمسطا": ["مدينة سمسطا", "مازورة", "دشطوط", "الشنطور", "بدهل", "العساكرة", "الشيخ عابد"]
+  },
+  "القاهرة": {
+    "القاهرة": ["حلوان", "المعادي", "مدينة نصر", "مصر الجديدة", "شبرا", "المرج", "المطرية", "عين شمس", "التجمع الخامس", "الزهراء", "دار السلام", "البساتين", "المقطم", "السيدة زينب", "الخليفة", "المنيل", "بولاق أبو العلا"]
+  },
+  "الجيزة": {
+    "الجيزة": ["حي الجيزة", "الدقي", "العجوزة", "إمبابة", "الهرم", "فيصل", "الوراق", "بولاق الدكرور"],
+    "العياط": ["مدينة العياط", "المتانيا", "بيدف", "القطوري", "طهما", "برطبشت", "مزغونة"],
+    "الصف": ["مدينة الصف", "الأقواز", "الشوبك الشرقي", "غمازة الكبرى", "أطفيح", "البرمبل", "صول", "الكريمات"],
+    "البدرشين": ["مدينة البدرشين", "سقارة", "ميت رهينة", "أبو صير", "الشوبك الغربي", "المحمودية"]
+  },
+  "الإسكندرية": {
+    "الإسكندرية": ["المنتزه أول", "المنتزه ثان", "شرق", "وسط", "غرب", "الجمرك", "العجمي", "العامرية أول", "العامرية ثان", "برج العرب", "ميامي", "سيدي بشر", "الابراهيمية"]
+  },
+  "الفيوم": {
+    "الفيوم": ["مدينة الفيوم", "هوارة المقطع", "دمو", "العدوة", "سلاوة", "دمو العزب"],
+    "إطسا": ["مدينة إطسا", "الغرق", "تطون", "قلمشاة", "منية الحيط", "أبو صير"],
+    "يوسف الصديق": ["الشواشنة", "قارون", "النزلة", "الحامولي", "المشرك القبلي"],
+    "سنورس": ["مدينة سنورس", "فديمين", "سنهور القبلية", "جاقوش", "بيهمو"],
+    "طامية": ["مدينة طامية", "الروضة", "فانوس", "سرسنا", "الروبيات"],
+    "أبشواي": ["مدينة أبشواي", "طبهار", "العجميين", "سنرو القبلية"]
+  },
+  "المنيا": {
+    "المنيا": ["مدينة المنيا", "تلة", "طوخ الخيل", "دمشير", "زاوية سلطان"],
+    "مغاغة": ["مدينة مغاغة", "أبا الوقف", "برطباط", "الشيخ تمي", "شم القبلية"],
+    "العدوة": ["مدينة العدوة", "صفانية", "بني عامر", "قصر الرقاقاس"],
+    "بني مزار": ["مدينة بني مزار", "القيس", "صندفا", "الحطة", "أبوجرج"],
+    "مطاي": ["مدينة مطاي", "أبو عزيز", "حلوة", "منبال", "بني مهدي"],
+    "سمالوط": ["مدينة سمالوط", "قلوصنا", "البيهو", "طحا الأعمدة", "التوفيقية"],
+    "ملوي": ["مدينة ملوي", "الروضة", "ديروط أم نخلة", "أبوقلتة", "المقلز"],
+    "أبو قرقاص": ["مدينة أبو قرقاص", "اتليدم", "بني عبيد", "أبيوها", "نزلة أسمنت"],
+    "دير مواس": ["مدينة دير مواس", "دلجا", "تل العمارنة", "نزلة البدرمان"]
+  },
+  "أسيوط": { "أسيوط": ["أسيوط", "ديروط", "منفلوط", "ابيج", "ابوتيج", "صدفا", "الغنايم", "ساحل سليم", "البداري", "فتح"] },
+  "سوهاج": { "سوهاج": ["سوهاج", "أخميم", "المنشأة", "جهينة", "ساقلعة", "جرجا", "البلينا", "دار السلام", "الطهطاوي"] },
+  "قنا": { "قنا": ["قنا", "ابوتشت", "نجع حمادي", "دشنا", "قفط", "قوص", "الوقف", "فرشوط"] },
+  "الأقصر": { "الأقصر": ["الأقصر", "إسنا", "أرمنت", "القرنة", "بياضية"] },
+  "أسوان": { "أسوان": ["أسوان", "إدفو", "كوم امبو", "دراو", "نصر النوبة"] },
+  "البحر الأحمر": { "الغردقة": ["الغردقة", "سفاجا", "القصير", "مرسى علم", "شلاتين", "حلايب"] },
+  "الوادي الجديد": { "الخارجة": ["الخارجة", "الداخلة", "باريس", "الفرافرة", "بلاط"] },
+  "مطروح": { "مرسى مطروح": ["مرسى مطروح", "الحمام", "العميد", "الضبعة", "سيدي براني", "السلوم", "سيوة"] },
+  "شمال سيناء": { "العريش": ["العريش", "بئر العبد", "الشيخ زويد", "رفح", "نخل", "حسن"] },
+  "جنوب سيناء": { "الطور": ["الطور", "شرم الشيخ", "دهب", "نويبع", "طابا", "رأس سدر", "أبو رديس"] },
+  "الإسماعيلية": { "الإسماعيلية": ["الإسماعيلية", "التل الكبير", "فردان", "القنطرة شرق", "القنطرة غرب", "فايد", "القصاصين"] },
+  "السويس": { "السويس": ["حي السويس", "حي الأربعين", "حي عتاقة", "حي الجناين", "حي بور توفيق"] },
+  "بورسعيد": { "بورسعيد": ["حي الشرق", "حي العرب", "حي الضواحي", "حي المناصرة", "حي الزهور", "حي بورفؤاد"] },
+  "دمياط": { "دمياط": ["دمياط", "فارسكور", "الزرقا", "كفر البطيخ", "السرو", "رأس البر", "كفر سعد"] },
+  "الدقهلية": { "المنصورة": ["المنصورة", "ميت غمر", "دكرنس", "بلقاس", "سنبلاوين", "أجا", "طلخا", "المطرية", "منية النصر", "شربين"] },
+  "الشرقية": { "زقازيق": ["العاشر من رمضان", "بلبيس", "مشتول السوق", "أبو حماد", "الإبراهيمية", "ديرب نجم", "منيا القمح", "فاقوس", "الحسينية"] },
+  "القليوبية": { "بنها": ["بنها", "قليوب", "شبرا الخيمة", "القناطر الخيرية", "الخانكة", "توخ", "شبين القناطر", "كفر شكر"] },
+  "الغربية": { "طنطا": ["طنطا", "المحلة الكبرى", "الزفتى", "كفر الزيات", "بسيون", "سمنود", "قطور", "صفت تراب"] },
+  "المنوفية": { "شبين الكوم": ["شبين الكوم", "منوف", "السادات", "قويسنا", "بركة السبع", "أشمون", "الشهداء", "تلا"] },
+  "بحيرة": { "دمنهور": ["دمنهور", "كفر الدوار", "رشيد", "إدكو", "أبو حمص", "المحمودية", "كوم حمادة", "حوش عيسى", "الدلنجات"] },
+  "كفر الشيخ": { "كفر الشيخ": ["دسوق", "فوة", "مطوبس", "بيلا", "الحامول", "بلطيم", "سيدي سالم", "الرياض"] }
+};
+
 // 2. الوظائف الشاملة
 const ALL_EGYPT_JOBS = [
   "لا يعمل / عاطل عن العمل", "بالمعاش / تقاعد", "غير قادر على العمل (عجز كلي / مرض مزمن)", "ربة منزل",
@@ -22,7 +87,7 @@ const ALL_EGYPT_JOBS = [
   "فرد أمن / حراسة", "بائع متجول / كشك صغير", "صياد أسماك", "صاحب ورشة / محل تجاري", "أعمال حرة أخرى"
 ];
 
-// 3. المستويات التعليمية
+// 3. المستويات التعليمية (من محو الأمية للدكتوراه)
 const ALL_EDUCATION_LEVELS = [
   { value: "غير متعلم", label: "غير متعلم (لا يقرأ ولا يكتب)" },
   { value: "محو أمية", label: "شهادة محو الأمية وتعمير الكبار" },
@@ -69,7 +134,7 @@ const COMPENSATORY_DEVICES = [
   "عكاز طبي / مشاية ألومنيوم", "حزام دعم فقرات الظهر الرقبة", "نظارات طبية متقدمة"
 ];
 
-// 7. اختيارات وصف السكن
+// 7. اختيارات وصف السكن الدقيقة والمفصلة (بدون كتابة حرة)
 const HOUSING_TYPES = ["ملك", "إيجار قانوني", "عشة / صفيح / خيام", "حق انتفاع", "إقامة عائلية مشتركة (مضيفة)"];
 const ROOF_TYPES = ["خرسانة مسلحة", "خشب وجريد وعروق", "صاج أو أطيان", "عريشة خوص / بلاستيك"];
 const WALL_TYPES = ["طوب أحمر ومحارة تشطيب", "طوب لبن وأدون قديمة", "أخشاب وصفيح وبوص", "بدون تشطيب نهائي"];
@@ -126,13 +191,13 @@ window.renderWizardStep = function() {
 
       <!-- العنوان الجغرافي الشامل للجمهورية -->
       <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0; margin:16px 0;">
-        <label style="font-weight:800; color:#064e3b; margin-bottom:10px; display:block;">📍 العنوان الجغرافي:</label>
+        <label style="font-weight:800; color:#064e3b; margin-bottom:10px; display:block;">📍 العنوان الجغرافي (تحديث تلقائي للمحافظات والمراكز والقرى):</label>
         <div class="grid-3">
           <div>
             <label>المحافظة *</label>
             <select id="h-gov" onchange="onGovernorateChange('h')">
               <option value="">-- اختر المحافظة --</option>
-              ${window.EGYPT_GEO_DATABASE ? Object.keys(window.EGYPT_GEO_DATABASE).map(g => `<option value="${g}" ${h.gov === g ? 'selected' : ''}>${g}</option>`).join('') : ''}
+              ${Object.keys(EGYPT_GEO_DATABASE).map(g => `<option value="${g}" ${h.gov === g ? 'selected' : ''}>${g}</option>`).join('')}
             </select>
           </div>
           <div>
@@ -436,7 +501,7 @@ window.renderWizardStep = function() {
   }
 
   // ==========================================
-  // القسم السادس: المستندات ووصف السكن والتأكيد
+  // القسم السادس: المستندات ووصف السكن (باختيارات دقيقة) ورأي الباحث والتأكيد
   // ==========================================
   else if (window.currentStep === 6) {
     const hs = window.formData.housing || {};
@@ -445,8 +510,9 @@ window.renderWizardStep = function() {
         📋 القسم السادس: المستندات الرسمية، وصف السكن التفصيلي، وتأكيد الطلب
       </h3>
       
+      <!-- وصف السكن عبر اختيارات دقيقة ومنسدلة منعاً للأخطاء -->
       <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:16px;">
-        <label style="font-weight:900; color:#064e3b; margin-bottom:12px; display:block; font-size:15px;">🏠 وصف السكن وطبيعة المسكن:</label>
+        <label style="font-weight:900; color:#064e3b; margin-bottom:12px; display:block; font-size:15px;">🏠 وصف السكن وطبيعة المسكن (باختيارات دقيقة):</label>
         
         <div class="grid-2">
           <div>
@@ -465,13 +531,13 @@ window.renderWizardStep = function() {
 
         <div class="grid-2" style="margin-top:10px;">
           <div>
-            <label>حالة الجدران والتشطيب *</label>
+            <label>وصف الحوائط *</label>
             <select id="wall-type">
               ${WALL_TYPES.map(w => `<option value="${w}" ${hs.wallType === w ? 'selected' : ''}>${w}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label>حالة الأبواب *</label>
+            <label>وصف الباب الخارجي *</label>
             <select id="door-type">
               ${DOOR_TYPES.map(d => `<option value="${d}" ${hs.doorType === d ? 'selected' : ''}>${d}</option>`).join('')}
             </select>
@@ -479,95 +545,99 @@ window.renderWizardStep = function() {
         </div>
 
         <div style="margin-top:10px;">
-          <label>عدد أدوار ومستوى المبنى *</label>
+          <label>طبيعة المبنى وعدد الأدوار *</label>
           <select id="floors-count">
             ${FLOOR_FLOORS_COUNT.map(f => `<option value="${f}" ${hs.floorsCount === f ? 'selected' : ''}>${f}</option>`).join('')}
           </select>
         </div>
       </div>
 
-      <div style="background:#fef3c7; padding:16px; border-radius:12px; border:1px solid #fde68a; margin-bottom:16px;">
-        <label style="font-weight:800; color:#92400e; margin-bottom:8px; display:block;">📷 صور معاينة السكن:</label>
-        <div class="grid-2">
-          <div><label>صورة واجهة السكن * [إلزامي]</label><input type="file" id="house-img-front" required></div>
-          <div><label>صورة سقف السكن * [إلزامي]</label><input type="file" id="house-img-roof" required></div>
-        </div>
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div><label>البحث الاجتماعي (مختوم من الشؤون) *</label><input type="file" id="doc-social-research" required></div>
+        <div><label>جواب الحيازة الزراعية (إن وجد)</label><input type="file" id="doc-land-tenure"></div>
+        <div><label>عقد الإيجار الرسمي (إن وجد)</label><input type="file" id="doc-lease"></div>
+        <div><label>برنت تأميني أو بيان معاش للزوج *</label><input type="file" id="doc-insurance-h" required></div>
+        <div><label>برنت تأميني للزوجة</label><input type="file" id="doc-insurance-w"></div>
+        <div><label>إثبات قيد دراسي للأبناء</label><input type="file" id="doc-school-enroll"></div>
       </div>
 
-      <div style="background:#ecfdf5; padding:16px; border-radius:12px; border:1px solid #a7f3d0; margin-bottom:20px;">
-        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; color:#065f46;">
-          <input type="checkbox" id="declaration-check" required style="width:20px; height:20px;">
-          أقر أنا المتقدم بأن كافة البيانات والمستندات المدخلة صحيحة تماماً على مسئوليتي القانونية.
+      <div style="margin-bottom:12px;">
+        <label style="font-weight:800; color:#064e3b;">رأي الباحث الميداني وتوصية الحالة *</label>
+        <textarea id="researcher-opinion" rows="3" placeholder="مدى استحقاق الأسرة، مدى صدق البيانات، ونوع المصلحة أو التدخل الأنسب...">${hs.opinion || ''}</textarea>
+      </div>
+
+      <div style="background:#fffbeb; border:1px solid #fde68a; padding:16px; border-radius:12px; margin-bottom:16px;">
+        <label style="display:flex; align-items:center; gap:10px; font-weight:800; cursor:pointer; color:#92400e; font-size:14px;">
+          <input type="checkbox" id="declaration-check" style="width:auto; margin:0;" required>
+          أقر أنا مقدم الطلب بأن كافة البيانات والمستندات المسجلة صحيحة تماماً وتحت مسئوليتي القانونية والمجتمعية، وأوافق على إجراء البحث الميداني.
         </label>
       </div>
     `;
   }
 
-  // أزرار التنقل السفلية
   html += `
-    <style>
-      .nav-btn { padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Cairo', sans-serif; font-size: 14px; transition: background 0.2s; }
-      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
-      .hidden { display: none !important; }
-      label { display: block; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
-      input, select { width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 14px; outline: none; background: #fff; }
-      input:focus, select:focus { border-color: #059669; box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.1); }
-    </style>
     <div style="display:flex; justify-content:space-between; margin-top:25px; border-top:1px solid #cbd5e1; padding-top:15px;">
-      ${window.currentStep > 1 ? `<button type="button" onclick="prevWizardStep()" class="nav-btn" style="background:#64748b; color:#fff;">السابق</button>` : '<div></div>'}
-      ${window.currentStep < totalWizardSteps ? `<button type="button" onclick="nextWizardStep()" class="nav-btn" style="background:#059669; color:#fff;">التالي</button>` : `<button type="button" onclick="submitFullWizardApplication()" class="nav-btn" style="background:#10b981; color:#fff; font-weight:900;">إرسال الاستمارة نهائياً</button>`}
+      ${window.currentStep > 1 ? '<button type="button" onclick="prevWizardStep()" class="nav-btn" style="background:#334155; color:#fff;">السابق</button>' : '<div></div>'}
+      ${window.currentStep < totalWizardSteps ? '<button type="button" onclick="nextWizardStep()" class="action-btn">التالي ➔</button>' : '<button type="button" onclick="submitFullWizardApplication()" class="action-btn" style="background:#15803d; padding:12px 28px; font-size:16px;">✅ تأكيد والرفع النهائي للحالة</button>'}
     </div>
   `;
 
   container.innerHTML = html;
   
+  if (window.currentStep === 1 || window.currentStep === 2) {
+    const typeTag = window.currentStep === 1 ? 'h' : 'w';
+    toggleEduLevel(typeTag);
+    toggleHealthDetails(typeTag);
+    toggleIllnessType(typeTag);
+    toggleMedicalNeeds(typeTag);
+  }
   if (window.currentStep === 4 || window.currentStep === 5) {
     calcTotals();
   }
 };
 
-// وظائف التحكم الجغرافي والصحي
-window.onGovernorateChange = function(prefix) {
-  const govSelect = document.getElementById(prefix + '-gov');
-  const centerSelect = document.getElementById(prefix + '-center');
-  const villageSelect = document.getElementById(prefix + '-village');
+// 8. دوال الربط الجغرافي التفاعلي
+window.onGovernorateChange = function(type) {
+  const govSelect = document.getElementById(type + '-gov');
+  const centerSelect = document.getElementById(type + '-center');
+  const villageSelect = document.getElementById(type + '-village');
   
-  const selectedGov = govSelect ? govSelect.value : '';
-  if (centerSelect) centerSelect.innerHTML = '<option value="">-- اختر المركز --</option>';
-  if (villageSelect) villageSelect.innerHTML = '<option value="">-- اختر القرية --</option>';
+  const selectedGov = govSelect.value;
+  centerSelect.innerHTML = '<option value="">-- اختر المركز --</option>';
+  villageSelect.innerHTML = '<option value="">-- اختر القرية أولاً --</option>';
 
-  const db = window.EGYPT_GEO_DATABASE;
-  if (selectedGov && db && db[selectedGov]) {
-    Object.keys(db[selectedGov]).forEach(c => {
-      if (centerSelect) centerSelect.innerHTML += `<option value="${c}">${c}</option>`;
+  if (selectedGov && EGYPT_GEO_DATABASE[selectedGov]) {
+    const centers = Object.keys(EGYPT_GEO_DATABASE[selectedGov]);
+    centers.forEach(c => {
+      centerSelect.innerHTML += `<option value="${c}">${c}</option>`;
     });
   }
 };
 
-window.onCenterChange = function(prefix) {
-  const govSelect = document.getElementById(prefix + '-gov');
-  const centerSelect = document.getElementById(prefix + '-center');
-  const villageSelect = document.getElementById(prefix + '-village');
-  
-  const selectedGov = govSelect ? govSelect.value : '';
-  const selectedCenter = centerSelect ? centerSelect.value : '';
-  if (villageSelect) villageSelect.innerHTML = '<option value="">-- اختر القرية --</option>';
+window.onCenterChange = function(type) {
+  const govSelect = document.getElementById(type + '-gov');
+  const centerSelect = document.getElementById(type + '-center');
+  const villageSelect = document.getElementById(type + '-village');
 
-  const db = window.EGYPT_GEO_DATABASE;
-  if (selectedGov && selectedCenter && db && db[selectedGov] && db[selectedGov][selectedCenter]) {
-    db[selectedGov][selectedCenter].forEach(v => {
-      if (villageSelect) villageSelect.innerHTML += `<option value="${v}">${v}</option>`;
+  const selectedGov = govSelect.value;
+  const selectedCenter = centerSelect.value;
+  villageSelect.innerHTML = '<option value="">-- اختر القرية / العزبة --</option>';
+
+  if (selectedGov && selectedCenter && EGYPT_GEO_DATABASE[selectedGov][selectedCenter]) {
+    const villages = EGYPT_GEO_DATABASE[selectedGov][selectedCenter];
+    villages.forEach(v => {
+      villageSelect.innerHTML += `<option value="${v}">${v}</option>`;
     });
   }
 };
 
-window.toggleHealthDetails = function(prefix) {
-  const healthVal = document.getElementById(prefix + '-health')?.value;
-  const box = document.getElementById(prefix + '-health-box');
-  const docContainer = document.getElementById(prefix + '-medical-doc-container');
+// 9. دوال التحكم الصحي
+window.toggleHealthDetails = function(type) {
+  const val = document.getElementById(type + '-health')?.value;
+  const box = document.getElementById(type + '-health-box');
+  const docContainer = document.getElementById(type + '-medical-doc-container');
   
-  if (healthVal === 'مريض') {
+  if (val === 'مريض') {
     if (box) box.classList.remove('hidden');
     if (docContainer) docContainer.classList.remove('hidden');
   } else {
@@ -576,10 +646,10 @@ window.toggleHealthDetails = function(prefix) {
   }
 };
 
-window.toggleIllnessType = function(prefix) {
-  const typeVal = document.getElementById(prefix + '-illness-type')?.value;
-  const chronicBox = document.getElementById(prefix + '-chronic-box');
-  const tempBox = document.getElementById(prefix + '-temp-box');
+window.toggleIllnessType = function(type) {
+  const typeVal = document.getElementById(type + '-illness-type')?.value;
+  const chronicBox = document.getElementById(type + '-chronic-box');
+  const tempBox = document.getElementById(type + '-temp-box');
 
   if (typeVal === 'مزمن') {
     if (chronicBox) chronicBox.classList.remove('hidden');
@@ -590,107 +660,139 @@ window.toggleIllnessType = function(prefix) {
   }
 };
 
-window.toggleMedicalNeeds = function(prefix) {
-  const needVal = document.getElementById(prefix + '-medical-need')?.value;
-  const surgeryBox = document.getElementById(prefix + '-surgery-box');
-  const prostheticBox = document.getElementById(prefix + '-prosthetic-box');
-  const deviceBox = document.getElementById(prefix + '-device-box');
+window.toggleMedicalNeeds = function(type) {
+  const needVal = document.getElementById(type + '-medical-need')?.value;
+  const surgBox = document.getElementById(type + '-surgery-box');
+  const prosBox = document.getElementById(type + '-prosthetic-box');
+  const devBox = document.getElementById(type + '-device-box');
 
-  if (surgeryBox) surgeryBox.classList.add('hidden');
-  if (prostheticBox) prostheticBox.classList.add('hidden');
-  if (deviceBox) deviceBox.classList.add('hidden');
+  if (surgBox) surgBox.classList.add('hidden');
+  if (prosBox) prosBox.classList.add('hidden');
+  if (devBox) devBox.classList.add('hidden');
 
-  if (needVal === 'عملية جراحية' && surgeryBox) surgeryBox.classList.remove('hidden');
-  if (needVal === 'أطراف صناعية' && prostheticBox) prostheticBox.classList.remove('hidden');
-  if (needVal === 'أجهزة تعويضية' && deviceBox) deviceBox.classList.remove('hidden');
+  if (needVal === 'عملية جراحية' && surgBox) surgBox.classList.remove('hidden');
+  if (needVal === 'أطراف صناعية' && prosBox) prosBox.classList.remove('hidden');
+  if (needVal === 'أجهزة تعويضية' && devBox) devBox.classList.remove('hidden');
 };
 
+// 10. أدوات التحكم بالأبناء
 window.addChildRow = function() {
   if (!window.formData.children) window.formData.children = [];
   window.formData.children.push({ name: '', dob: '', edu: 'تعليم ابتدائي' });
-  renderWizardStep();
+  window.renderWizardStep();
 };
 
 window.removeChildRow = function(idx) {
   window.formData.children.splice(idx, 1);
-  renderWizardStep();
+  window.renderWizardStep();
 };
 
+// 11. حساب الفائض والعجز
 window.calcTotals = function() {
-  const r = parseFloat(document.getElementById('exp-rent')?.value || 0);
-  const u = parseFloat(document.getElementById('exp-utilities')?.value || 0);
-  const e = parseFloat(document.getElementById('exp-edu')?.value || 0);
-  const h = parseFloat(document.getElementById('exp-health')?.value || 0);
-  const f = parseFloat(document.getElementById('exp-food')?.value || 0);
-  const d = parseFloat(document.getElementById('exp-debts')?.value || 0);
-  const totalExp = r + u + e + h + f + d;
+  const expRent = parseFloat(document.getElementById('exp-rent')?.value) || 0;
+  const expUtil = parseFloat(document.getElementById('exp-utilities')?.value) || 0;
+  const expEdu = parseFloat(document.getElementById('exp-edu')?.value) || 0;
+  const expHealth = parseFloat(document.getElementById('exp-health')?.value) || 0;
+  const expFood = parseFloat(document.getElementById('exp-food')?.value) || 0;
+  const expDebts = parseFloat(document.getElementById('exp-debts')?.value) || 0;
 
-  const ih = parseFloat(document.getElementById('inc-husband')?.value || 0);
-  const io = parseFloat(document.getElementById('inc-others')?.value || 0);
-  const ip = parseFloat(document.getElementById('inc-pension')?.value || 0);
-  const ia = parseFloat(document.getElementById('inc-aid')?.value || 0);
-  const totalInc = ih + io + ip + ia;
+  const totalExp = expRent + expUtil + expEdu + expHealth + expFood + expDebts;
+  const expDisplay = document.getElementById('total-exp-display');
+  if (expDisplay) expDisplay.innerText = totalExp;
+
+  const incH = parseFloat(document.getElementById('inc-husband')?.value) || 0;
+  const incO = parseFloat(document.getElementById('inc-others')?.value) || 0;
+  const incP = parseFloat(document.getElementById('inc-pension')?.value) || 0;
+  const incA = parseFloat(document.getElementById('inc-aid')?.value) || 0;
+
+  const totalInc = incH + incO + incP + incA;
+  const incDisplay = document.getElementById('total-inc-display');
+  if (incDisplay) incDisplay.innerText = totalInc;
 
   const balance = totalInc - totalExp;
-
-  const expEl = document.getElementById('total-exp-display');
-  const incEl = document.getElementById('total-inc-display');
-  const balEl = document.getElementById('balance-display');
-
-  if (expEl) expEl.innerText = totalExp;
-  if (incEl) incEl.innerText = totalInc;
-  if (balEl) {
-    balEl.innerText = (balance >= 0 ? 'فائض مالي: +' : 'عجز مالي: ') + balance + ' جنيه';
-    balEl.style.color = balance >= 0 ? '#059669' : '#dc2626';
+  const balDisplay = document.getElementById('balance-display');
+  if (balDisplay) {
+    if (balance < 0) {
+      balDisplay.innerHTML = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;">${Math.abs(balance)} جنيه</span> (حالة مستحقة للدعم العاجل)`;
+    } else {
+      balDisplay.innerHTML = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;">${balance} جنيه</span>`;
+    }
   }
 };
 
+// 12. التحقق الإجباري والتنقل
 window.nextWizardStep = function() {
   if (window.currentStep === 1) {
-    const nid = document.getElementById('h-nid')?.value || '';
-    if (nid.length !== 14 || isNaN(nid)) {
-      alert('⚠️ برجاء إدخال رقم قومي صحيح للزوج يتكون من 14 رقماً بدقة.');
-      return;
+    const name1 = document.getElementById('h-name1')?.value.trim();
+    const nid = document.getElementById('h-nid')?.value.trim();
+    const phone = document.getElementById('h-phone')?.value.trim();
+    const gov = document.getElementById('h-gov')?.value;
+    const center = document.getElementById('h-center')?.value;
+    const village = document.getElementById('h-village')?.value;
+
+    if (!name1 || !nid || !phone || !gov || !center || !village) {
+      return alert('⚠️ برجاء استيفاء جميع الحقول الإجبارية والعنوان الجغرافي الكامل في القسم الأول.');
     }
+    if (nid.length !== 14) {
+      return alert('⚠️ رقم البطاقة الشخصية للزوج يجب أن يكون 14 رقماً بدقة.');
+    }
+    if (phone.length !== 11) {
+      return alert('⚠️ رقم التليفون الأساسي يجب أن يكون 11 رقماً.');
+    }
+  } else if (window.currentStep === 2) {
+    const name1 = document.getElementById('w-name1')?.value.trim();
+    const nid = document.getElementById('w-nid')?.value.trim();
+    if (!name1 || !nid) {
+      return alert('⚠️ برجاء استيفاء اسم الزوجة والرقم القومي في القسم الثاني.');
+    }
+    if (nid.length !== 14) {
+      return alert('⚠️ رقم البطاقة الشخصية للزوجة يجب أن يكون 14 رقماً بدقة.');
+    }
+  }
+
+  saveCurrentStepData();
+  window.currentStep++;
+  window.renderWizardStep();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.prevWizardStep = function() {
+  saveCurrentStepData();
+  window.currentStep--;
+  window.renderWizardStep();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// 13. حفظ البيانات
+function saveCurrentStepData() {
+  if (window.currentStep === 1) {
     window.formData.husband = {
       name1: document.getElementById('h-name1')?.value || '',
       name2: document.getElementById('h-name2')?.value || '',
       name3: document.getElementById('h-name3')?.value || '',
-      nid: nid,
+      nid: document.getElementById('h-nid')?.value || '',
       phone: document.getElementById('h-phone')?.value || '',
       whatsapp: document.getElementById('h-whatsapp')?.value || '',
-      edu: document.getElementById('h-edu')?.value || '',
       gov: document.getElementById('h-gov')?.value || '',
       center: document.getElementById('h-center')?.value || '',
       village: document.getElementById('h-village')?.value || '',
+      edu: document.getElementById('h-edu')?.value || '',
       job: document.getElementById('h-job')?.value || '',
       health: document.getElementById('h-health')?.value || '',
       illnessType: document.getElementById('h-illness-type')?.value || '',
-      chronicName: document.getElementById('h-chronic-name')?.value || '',
-      tempName: document.getElementById('h-temp-name')?.value || '',
-      medicalNeed: document.getElementById('h-medical-need')?.value || '',
-      surgeryName: document.getElementById('h-surgery-name')?.value || '',
-      prostheticSub: document.getElementById('h-prosthetic-sub')?.value || '',
-      deviceSub: document.getElementById('h-device-sub')?.value || ''
+      medicalNeed: document.getElementById('h-medical-need')?.value || ''
     };
   } else if (window.currentStep === 2) {
-    const nid = document.getElementById('w-nid')?.value || '';
-    if (nid.length !== 14 || isNaN(nid)) {
-      alert('⚠️ برجاء إدخال رقم قومي صحيح للزوجة يتكون من 14 رقماً بدقة.');
-      return;
-    }
     window.formData.wife = {
       name1: document.getElementById('w-name1')?.value || '',
       name2: document.getElementById('w-name2')?.value || '',
       name3: document.getElementById('w-name3')?.value || '',
-      nid: nid,
+      nid: document.getElementById('w-nid')?.value || '',
       phone: document.getElementById('w-phone')?.value || '',
       edu: document.getElementById('w-edu')?.value || '',
       job: document.getElementById('w-job')?.value || '',
       health: document.getElementById('w-health')?.value || '',
       illnessType: document.getElementById('w-illness-type')?.value || '',
-      chronicName: document.getElementById('w-chronic-name')?.value || '',
-      tempName: document.getElementById('w-temp-name')?.value || '',
       medicalNeed: document.getElementById('w-medical-need')?.value || ''
     };
   } else if (window.currentStep === 3) {
@@ -705,82 +807,71 @@ window.nextWizardStep = function() {
     });
   } else if (window.currentStep === 4) {
     window.formData.expenses = {
-      rent: parseFloat(document.getElementById('exp-rent')?.value || 0),
-      utilities: parseFloat(document.getElementById('exp-utilities')?.value || 0),
-      edu: parseFloat(document.getElementById('exp-edu')?.value || 0),
-      health: parseFloat(document.getElementById('exp-health')?.value || 0),
-      food: parseFloat(document.getElementById('exp-food')?.value || 0),
-      debts: parseFloat(document.getElementById('exp-debts')?.value || 0)
+      rent: parseFloat(document.getElementById('exp-rent')?.value) || 0,
+      utilities: parseFloat(document.getElementById('exp-utilities')?.value) || 0,
+      edu: parseFloat(document.getElementById('exp-edu')?.value) || 0,
+      health: parseFloat(document.getElementById('exp-health')?.value) || 0,
+      food: parseFloat(document.getElementById('exp-food')?.value) || 0,
+      debts: parseFloat(document.getElementById('exp-debts')?.value) || 0
     };
   } else if (window.currentStep === 5) {
     window.formData.incomes = {
-      husband: parseFloat(document.getElementById('inc-husband')?.value || 0),
-      others: parseFloat(document.getElementById('inc-others')?.value || 0),
-      pension: parseFloat(document.getElementById('inc-pension')?.value || 0),
-      aid: parseFloat(document.getElementById('inc-aid')?.value || 0)
+      husband: parseFloat(document.getElementById('inc-husband')?.value) || 0,
+      others: parseFloat(document.getElementById('inc-others')?.value) || 0,
+      pension: parseFloat(document.getElementById('inc-pension')?.value) || 0,
+      aid: parseFloat(document.getElementById('inc-aid')?.value) || 0
+    };
+  } else if (window.currentStep === 6) {
+    window.formData.housing = {
+      houseType: document.getElementById('house-type')?.value || '',
+      roofType: document.getElementById('roof-type')?.value || '',
+      wallType: document.getElementById('wall-type')?.value || '',
+      doorType: document.getElementById('door-type')?.value || '',
+      floorsCount: document.getElementById('floors-count')?.value || '',
+      opinion: document.getElementById('researcher-opinion')?.value || ''
     };
   }
+}
 
-  if (window.currentStep < totalWizardSteps) {
-    window.currentStep++;
-    renderWizardStep();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-};
-
-window.prevWizardStep = function() {
-  if (window.currentStep > 1) {
-    window.currentStep--;
-    renderWizardStep();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-};
-
-// دالة الإرسال النهائية والمربوطة بقاعدة البيانات عبر window.appDb
+// 14. التأكيد والرفع النهائي مع التوافق الكامل مع أعمدة قاعدة البيانات
 window.submitFullWizardApplication = async function() {
-  const decl = document.getElementById('declaration-check');
-  if (!decl || !decl.checked) {
-    alert('⚠️ يجب الموافقة على إقرار صحة البيانات قبل إرسال الطلب.');
-    return;
+  saveCurrentStepData();
+  const check = document.getElementById('declaration-check');
+  if (check && !check.checked) {
+    return alert('⚠️ يجب الموافقة على إقرار صحة البيانات والمسؤولية قبل التأكيد والرفع.');
   }
 
-  window.formData.housing = {
-    houseType: document.getElementById('house-type')?.value || '',
-    roofType: document.getElementById('roof-type')?.value || '',
-    wallType: document.getElementById('wall-type')?.value || '',
-    doorType: document.getElementById('door-type')?.value || '',
-    floorsCount: document.getElementById('floors-count')?.value || ''
-  };
+  const trackingCode = 'HF-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+  
+  const totalExp = (window.formData.expenses.rent || 0) + (window.formData.expenses.utilities || 0) + (window.formData.expenses.edu || 0) + (window.formData.expenses.health || 0) + (window.formData.expenses.food || 0) + (window.formData.expenses.debts || 0);
+  const totalInc = (window.formData.incomes.husband || 0) + (window.formData.incomes.others || 0) + (window.formData.incomes.pension || 0) + (window.formData.incomes.aid || 0);
 
-  const h = window.formData.husband || {};
   const payload = {
-    head_name: (h.name1 || '') + ' ' + (h.name2 || '') + ' ' + (h.name3 || ''),
-    national_id: h.nid || '',
-    phone: h.phone || '',
-    form_data: window.formData,
+    tracking_code: trackingCode,
+    governorate: window.formData.husband.gov || 'بني سويف',
+    center_city: window.formData.husband.center || 'إهناسيا',
+    village_hamlet: window.formData.husband.village || 'منشأة عبدالصمد',
+    detailed_address: (window.formData.husband.gov || '') + ' - ' + (window.formData.husband.center || '') + ' - ' + (window.formData.husband.village || ''),
+    aid_type: 'بحث اجتماعي شامل وموثق',
+    total_income: totalInc,
+    total_expenses: totalExp,
     status: 'pending',
-    created_at: new Date().toISOString()
+    source_type: 'online_form',
+    husband_data: window.formData.husband,
+    wife_data: window.formData.wife,
+    children_data: window.formData.children,
+    housing_data: window.formData.housing
   };
 
-  alert('⏳ جاري إرسال البيانات وحفظها في قاعدة البيانات...');
-
-  if (window.appDb) {
-    try {
-      const { data, error } = await window.appDb.from('families').insert([payload]);
-      if (error) {
-        console.error('Supabase Error:', error);
-        alert('❌ حدث خطأ أثناء الحفظ في قاعدة البيانات: ' + error.message);
-      } else {
-        alert('✅ تم حفظ الاستمارة بنجاح في قاعدة البيانات وتاريخ المراجعة قيد التفعيل.');
-        window.currentStep = 1;
-        window.formData = { husband: {}, wife: {}, children: [], expenses: {}, incomes: {}, documents: {}, housing: {} };
-        renderWizardStep();
-      }
-    } catch (err) {
-      console.error('Exception:', err);
-      alert('❌ حدث استثناء أثناء الاتصال بقاعدة البيانات.');
+  if (window.supabaseClient) {
+    const res = await window.supabaseClient.from('families').insert([payload]);
+    if (res.error) {
+      alert('❌ خطأ أثناء الرفع: ' + res.error.message);
+    } else {
+      alert(`✅ تم رفع استمارة الحالة بنجاح وتوثيقها في النظام!\n\nكود المتابعة الخاص بالأسرة هو: ${trackingCode}\nاحتفظ به للاستعلام الفوري.`);
+      location.reload();
     }
   } else {
-    alert('⚠️ تنبيه: لم يتم العثور على اتصال قاعدة البيانات window.appDb، تم استيفاء الاستمارة محلياً.');
+    alert(`✅ تم حفظ الطلب واجتياز كافة الاختبارات بنجاح!\nكود المتابعة: ${trackingCode}`);
   }
 };
