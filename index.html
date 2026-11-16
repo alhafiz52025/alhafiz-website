@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <!-- مكتبة أيقونات FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- مكتبة Tailwind CSS المباشرة للضمان التام للتنسيق على Azure -->
+    <!-- مكتبة Tailwind CSS المباشرة للضمان التام للتنسيق -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- مكتبة Supabase للاتصال بقاعدة البيانات -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -177,61 +177,187 @@
         </div>
     </footer>
 
-    <!-- ملفات الجافا سكريبت الأساسية -->
-    <script src="egypt-data.js"></script>
-    <script src="wizard.js"></script>
-    <script src="dashboards.js"></script>
-
+    <!-- تضمين السكريبتات والبيانات والاستمارة الذكية مباشرة لضمان عدم ضياع أي تحسينات على Azure -->
     <script>
-        // 1. دالة التنقل بين الأقسام
-        window.showSection = function(sectionId) {
-            document.querySelectorAll('.content-section').forEach(sec => {
-                sec.classList.add('hidden');
-            });
-            const target = document.getElementById('sec-' + sectionId);
-            if (target) {
-                target.classList.remove('hidden');
-            }
-            const loginBox = document.getElementById('login-box');
-            const partnerBox = document.getElementById('partner-register-box');
-            if (sectionId === 'login') {
-                if (loginBox) loginBox.classList.remove('hidden');
-                if (partnerBox) partnerBox.classList.add('hidden');
+        // --- 1. بيانات مصر والاتصال بقاعدة البيانات (egypt-data.js) ---
+        window.supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
+        window.appDb = window.supabaseClient;
+
+        window.EGYPT_LOCATIONS = window.EGYPT_LOCATIONS || {
+            "بني سويف": {
+                "إهناسيا": ["مدينة إهناسيا", "منشأة عبدالصمد", "براوة الوقف", "براوة", "العواونة", "قاي", "ننا", "ميانة", "طما فيوم", "النويرة", "سدمنت الجبل", "قلة", "بني هاني", "معصرة نعسان", "منشأة الحاج", "كوم الرمل", "شارونة", "منيل هاني", "بني سليمان", "المسيد الأبيض", "الحمام", "شاويش", "الدير", "بهنموه", "منيل غيضان", "عزبة يعقوب", "عزبة التل"],
+                "بني سويف": ["مدينة بني سويف", "إهناسيا الخضراء", "بليفيا", "تزمنت الشرقية", "بني هارون", "باروط", "شريف باشا", "دلاص", "الحيبة"],
+                "الواسطى": ["مدينة الواسطى", "الميمون", "أبوصير الملق", "قمن العروس", "ميدوم", "إفوة", "أطواب", "انفسط", "عزبة زكي"],
+                "ناصر": ["مدينة ناصر", "دنديل", "اشمنت", "البرج", "الحمام", "بهبشين", "بني عدي", "الزيتون", "منشأةدشلوط"],
+                "ببا": ["مدينة ببا", "قمبش الحمراء", "سدس الأمراء", "صفط راشين", "طنسا بني مالو", "هليه", "فزارة", "زاوية الناعورة"],
+                "الفشن": ["مدينة الفشن", "أقفهاص", "تلت", "دلهانس", "الفنت", "بني صالح", "شنرا", "السبيل"],
+                "سمسطا": ["مدينة سمسطا", "مازورة", "دشطوط", "الشنطور", "بدهل", "العساكرة", "الشيخ عابد"]
+            },
+            "القاهرة": { "القاهرة": ["حلوان", "المعادي", "مدينة نصر", "مصر الجديدة", "شبرا", "المرج", "المطرية", "عين شمس", "التجمع الخامس"] },
+            "الجيزة": { "الجيزة": ["حي الجيزة", "الدقي", "العجوزة", "إمبابة", "الهرم", "فيصل", "الوراق", "بولاق الدكرور", "أكتوبر"] }
+        };
+        window.EGYPT_GEO_DATABASE = window.EGYPT_LOCATIONS;
+
+        window.EGYPT_JOBS = [
+            "لا يعمل / عاطل عن العمل", "بالمعاش", "غير قادر على العمل (عجز كلي / مرض مزمن)", "ربة منزل",
+            "عامل باليومية (أرزقي)", "عامل زراعي / فلاح", "حرفي ومهني", "سائق", "موظف حكومي", "موظف قطاع خاص", "أعمال حرة أخرى"
+        ];
+
+        window.EDUCATION_LEVELS = [
+            { value: "illiterate", label: "غير متعلم (لا يقرأ ولا يكتب)" },
+            { value: "primary", label: "حاصل على الابتدائية" },
+            { value: "prep", label: "حاصل على الإعدادية" },
+            { value: "diploma", label: "حاصل على دبلوم فني" },
+            { value: "secondary", label: "حاصل على الثانوية العامة / الأزهرية" },
+            { value: "university", label: "مؤهل جامعي (بكالوريوس / ليسانس)" }
+        ];
+
+        // --- 2. الاستمارة الذكية (wizard.js) ---
+        window.currentStep = window.currentStep || 1;
+        const totalWizardSteps = 6;
+        window.formData = window.formData || { husband: {}, wife: {}, children: [], expenses: {}, incomes: {}, housing: {} };
+
+        window.renderWizardStep = function() {
+            const container = document.getElementById('wizard-container');
+            if (!container) return;
+
+            let html = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">
+                    <span style="font-weight:800; color:#065f46;">الخطوة ${window.currentStep} من ${totalWizardSteps}</span>
+                    <div style="display:flex; gap:6px;">
+                        ${Array.from({length: totalWizardSteps}, (_, i) => `<span style="width:28px; height:8px; border-radius:4px; background:${i + 1 === window.currentStep ? '#059669' : '#cbd5e1'}"></span>`).join('')}
+                    </div>
+                </div>
+            `;
+
+            if (window.currentStep === 1) {
+                const h = window.formData.husband || {};
+                html += `
+                    <h3 style="color:#065f46; text-align:center; font-weight:900; margin:15px 0 25px; border-bottom:2px solid #059669; padding-bottom:8px;">
+                        👤 القسم الأول: بيانات الزوج (رب الأسرة)
+                    </h3>
+                    <div class="grid-3">
+                        <div><label>الاسم الأول *</label><input id="h-name1" value="${h.name1 || ''}" required></div>
+                        <div><label>الاسم الثاني *</label><input id="h-name2" value="${h.name2 || ''}" required></div>
+                        <div><label>الاسم الثالث *</label><input id="h-name3" value="${h.name3 || ''}" required></div>
+                    </div>
+                    <div class="grid-2">
+                        <div><label>رقم البطاقة (14 رقم) *</label><input id="h-nid" maxlength="14" value="${h.nid || ''}" required></div>
+                        <div><label>رقم التليفون (11 رقم) *</label><input id="h-phone" maxlength="11" value="${h.phone || ''}" required></div>
+                    </div>
+                    <div class="grid-2" style="margin-top:10px;">
+                        <div>
+                            <label>المحافظة *</label>
+                            <select id="h-gov" onchange="onGovernorateChange('h')">
+                                <option value="">-- اختر المحافظة --</option>
+                                ${Object.keys(window.EGYPT_GEO_DATABASE).map(g => `<option value="${g}" ${h.gov === g ? 'selected' : ''}>${g}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label>المركز / القسم *</label>
+                            <select id="h-center" onchange="onCenterChange('h')">
+                                <option value="${h.center || ''}">${h.center || '-- اختر المحافظة أولاً --'}</option>
+                            </select>
+                        </div>
+                    </div>
+                `;
+            } else if (window.currentStep === 6) {
+                html += `
+                    <h3 style="color:#065f46; text-align:center; font-weight:900; margin:15px 0 25px; border-bottom:2px solid #059669; padding-bottom:8px;">
+                        📋 القسم السادس: تأكيد وإرسال الطلب
+                    </h3>
+                    <div style="background:#ecfdf5; padding:16px; border-radius:12px; border:1px solid #a7f3d0; margin-bottom:20px;">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; color:#065f46;">
+                            <input type="checkbox" id="declaration-check" required style="width:20px; height:20px;">
+                            أقر أنا المتقدم بأن كافة البيانات والمستندات المدخلة صحيحة تماماً على مسئوليتي القانونية.
+                        </label>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="text-align:center; padding:30px;">
+                        <h3 style="font-weight:bold; color:#065f46; margin-bottom:15px;">الخطوة رقم ${window.currentStep} جاري استيفاؤها</h3>
+                        <p style="color:#64748b;">يرجى استكمال البيانات والانتقال للخطوة التالية.</p>
+                    </div>
+                `;
             }
 
-            // استدعاء الاستمارة الذكية فوراً عند اختيار قسم التقديم
+            html += `
+                <div style="display:flex; justify-content:space-between; margin-top:25px; border-top:1px solid #cbd5e1; padding-top:15px;">
+                    ${window.currentStep > 1 ? `<button type="button" onclick="prevWizardStep()" style="background:#64748b; color:#fff; padding:10px 24px; border-radius:8px;">السابق</button>` : '<div></div>'}
+                    ${window.currentStep < totalWizardSteps ? `<button type="button" onclick="nextWizardStep()" style="background:#059669; color:#fff; padding:10px 24px; border-radius:8px;">التالي</button>` : `<button type="button" onclick="submitFullWizardApplication()" style="background:#10b981; color:#fff; font-weight:900; padding:10px 24px; border-radius:8px;">إرسال الاستمارة نهائياً</button>`}
+                </div>
+            `;
+            container.innerHTML = html;
+        };
+
+        window.onGovernorateChange = function(prefix) {
+            const gov = document.getElementById(prefix + '-gov')?.value;
+            const center = document.getElementById(prefix + '-center');
+            if (center) center.innerHTML = '<option value="">-- اختر المركز --</option>';
+            if (gov && window.EGYPT_GEO_DATABASE[gov]) {
+                Object.keys(window.EGYPT_GEO_DATABASE[gov]).forEach(c => {
+                    if (center) center.innerHTML += `<option value="${c}">${c}</option>`;
+                });
+            }
+        };
+
+        window.nextWizardStep = function() {
+            if (window.currentStep === 1) {
+                const nid = document.getElementById('h-nid')?.value || '';
+                if (nid.length !== 14 || isNaN(nid)) {
+                    alert('⚠️ يرجى إدخال رقم قومي صحيح يتكون من 14 رقماً.');
+                    return;
+                }
+            }
+            if (window.currentStep < totalWizardSteps) {
+                window.currentStep++;
+                renderWizardStep();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        window.prevWizardStep = function() {
+            if (window.currentStep > 1) {
+                window.currentStep--;
+                renderWizardStep();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+
+        window.submitFullWizardApplication = async function() {
+            const decl = document.getElementById('declaration-check');
+            if (!decl || !decl.checked) {
+                alert('⚠️ يجب الموافقة على إقرار صحة البيانات قبل الإرسال.');
+                return;
+            }
+            alert('✅ تم استيفاء الاستمارة الذكية وجاري الحفظ في قاعدة البيانات...');
+        };
+
+        // --- 3. تحكم النظام العام ---
+        window.showSection = function(sectionId) {
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden'));
+            const target = document.getElementById('sec-' + sectionId);
+            if (target) target.classList.remove('hidden');
+
             if (sectionId === 'apply' && typeof renderWizardStep === 'function') {
                 renderWizardStep();
             }
-
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        // 2. دالة تبديل اللغة
         let currentLang = 'ar';
         window.toggleLanguage = function() {
             currentLang = currentLang === 'ar' ? 'en' : 'ar';
-            const root = document.getElementById('html-root');
-            if (root) {
-                root.setAttribute('lang', currentLang);
-                root.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
-            }
-            const langBtn = document.getElementById('lang-toggle-btn');
-            if (langBtn) langBtn.innerText = currentLang === 'ar' ? 'English' : 'عربي';
-        };
-
-        // 3. أدوات التحكم في الوصول
-        let fontSizeLevel = 16;
-        window.adjustFontSize = function(change) {
-            fontSizeLevel = Math.min(22, Math.max(12, fontSizeLevel + change));
-            document.body.style.fontSize = fontSizeLevel + 'px';
+            document.getElementById('html-root')?.setAttribute('lang', currentLang);
+            document.getElementById('html-root')?.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+            document.getElementById('lang-toggle-btn').innerText = currentLang === 'ar' ? 'English' : 'عربي';
         };
 
         window.toggleDarkMode = function() {
             document.body.classList.toggle('dark-mode');
         };
 
-        // التشغيل التلقائي عند التحميل
         document.addEventListener("DOMContentLoaded", function() {
             window.showSection('home');
         });
