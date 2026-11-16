@@ -8,12 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <!-- مكتبة أيقونات FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- مكتبة Tailwind CSS المباشرة -->
+    <!-- مكتبة Tailwind CSS المباشرة للضمان التام للتنسيق على Azure -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- مكتبة Supabase للاتصال بقاعدة البيانات -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* التنسيقات العامة والمضمونة 100% لتجنب أي مشاكل في استدعاء الملفات الخارجية على Azure */
         * { font-family: 'Cairo', sans-serif; box-sizing: border-box; }
         body { background-color: #f8fafc; color: #1e293b; margin: 0; padding: 0; direction: rtl; text-align: right; }
         .dark-mode { background-color: #0f172a !important; color: #f1f5f9 !important; }
@@ -52,7 +51,7 @@
     <nav class="bg-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3 cursor-pointer" onclick="showSection('home')">
-                <div class="w-12 h-12 bg-emerald-700 text-white flex items-center justify-center font-black rounded-full border-2 border-emerald-600 shadow">ح</div>
+                <div class="w-12 h-12 bg-emerald-700 text-white flex items-center justify-center font-black rounded-full border-2 border-emerald-600 shadow text-lg">ح</div>
                 <div>
                     <h1 class="font-black text-lg text-emerald-900 leading-tight">مؤسسة الحافظ</h1>
                     <p class="text-xs text-slate-500">للتنمية والخدمات - إهناسيا بني سويف</p>
