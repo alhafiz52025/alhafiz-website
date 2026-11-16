@@ -146,7 +146,7 @@
         </div>
     </footer>
 
-    <!-- ملفات الجافا سكريبت الأساسية (بدون config.js) -->
+    <!-- ملفات الجافا سكريبت الأساسية (بدون config.js القديم تماماً) -->
     <script src="egypt-data.js"></script>
     <script src="wizard.js"></script>
     <script src="dashboards.js"></script>
@@ -168,9 +168,9 @@
                 if (partnerBox) partnerBox.classList.add('hidden');
             }
 
-            // استدعاء الاستمارة الذكية عند اختيار قسم التقديم
+            // استدعاء الاستمارة الذكية فوراً عند اختيار قسم التقديم
             if (sectionId === 'apply' && typeof renderWizardStep === 'function') {
-                renderWizardStep(0);
+                renderWizardStep();
             }
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
