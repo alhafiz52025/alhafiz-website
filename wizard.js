@@ -132,7 +132,7 @@ window.renderWizardStep = function() {
             <label>المحافظة *</label>
             <select id="h-gov" onchange="onGovernorateChange('h')">
               <option value="">-- اختر المحافظة --</option>
-              ${Object.keys(EGYPT_GEO_DATABASE).map(g => `<option value="${g}" ${h.gov === g ? 'selected' : ''}>${g}</option>`).join('')}
+              ${window.EGYPT_GEO_DATABASE ? Object.keys(window.EGYPT_GEO_DATABASE).map(g => `<option value="${g}" ${h.gov === g ? 'selected' : ''}>${g}</option>`).join('') : ''}
             </select>
           </div>
           <div>
@@ -533,13 +533,14 @@ window.onGovernorateChange = function(prefix) {
   const centerSelect = document.getElementById(prefix + '-center');
   const villageSelect = document.getElementById(prefix + '-village');
   
-  const selectedGov = govSelect.value;
-  centerSelect.innerHTML = '<option value="">-- اختر المركز --</option>';
-  villageSelect.innerHTML = '<option value="">-- اختر القرية --</option>';
+  const selectedGov = govSelect ? govSelect.value : '';
+  if (centerSelect) centerSelect.innerHTML = '<option value="">-- اختر المركز --</option>';
+  if (villageSelect) villageSelect.innerHTML = '<option value="">-- اختر القرية --</option>';
 
-  if (selectedGov && EGYPT_GEO_DATABASE[selectedGov]) {
-    Object.keys(EGYPT_GEO_DATABASE[selectedGov]).forEach(c => {
-      centerSelect.innerHTML += `<option value="${c}">${c}</option>`;
+  const db = window.EGYPT_GEO_DATABASE;
+  if (selectedGov && db && db[selectedGov]) {
+    Object.keys(db[selectedGov]).forEach(c => {
+      if (centerSelect) centerSelect.innerHTML += `<option value="${c}">${c}</option>`;
     });
   }
 };
@@ -549,58 +550,59 @@ window.onCenterChange = function(prefix) {
   const centerSelect = document.getElementById(prefix + '-center');
   const villageSelect = document.getElementById(prefix + '-village');
   
-  const selectedGov = govSelect.value;
-  const selectedCenter = centerSelect.value;
-  villageSelect.innerHTML = '<option value="">-- اختر القرية --</option>';
+  const selectedGov = govSelect ? govSelect.value : '';
+  const selectedCenter = centerSelect ? centerSelect.value : '';
+  if (villageSelect) villageSelect.innerHTML = '<option value="">-- اختر القرية --</option>';
 
-  if (selectedGov && selectedCenter && EGYPT_GEO_DATABASE[selectedGov][selectedCenter]) {
-    EGYPT_GEO_DATABASE[selectedGov][selectedCenter].forEach(v => {
-      villageSelect.innerHTML += `<option value="${v}">${v}</option>`;
+  const db = window.EGYPT_GEO_DATABASE;
+  if (selectedGov && selectedCenter && db && db[selectedGov] && db[selectedGov][selectedCenter]) {
+    db[selectedGov][selectedCenter].forEach(v => {
+      if (villageSelect) villageSelect.innerHTML += `<option value="${v}">${v}</option>`;
     });
   }
 };
 
 window.toggleHealthDetails = function(prefix) {
-  const healthVal = document.getElementById(prefix + '-health').value;
+  const healthVal = document.getElementById(prefix + '-health')?.value;
   const box = document.getElementById(prefix + '-health-box');
   const docContainer = document.getElementById(prefix + '-medical-doc-container');
   
   if (healthVal === 'مريض') {
-    box.classList.remove('hidden');
-    docContainer.classList.remove('hidden');
+    if (box) box.classList.remove('hidden');
+    if (docContainer) docContainer.classList.remove('hidden');
   } else {
-    box.classList.add('hidden');
-    docContainer.classList.add('hidden');
+    if (box) box.classList.add('hidden');
+    if (docContainer) docContainer.classList.add('hidden');
   }
 };
 
 window.toggleIllnessType = function(prefix) {
-  const typeVal = document.getElementById(prefix + '-illness-type').value;
+  const typeVal = document.getElementById(prefix + '-illness-type')?.value;
   const chronicBox = document.getElementById(prefix + '-chronic-box');
   const tempBox = document.getElementById(prefix + '-temp-box');
 
   if (typeVal === 'مزمن') {
-    chronicBox.classList.remove('hidden');
-    tempBox.classList.add('hidden');
+    if (chronicBox) chronicBox.classList.remove('hidden');
+    if (tempBox) tempBox.classList.add('hidden');
   } else {
-    chronicBox.classList.add('hidden');
-    tempBox.classList.remove('hidden');
+    if (chronicBox) chronicBox.classList.add('hidden');
+    if (tempBox) tempBox.classList.remove('hidden');
   }
 };
 
 window.toggleMedicalNeeds = function(prefix) {
-  const needVal = document.getElementById(prefix + '-medical-need').value;
+  const needVal = document.getElementById(prefix + '-medical-need')?.value;
   const surgeryBox = document.getElementById(prefix + '-surgery-box');
   const prostheticBox = document.getElementById(prefix + '-prosthetic-box');
   const deviceBox = document.getElementById(prefix + '-device-box');
 
-  surgeryBox.classList.add('hidden');
-  prostheticBox.classList.add('hidden');
-  deviceBox.classList.add('hidden');
+  if (surgeryBox) surgeryBox.classList.add('hidden');
+  if (prostheticBox) prostheticBox.classList.add('hidden');
+  if (deviceBox) deviceBox.classList.add('hidden');
 
-  if (needVal === 'عملية جراحية') surgeryBox.classList.remove('hidden');
-  if (needVal === 'أطراف صناعية') prostheticBox.classList.remove('hidden');
-  if (needVal === 'أجهزة تعويضية') deviceBox.classList.remove('hidden');
+  if (needVal === 'عملية جراحية' && surgeryBox) surgeryBox.classList.remove('hidden');
+  if (needVal === 'أطراف صناعية' && prostheticBox) prostheticBox.classList.remove('hidden');
+  if (needVal === 'أجهزة تعويضية' && deviceBox) deviceBox.classList.remove('hidden');
 };
 
 window.addChildRow = function() {
@@ -645,77 +647,77 @@ window.calcTotals = function() {
 
 window.nextWizardStep = function() {
   if (window.currentStep === 1) {
-    const nid = document.getElementById('h-nid').value;
+    const nid = document.getElementById('h-nid')?.value || '';
     if (nid.length !== 14 || isNaN(nid)) {
       alert('⚠️ برجاء إدخال رقم قومي صحيح للزوج يتكون من 14 رقماً بدقة.');
       return;
     }
     window.formData.husband = {
-      name1: document.getElementById('h-name1').value,
-      name2: document.getElementById('h-name2').value,
-      name3: document.getElementById('h-name3').value,
+      name1: document.getElementById('h-name1')?.value || '',
+      name2: document.getElementById('h-name2')?.value || '',
+      name3: document.getElementById('h-name3')?.value || '',
       nid: nid,
-      phone: document.getElementById('h-phone').value,
-      whatsapp: document.getElementById('h-whatsapp').value,
-      edu: document.getElementById('h-edu').value,
-      gov: document.getElementById('h-gov').value,
-      center: document.getElementById('h-center').value,
-      village: document.getElementById('h-village').value,
-      job: document.getElementById('h-job').value,
-      health: document.getElementById('h-health').value,
-      illnessType: document.getElementById('h-illness-type')?.value,
-      chronicName: document.getElementById('h-chronic-name')?.value,
-      tempName: document.getElementById('h-temp-name')?.value,
-      medicalNeed: document.getElementById('h-medical-need')?.value,
-      surgeryName: document.getElementById('h-surgery-name')?.value,
-      prostheticSub: document.getElementById('h-prosthetic-sub')?.value,
-      deviceSub: document.getElementById('h-device-sub')?.value
+      phone: document.getElementById('h-phone')?.value || '',
+      whatsapp: document.getElementById('h-whatsapp')?.value || '',
+      edu: document.getElementById('h-edu')?.value || '',
+      gov: document.getElementById('h-gov')?.value || '',
+      center: document.getElementById('h-center')?.value || '',
+      village: document.getElementById('h-village')?.value || '',
+      job: document.getElementById('h-job')?.value || '',
+      health: document.getElementById('h-health')?.value || '',
+      illnessType: document.getElementById('h-illness-type')?.value || '',
+      chronicName: document.getElementById('h-chronic-name')?.value || '',
+      tempName: document.getElementById('h-temp-name')?.value || '',
+      medicalNeed: document.getElementById('h-medical-need')?.value || '',
+      surgeryName: document.getElementById('h-surgery-name')?.value || '',
+      prostheticSub: document.getElementById('h-prosthetic-sub')?.value || '',
+      deviceSub: document.getElementById('h-device-sub')?.value || ''
     };
   } else if (window.currentStep === 2) {
-    const nid = document.getElementById('w-nid').value;
+    const nid = document.getElementById('w-nid')?.value || '';
     if (nid.length !== 14 || isNaN(nid)) {
       alert('⚠️ برجاء إدخال رقم قومي صحيح للزوجة يتكون من 14 رقماً بدقة.');
       return;
     }
     window.formData.wife = {
-      name1: document.getElementById('w-name1').value,
-      name2: document.getElementById('w-name2').value,
-      name3: document.getElementById('w-name3').value,
+      name1: document.getElementById('w-name1')?.value || '',
+      name2: document.getElementById('w-name2')?.value || '',
+      name3: document.getElementById('w-name3')?.value || '',
       nid: nid,
-      phone: document.getElementById('w-phone').value,
-      edu: document.getElementById('w-edu').value,
-      job: document.getElementById('w-job').value,
-      health: document.getElementById('w-health').value,
-      illnessType: document.getElementById('w-illness-type')?.value,
-      chronicName: document.getElementById('w-chronic-name')?.value,
-      tempName: document.getElementById('w-temp-name')?.value,
-      medicalNeed: document.getElementById('w-medical-need')?.value
+      phone: document.getElementById('w-phone')?.value || '',
+      edu: document.getElementById('w-edu')?.value || '',
+      job: document.getElementById('w-job')?.value || '',
+      health: document.getElementById('w-health')?.value || '',
+      illnessType: document.getElementById('w-illness-type')?.value || '',
+      chronicName: document.getElementById('w-chronic-name')?.value || '',
+      tempName: document.getElementById('w-temp-name')?.value || '',
+      medicalNeed: document.getElementById('w-medical-need')?.value || ''
     };
   } else if (window.currentStep === 3) {
     const rows = document.querySelectorAll('#children-list > div');
     window.formData.children = [];
     rows.forEach(r => {
       window.formData.children.push({
-        name: r.querySelector('.c-name').value,
-        dob: r.querySelector('.c-dob').value,
-        edu: r.querySelector('.c-edu').value
+        name: r.querySelector('.c-name')?.value || '',
+        dob: r.querySelector('.c-dob')?.value || '',
+        edu: r.querySelector('.c-edu')?.value || ''
       });
     });
   } else if (window.currentStep === 4) {
     window.formData.expenses = {
-      rent: parseFloat(document.getElementById('exp-rent').value || 0),
-      utilities: parseFloat(document.getElementById('exp-utilities').value || 0),
-      edu: parseFloat(document.getElementById('exp-edu').value || 0),
-      health: parseFloat(document.getElementById('exp-health').value || 0),
-      food: parseFloat(document.getElementById('exp-food').value || 0),
-      debts: parseFloat(document.getElementById('exp-debts').value || 0)
+      rent: parseFloat(document.getElementById('exp-rent')?.value || 0),
+      utilities: parseFloat(document.getElementById('exp-utilities')?.value || 0),
+      edu: parseFloat(document.getElementById('exp-edu')?.value || 0),
+      health: parseFloat(document.getElementById('exp-health')?.value || 0),
+      food: parseFloat(document.getElementById('exp-food')?.value || 0),
+      debts: parseFloat(document.getElementById('exp-debts')?.value || 0)
     };
   } else if (window.currentStep === 5) {
     window.formData.incomes = {
-      husband: parseFloat(document.getElementById('inc-husband').value || 0),
-      others: parseFloat(document.getElementById('inc-others').value || 0),
-      pension: parseFloat(document.getElementById('inc-pension').value || 0),
-      aid: parseFloat(document.getElementById('inc-aid').value || 0)
+      husband: parseFloat(document.getElementById('inc-husband')?.value || 0),
+      others: parseFloat(document.getElementById('inc-others')?.value || 0),
+      pension: parseFloat(document.getElementById('inc-pension')?.value || 0),
+      aid: parseFloat(document.getElementById('inc-aid')?.value || 0)
     };
   }
 
@@ -735,35 +737,50 @@ window.prevWizardStep = function() {
 };
 
 // دالة الإرسال النهائية والمربوطة بقاعدة البيانات عبر window.appDb
-  const payload = {
-    tracking_code: trackingCode,
-    head_name: `${window.formData.husband.name1 || ''} ${window.formData.husband.name2 || ''} ${window.formData.husband.name3 || ''}`.trim(),
-    national_id: window.formData.husband.nid || '',
-    phone: window.formData.husband.phone || '',
-    governorate: window.formData.husband.gov || 'بني سويف',
-    center_city: window.formData.husband.center || 'إهناسيا',
-    village_hamlet: window.formData.husband.village || 'منشأة عبدالصمد',
-    detailed_address: `${window.formData.husband.gov || ''} - ${window.formData.husband.center || ''} - ${window.formData.husband.village || ''}`,
-    aid_type: 'بحث اجتماعي شامل وموثق',
-    total_income: totalInc,
-    total_expenses: totalExp,
-    status: 'pending',
-    source_type: 'online_form',
-    husband_data: window.formData.husband,
-    wife_data: window.formData.wife,
-    children_data: window.formData.children,
-    housing_data: window.formData.housing
+window.submitFullWizardApplication = async function() {
+  const decl = document.getElementById('declaration-check');
+  if (!decl || !decl.checked) {
+    alert('⚠️ يجب الموافقة على إقرار صحة البيانات قبل إرسال الطلب.');
+    return;
+  }
+
+  window.formData.housing = {
+    houseType: document.getElementById('house-type')?.value || '',
+    roofType: document.getElementById('roof-type')?.value || '',
+    wallType: document.getElementById('wall-type')?.value || '',
+    doorType: document.getElementById('door-type')?.value || '',
+    floorsCount: document.getElementById('floors-count')?.value || ''
   };
 
-  const db = window.appDb || window.supabaseClient;
-  if (db) {
-    const res = await db.from('families').insert([payload]);
-    if (res.error) {
-      alert('❌ خطأ أثناء الرفع: ' + res.error.message);
-    } else {
-      alert(`✅ تم رفع استمارة الحالة بنجاح وتوثيقها في النظام!\n\nكود المتابعة الخاص بالأسرة هو: ${trackingCode}\nاحتفظ به للاستعلام الفوري.`);
-      location.reload();
+  const h = window.formData.husband || {};
+  const payload = {
+    head_name: (h.name1 || '') + ' ' + (h.name2 || '') + ' ' + (h.name3 || ''),
+    national_id: h.nid || '',
+    phone: h.phone || '',
+    form_data: window.formData,
+    status: 'pending',
+    created_at: new Date().toISOString()
+  };
+
+  alert('⏳ جاري إرسال البيانات وحفظها في قاعدة البيانات...');
+
+  if (window.appDb) {
+    try {
+      const { data, error } = await window.appDb.from('families').insert([payload]);
+      if (error) {
+        console.error('Supabase Error:', error);
+        alert('❌ حدث خطأ أثناء الحفظ في قاعدة البيانات: ' + error.message);
+      } else {
+        alert('✅ تم حفظ الاستمارة بنجاح في قاعدة البيانات وتاريخ المراجعة قيد التفعيل.');
+        window.currentStep = 1;
+        window.formData = { husband: {}, wife: {}, children: [], expenses: {}, incomes: {}, documents: {}, housing: {} };
+        renderWizardStep();
+      }
+    } catch (err) {
+      console.error('Exception:', err);
+      alert('❌ حدث استثناء أثناء الاتصال بقاعدة البيانات.');
     }
   } else {
-    alert(`✅ تم حفظ الطلب واجتياز كافة الاختبارات بنجاح!\nكود المتابعة: ${trackingCode}`);
+    alert('⚠️ تنبيه: لم يتم العثور على اتصال قاعدة البيانات window.appDb، تم استيفاء الاستمارة محلياً.');
   }
+};
