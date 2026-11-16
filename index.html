@@ -8,17 +8,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <!-- مكتبة أيقونات FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- مكتبة Tailwind CSS المباشرة لضمان التنسيق الفوري 100% -->
+    <!-- مكتبة Tailwind CSS المباشرة -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- مكتبة Supabase للاتصال بقاعدة البيانات -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        /* التنسيقات العامة والمضمونة 100% لتجنب أي مشاكل في استدعاء الملفات الخارجية على Azure */
+        * { font-family: 'Cairo', sans-serif; box-sizing: border-box; }
+        body { background-color: #f8fafc; color: #1e293b; margin: 0; padding: 0; direction: rtl; text-align: right; }
         .dark-mode { background-color: #0f172a !important; color: #f1f5f9 !important; }
         .dark-mode nav, .dark-mode .bg-white { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+        .content-section { display: block; }
+        .hidden { display: none !important; }
+        input, select, textarea { background-color: #ffffff; color: #0f172a; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; width: 100%; font-family: 'Cairo', sans-serif; font-size: 14px; outline: none; transition: all 0.2s; }
+        input:focus, select:focus { border-color: #059669; box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15); }
+        label { display: block; font-weight: 700; font-size: 13px; color: #334155; margin-bottom: 6px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-['Cairo'] transition-colors duration-300">
+<body class="bg-slate-50 text-slate-800 transition-colors duration-300">
 
     <!-- شريط تسهيلات الوصول العلوي -->
     <div class="bg-emerald-900 text-white py-1.5 px-4 text-xs">
@@ -42,7 +52,7 @@
     <nav class="bg-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3 cursor-pointer" onclick="showSection('home')">
-                <img src="logo.jpg" alt="شعار مؤسسة الحافظ" class="w-12 h-12 object-cover rounded-full border-2 border-emerald-600">
+                <div class="w-12 h-12 bg-emerald-700 text-white flex items-center justify-center font-black rounded-full border-2 border-emerald-600 shadow">ح</div>
                 <div>
                     <h1 class="font-black text-lg text-emerald-900 leading-tight">مؤسسة الحافظ</h1>
                     <p class="text-xs text-slate-500">للتنمية والخدمات - إهناسيا بني سويف</p>
@@ -80,18 +90,26 @@
 
         <!-- 2. عن المؤسسة -->
         <section id="sec-about" class="content-section py-12 px-4 max-w-7xl mx-auto hidden">
-            <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">عن مؤسسة الحافظ للتنمية والخدمات</h2>
-            <p class="text-slate-700 leading-relaxed mb-4">مؤسسة تنموية خيرية مشهرة برقم 2202 لسنة 2025 بمديرية التضامن الاجتماعي ببني سويف.</p>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">عن مؤسسة الحافظ للتنمية والخدمات</h2>
+                <p class="text-slate-700 leading-relaxed mb-4">مؤسسة تنموية خيرية مشهرة برقم 2202 لسنة 2025 بمديرية التضامن الاجتماعي ببني سويف، تهدف إلى خدمة الأسر الأولى بالرعاية بمركز إهناسيا والقرى المجاورة.</p>
+            </div>
         </section>
 
         <!-- 3. الإنجازات -->
         <section id="sec-achievements" class="content-section py-12 px-4 max-w-7xl mx-auto hidden">
-            <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">إنجازات وتقارير المؤسسة</h2>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">إنجازات وتقارير المؤسسة</h2>
+                <p class="text-slate-600">جارٍ عرض تقارير الأداء ومؤشرات التنمية والأنشطة الموسمية...</p>
+            </div>
         </section>
 
         <!-- 4. الأسئلة الشائعة -->
         <section id="sec-faq" class="content-section py-12 px-4 max-w-7xl mx-auto hidden">
-            <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">الأسئلة الشائعة</h2>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">الأسئلة الشائعة</h2>
+                <p class="text-slate-600">إجابات استفسارات المستفيدين وخدمات القروض الحسنة والمساعدات.</p>
+            </div>
         </section>
 
         <!-- 5. التقديم والاستمارة الذكية -->
@@ -105,17 +123,26 @@
 
         <!-- 6. تتبع الطلب -->
         <section id="sec-track" class="content-section py-12 px-4 max-w-7xl mx-auto hidden">
-            <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">تتبع حالة الطلب</h2>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">تتبع حالة الطلب</h2>
+                <p class="text-slate-600">أدخل رقم البطاقة القومية للاستعلام عن حالة الطلب.</p>
+            </div>
         </section>
 
         <!-- 7. اتصل بنا -->
         <section id="sec-contact" class="content-section py-12 px-4 max-w-7xl mx-auto hidden">
-            <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">اتصل بنا</h2>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">اتصل بنا</h2>
+                <p class="text-slate-600">العنوان: إهناسيا - بني سويف. الهاتف: 01000880156</p>
+            </div>
         </section>
 
         <!-- 8. سياسة الخصوصية -->
         <section id="sec-privacy" class="content-section py-12 px-4 max-w-7xl mx-auto hidden">
-            <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">سياسة الخصوصية</h2>
+            <div class="bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                <h2 class="text-2xl font-bold text-emerald-900 mb-6 border-b pb-2">سياسة الخصوصية</h2>
+                <p class="text-slate-600">نلتزم بحماية سرية وأمان بيانات المستفيدين بالكامل.</p>
+            </div>
         </section>
 
         <!-- 9. تسجيل الدخول -->
@@ -181,7 +208,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        // 2. دالة تبديل اللغة (عربي / إنجليزي)
+        // 2. دالة تبديل اللغة
         let currentLang = 'ar';
         window.toggleLanguage = function() {
             currentLang = currentLang === 'ar' ? 'en' : 'ar';
@@ -192,17 +219,6 @@
             }
             const langBtn = document.getElementById('lang-toggle-btn');
             if (langBtn) langBtn.innerText = currentLang === 'ar' ? 'English' : 'عربي';
-
-            document.querySelectorAll('[data-ar]').forEach(el => {
-                const text = el.getAttribute('data-' + currentLang);
-                if (text) {
-                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                        el.placeholder = text;
-                    } else {
-                        el.innerText = text;
-                    }
-                }
-            });
         };
 
         // 3. أدوات التحكم في الوصول
@@ -216,15 +232,9 @@
             document.body.classList.toggle('dark-mode');
         };
 
-        window.copyText = function(txt) {
-            navigator.clipboard.writeText(txt);
-            alert('✅ تم النسخ بنجاح: ' + txt);
-        };
-
         // التشغيل التلقائي عند التحميل
         document.addEventListener("DOMContentLoaded", function() {
             window.showSection('home');
-            if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
         });
     </script>
 </body>
