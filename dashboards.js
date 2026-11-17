@@ -383,6 +383,7 @@ window.submitNewUserRequest = async function() {
   const nameInput = document.getElementById('reg-name');
   const phoneInput = document.getElementById('reg-phone');
   const emailInput = document.getElementById('reg-email');
+  const passInput = document.getElementById('reg-pass'); // حقل كلمة المرور المضاف في النموذج
 
   if (!roleSelect || !nameInput || !phoneInput || !emailInput) {
     alert('⚠️ حدث خطأ في تحميل حقول النموذج.');
@@ -393,9 +394,10 @@ window.submitNewUserRequest = async function() {
   const full_name = nameInput.value.trim();
   const phone = phoneInput.value.trim();
   const email = emailInput.value.trim();
+  const pass = passInput ? passInput.value : '';
 
   if (!full_name || !email || !phone) {
-    alert('⚠️ يرجى يرجى استيفاء جميع الحقول الأساسية (الاسم، البريد، والهاتف).');
+    alert('⚠️ يرجى استيفاء جميع الحقول الأساسية (الاسم، البريد، والهاتف).');
     return;
   }
 
@@ -404,19 +406,42 @@ window.submitNewUserRequest = async function() {
     return;
   }
 
-  // إرسال الطلب مباشرة إلى جدول users
-  const { data, error } = await window.supabaseClient.from('users').insert([{
-    full_name: full_name,
-    email: email,
-    phone: phone,
-    role: role,
-    status: 'pending' // معلق بانتظار موافقة الإدارة
-  }]);
+  try {
+    // 1. إنشاء الحساب في نظام المصادقة Supabase Auth إذا تم إدخال كلمة مرور
+    let userId = null;
+    if (pass) {
+      const authRes = await window.supabaseClient.auth.signUp({ email, password: pass });
+      if (authRes.error) {
+        alert('❌ خطأ في إنشاء حساب المصادقة: ' + authRes.error.message);
+        return;
+      }
+      if (authRes.data && authRes.data.user) {
+        userId = authRes.data.user.id;
+      }
+    }
 
-  if (error) {
-    alert('❌ خطأ أثناء إرسال الطلب: ' + error.message);
-  } else {
-    alert('✅ تم إرسال طلب انضمامك بنجاح!\nحسابك الآن (قيد المراجعة) وسيتم تفعيله من قبل إدارة المؤسسة قريباً.');
-    location.reload();
+    // 2. إدخال البيانات في جدول users_profiles الصحيح والموجود في قاعدتك
+    const payload = {
+      full_name: full_name,
+      email: email,
+      phone: phone,
+      role: role,
+      account_status: 'pending' // بانتظار موافقة الإدارة
+    };
+
+    if (userId) {
+      payload.id = userId;
+    }
+
+    const { error } = await window.supabaseClient.from('users_profiles').insert([payload]);
+
+    if (error) {
+      alert('❌ خطأ أثناء حفظ الملف الشخصي: ' + error.message);
+    } else {
+      alert('✅ تم إرسال طلب انضمامك بنجاح!\nحسابك الآن (قيد المراجعة) وسيتم تفعيله من قبل إدارة المؤسسة.');
+      location.reload();
+    }
+  } catch (err) {
+    alert('❌ حدث خطأ غير متوقع: ' + err.message);
   }
 };
