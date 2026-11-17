@@ -307,88 +307,14 @@
     </p>
   </footer>
 
+ <!-- مكتبات السكربتات الأساسية للمنظومة -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
   <script src="egypt-data.js"></script>
+  <script src="wizard.js"></script>
   <script src="dashboards.js"></script>
-  <script src="wizard.js"></script>
+
   <script>
-    // 1. دالة التنقل وعرض الأقسام عالمياً
-    window.showSection = function(sectionId) {
-      const sections = ['home', 'about', 'achievements', 'faq', 'apply', 'track', 'contact', 'privacy', 'login'];
-      sections.forEach(s => {
-        const el = document.getElementById('section-' + s);
-        if (el) {
-          if (s === sectionId) {
-            el.classList.remove('hidden');
-          } else {
-            el.classList.add('hidden');
-          }
-        }
-      });
-
-      const loginBox = document.getElementById('login-box');
-      const partnerBox = document.getElementById('partner-register-box');
-      if (sectionId === 'login') {
-        if (loginBox) loginBox.classList.remove('hidden');
-        if (partnerBox) partnerBox.classList.add('hidden');
-      }
-
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    // 2. دالة تبديل اللغة (عربي / إنجليزي)
-    let currentLang = 'ar';
-    window.toggleLanguage = function() {
-      currentLang = currentLang === 'ar' ? 'en' : 'ar';
-      const root = document.getElementById('html-root');
-      root.setAttribute('lang', currentLang);
-      root.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
-      
-      const langBtn = document.getElementById('lang-toggle-btn');
-      if (langBtn) langBtn.innerText = currentLang === 'ar' ? 'English' : 'عربي';
-
-      document.querySelectorAll('[data-ar]').forEach(el => {
-        const text = el.getAttribute('data-' + currentLang);
-        if (text) {
-          if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-            el.placeholder = text;
-          } else {
-            el.innerText = text;
-          }
-        }
-      });
-    };
-
-    // 3. أدوات التحكم في الوصول (حجم الخط والمظهر)
-    let fontSizeLevel = 16;
-    window.adjustFontSize = function(change) {
-      fontSizeLevel += change;
-      if (fontSizeLevel < 12) fontSizeLevel = 12;
-      if (fontSizeLevel > 22) fontSizeLevel = 22;
-      document.body.style.fontSize = fontSizeLevel + 'px';
-    };
-
-    window.toggleDarkMode = function() {
-      document.body.classList.toggle('dark-mode');
-    };
-
-    window.copyText = function(txt) {
-      navigator.clipboard.writeText(txt);
-      alert('✅ تم النسخ بنجاح: ' + txt);
-    };
-
-    // التشغيل التلقائي عند التحميل
-    document.addEventListener("DOMContentLoaded", function() {
-      window.showSection('home');
-      if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
-    });
-  </script>
- <!-- مكتبات السكربتات الأساسية -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="egypt-data.js"></script>
-  <script src="wizard.js"></script>
-  <script>
+    // دوال التنقل والواجهة العامة فقط (بدون تكرار دوال الدخول ولوحة التحكم)
     function showSection(id) {
       document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
       const target = document.getElementById('section-' + id);
@@ -396,61 +322,48 @@
         target.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
+      if (id === 'achievements' && typeof window.loadPublicAchievements === 'function') {
+        window.loadPublicAchievements();
+      }
     }
+
     function toggleDarkMode() {
       document.body.classList.toggle('dark-mode');
     }
+
+    let currentFontSize = 16;
+    function adjustFontSize(delta) {
+      currentFontSize = Math.min(22, Math.max(12, currentFontSize + delta));
+      document.body.style.fontSize = currentFontSize + 'px';
+    }
+
+    function toggleLanguage() {
+      const html = document.getElementById('html-root');
+      const isAr = html.getAttribute('lang') === 'ar';
+      const nextLang = isAr ? 'en' : 'ar';
+      html.setAttribute('lang', nextLang);
+      html.setAttribute('dir', nextLang === 'ar' ? 'rtl' : 'ltr');
+      document.getElementById('lang-toggle-btn').innerText = nextLang === 'ar' ? 'English' : 'العربية';
+      document.querySelectorAll('[data-' + nextLang + ']').forEach(el => {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          el.placeholder = el.getAttribute('data-' + nextLang);
+        } else {
+          el.innerHTML = el.getAttribute('data-' + nextLang);
+        }
+      });
+    }
+
     function copyText(text) {
       navigator.clipboard.writeText(text);
       alert('✅ تم النسخ بنجاح');
     }
-    function trackApplication() {
-      const val = document.getElementById('track-input').value.trim();
-      const resBox = document.getElementById('track-result');
-      if (!val) {
-        alert('برجاء إدخال كود المتابعة أو الرقم القومي');
-        return;
-      }
-      resBox.innerHTML = `<div style="background:#ecfdf5; padding:12px; border-radius:8px; border:1px solid #a7f3d0; margin-top:10px;">
-        <strong>حالة الطلب (${val}):</strong> جارٍ مراجعة البحث الميداني واعتماد الحالة من لجنة المشروعات بالمؤسسة. (الحالة: تحت الدراسة والبحث).
-      </div>`;
-    }
-    
-    // إصلاح انتقال شاشة تسجيل الدخول إلى لوحة التحكم
-    function loginUser() {
-      const email = document.getElementById('login-email').value.trim();
-      const pass = document.getElementById('login-pass').value.trim();
-      if(!email || !pass) {
-        alert('برجاء إدخال البريد الإلكتروني وكلمة المرور');
-        return;
-      }
-      
-      // إخفاء صندوق تسجيل الدخول وإظهار مساحة لوحة التحكم
-      document.getElementById('login-box').classList.add('hidden');
-      const dashArea = document.getElementById('dashboard-area');
-      dashArea.classList.remove('hidden');
-      dashArea.innerHTML = `
-        <div class="card" style="border-top: 4px solid var(--primary);">
-          <h3 style="color: var(--primary-dark); margin-top: 0;">📊 لوحة التحكم الإدارية والمالية</h3>
-          <p>مرحباً بك، تم تسجيل الدخول بنجاح إلى منصة مؤسسة الحافظ للتنمية والخدمات.</p>
-          <div class="grid-3" style="margin-top: 15px;">
-            <div style="background:var(--bg-color); padding:14px; border-radius:8px;"><strong>الحالات المسجلة:</strong> 45 حالة</div>
-            <div style="background:var(--bg-color); padding:14px; border-radius:8px;"><strong>البحوث الميدانية:</strong> 30 بحثاً</div>
-            <div style="background:var(--bg-color); padding:14px; border-radius:8px;"><strong>المساعدات المنصرفة:</strong> تم الصرف</div>
-          </div>
-          <button type="button" onclick="location.reload()" class="action-btn" style="background:#ef4444; margin-top:15px;">تسجيل الخروج</button>
-        </div>
-      `;
-    }
 
-    function submitGrievance() {
-      alert('تم إرسال رسالتك أو تظلمك بسرية تامة إلى إدارة المؤسسة.');
-    }
-    function openPartnerRegister() {
-      alert('نافذة الانضمام والتسجيل قيد التفعيل.');
-    }
+    // تحميل الإنجازات عند فتح الموقع
+    window.addEventListener('DOMContentLoaded', () => {
+      if (typeof window.loadPublicAchievements === 'function') {
+        window.loadPublicAchievements();
+      }
+    });
   </script>
-</body>
-</html>
 </body>
 </html>
