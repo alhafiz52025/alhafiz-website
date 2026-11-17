@@ -379,26 +379,44 @@ window.openPartnerRegister = function() {
 };
 
 window.submitNewUserRequest = async function() {
-  const role = document.getElementById('reg-role').value;
-  const full_name = document.getElementById('reg-name').value.trim();
-  const phone = document.getElementById('reg-phone').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
+  const roleSelect = document.getElementById('reg-role');
+  const nameInput = document.getElementById('reg-name');
+  const phoneInput = document.getElementById('reg-phone');
+  const emailInput = document.getElementById('reg-email');
 
-  if (!full_name || !email || !phone) return alert('⚠️ يرجى استيفاء جميع الحقول الأساسية.');
-  if (!window.supabaseClient) return;
+  if (!roleSelect || !nameInput || !phoneInput || !emailInput) {
+    alert('⚠️ حدث خطأ في تحميل حقول النموذج.');
+    return;
+  }
 
-  const { error } = await window.supabaseClient.from('users').insert([{
-    full_name,
-    email,
-    phone,
-    role,
-    status: 'pending'
+  const role = roleSelect.value;
+  const full_name = nameInput.value.trim();
+  const phone = phoneInput.value.trim();
+  const email = emailInput.value.trim();
+
+  if (!full_name || !email || !phone) {
+    alert('⚠️ يرجى يرجى استيفاء جميع الحقول الأساسية (الاسم، البريد، والهاتف).');
+    return;
+  }
+
+  if (!window.supabaseClient) {
+    alert('⚠️ تعذر الاتصال بقاعدة البيانات.');
+    return;
+  }
+
+  // إرسال الطلب مباشرة إلى جدول users
+  const { data, error } = await window.supabaseClient.from('users').insert([{
+    full_name: full_name,
+    email: email,
+    phone: phone,
+    role: role,
+    status: 'pending' // معلق بانتظار موافقة الإدارة
   }]);
 
   if (error) {
     alert('❌ خطأ أثناء إرسال الطلب: ' + error.message);
   } else {
-    alert('✅ تم إرسال طلب انضمامك بنجاح! حسابك الآن (قيد المراجعة) وسيتم تفعيله فور اعتماد الإدارة.');
+    alert('✅ تم إرسال طلب انضمامك بنجاح!\nحسابك الآن (قيد المراجعة) وسيتم تفعيله من قبل إدارة المؤسسة قريباً.');
     location.reload();
   }
 };
