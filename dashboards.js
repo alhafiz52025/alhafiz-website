@@ -1,5 +1,5 @@
 // dashboards.js - لوحة التحكم الإدارية الشاملة لمؤسسة الحافظ
-
+window.supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
 window.renderAdminDashboard = async function(userRole, userEmail) {
   const dashArea = document.getElementById('dashboard-area');
   if (!dashArea) return;
