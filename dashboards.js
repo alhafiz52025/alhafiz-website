@@ -313,3 +313,92 @@ window.loginUser = async function() {
     alert('✅ تم الدخول بنجاح');
   }
 };
+// --- دوال الخدمات العامة المرتبطة بـ Supabase ---
+
+window.loadPublicAchievements = async function() {
+  const container = document.getElementById('public-achievements-container');
+  if (!container || !window.supabaseClient) return;
+
+  const { data } = await window.supabaseClient.from('achievements').select('*').order('created_at', { ascending: false });
+  if (!data || data.length === 0) {
+    container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#64748b;">جاري تحديث سجل الإنجازات والقوافل الميدانية...</p>';
+    return;
+  }
+
+  container.innerHTML = data.map(a => `
+    <div style="background:var(--bg-color); border-radius:12px; border:1px solid #cbd5e1; overflow:hidden;">
+      ${a.image_url ? `<img src="${a.image_url}" style="width:100%; height:170px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+      <div style="padding:14px;">
+        <h4 style="color:var(--primary-dark); margin:0 0 6px;">${a.title}</h4>
+        <p style="font-size:13px; color:var(--text-color); line-height:1.5; margin:0;">${a.description || ''}</p>
+      </div>
+    </div>
+  `).join('');
+};
+
+window.trackApplication = async function() {
+  const val = document.getElementById('track-input')?.value.trim();
+  const box = document.getElementById('track-result');
+  if (!val) return alert('⚠️ أدخل كود المتابعة أو الرقم القومي.');
+  if (!window.supabaseClient) return;
+
+  const { data } = await window.supabaseClient.from('families').select('*').eq('tracking_code', val).maybeSingle();
+  if (data) {
+    box.innerHTML = `
+      <div style="padding:14px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; margin-top:10px;">
+        <p style="margin:0 0 6px;"><strong>كود الطلب:</strong> ${data.tracking_code}</p>
+        <p style="margin:0 0 6px;"><strong>حالة القرار:</strong> ${data.decision_by || 'قيد المراجعة والبحث'}</p>
+        <p style="margin:0;"><strong>الباحث المسؤول:</strong> ${data.assigned_to || 'قيد الإسناد'}</p>
+      </div>`;
+  } else {
+    box.innerHTML = '<p style="color:#b91c1c; font-weight:700; margin-top:10px;">❌ لم يتم العثور على طلب بهذا الكود.</p>';
+  }
+};
+
+window.openPartnerRegister = function() {
+  document.getElementById('login-box')?.classList.add('hidden');
+  const box = document.getElementById('partner-register-box');
+  if (!box) return;
+  box.classList.remove('hidden');
+  box.innerHTML = `
+    <h3 style="color:var(--primary-dark); margin-top:0;">📝 طلب انضمام جديد للمنظومة</h3>
+    <p style="font-size:12px; color:#64748b;">سيتم مراجعة طلبك وتفعيله من قبل إدارة المؤسسة.</p>
+    <label style="font-size:12px; font-weight:700;">الصفة / الدور المطلوب:</label>
+    <select id="reg-role">
+      <option value="researcher">باحث ميداني</option>
+      <option value="volunteer">متطوع</option>
+      <option value="partner">جمعية قاعدية / جهة شريكة</option>
+    </select>
+    <input id="reg-name" placeholder="الاسم الكامل / اسم الجمعية *">
+    <input id="reg-phone" placeholder="رقم الهاتف (واتساب) *">
+    <input type="email" id="reg-email" placeholder="البريد الإلكتروني *">
+    <input type="password" id="reg-pass" placeholder="كلمة المرور المقترحة *">
+    <button type="button" onclick="submitNewUserRequest()" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال طلب الانضمام</button>
+    <button type="button" onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع لشاشة الدخول</button>
+  `;
+};
+
+window.submitNewUserRequest = async function() {
+  const role = document.getElementById('reg-role').value;
+  const full_name = document.getElementById('reg-name').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+
+  if (!full_name || !email || !phone) return alert('⚠️ يرجى استيفاء جميع الحقول الأساسية.');
+  if (!window.supabaseClient) return;
+
+  const { error } = await window.supabaseClient.from('users').insert([{
+    full_name,
+    email,
+    phone,
+    role,
+    status: 'pending'
+  }]);
+
+  if (error) {
+    alert('❌ خطأ أثناء إرسال الطلب: ' + error.message);
+  } else {
+    alert('✅ تم إرسال طلب انضمامك بنجاح! حسابك الآن (قيد المراجعة) وسيتم تفعيله فور اعتماد الإدارة.');
+    location.reload();
+  }
+};
