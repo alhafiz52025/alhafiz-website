@@ -383,7 +383,7 @@ window.submitNewUserRequest = async function() {
   const nameInput = document.getElementById('reg-name');
   const phoneInput = document.getElementById('reg-phone');
   const emailInput = document.getElementById('reg-email');
-  const passInput = document.getElementById('reg-pass'); // حقل كلمة المرور المضاف في النموذج
+  const passInput = document.getElementById('reg-pass');
 
   if (!roleSelect || !nameInput || !phoneInput || !emailInput) {
     alert('⚠️ حدث خطأ في تحميل حقول النموذج.');
@@ -407,33 +407,31 @@ window.submitNewUserRequest = async function() {
   }
 
   try {
-    // 1. إنشاء الحساب في نظام المصادقة Supabase Auth إذا تم إدخال كلمة مرور
     let userId = null;
     if (pass) {
       const authRes = await window.supabaseClient.auth.signUp({ email, password: pass });
+      // إذا كان الإيميل مسجلاً مسبقاً في الـ Auth، نحاول تسجيل الدخول أو تخطي إنشاء الـ Auth واستخدام الإيميل مباشرة
       if (authRes.error) {
-        alert('❌ خطأ في إنشاء حساب المصادقة: ' + authRes.error.message);
-        return;
-      }
-      if (authRes.data && authRes.data.user) {
+        console.log('Auth notice:', authRes.error.message);
+      } else if (authRes.data && authRes.data.user) {
         userId = authRes.data.user.id;
       }
     }
 
-    // 2. إدخال البيانات في جدول users_profiles الصحيح والموجود في قاعدتك
     const payload = {
       full_name: full_name,
       email: email,
       phone: phone,
       role: role,
-      account_status: 'pending' // بانتظار موافقة الإدارة
+      account_status: 'pending'
     };
 
     if (userId) {
       payload.id = userId;
     }
 
-    const { error } = await window.supabaseClient.from('users_profiles').insert([payload]);
+    // استخدام upsert لمنع تضارب المفتاح الأساسي وتحديث السجل إن كان موجوداً
+    const { error } = await window.supabaseClient.from('users_profiles').upsert([payload], { onConflict: 'email' });
 
     if (error) {
       alert('❌ خطأ أثناء حفظ الملف الشخصي: ' + error.message);
