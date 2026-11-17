@@ -1,7 +1,6 @@
-// wizard.js - النسخة المعدلة لضمان عدم تكرار التعريفات
+// wizard.js - النسخة المعدلة والآمنة لعمليات استمارة البحث الاجتماعي
 (function() {
   window.currentStep = window.currentStep || 1;
-  // تحويله إلى متغير عام مرتبط بـ window لضمان عدم حدوث تضارب في النطاق
   window.totalWizardSteps = 6;
 
   if (typeof window.formData === 'undefined') {
@@ -31,28 +30,6 @@
         <span style="font-weight:800; color:var(--primary-dark);">الخطوة ${window.currentStep} من ${window.totalWizardSteps}</span>
         <div style="display:flex; gap:6px;">
           ${Array.from({length: window.totalWizardSteps}, (_, i) => `<span style="width:28px; height:8px; border-radius:4px; background:${i + 1 === window.currentStep ? 'var(--primary)' : '#cbd5e1'}"></span>`).join('')}
-        </div>
-      </div>
-    `;
-
-    // باقي أقسام المعالج (wizard) كما هي...
-
-  // تهيئة الاستمارة عند تحميل الصفحة
-  window.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('wizard-container')) {
-      window.renderWizardStep();
-    }
-  });
-
-  window.renderWizardStep = function() {
-    const container = document.getElementById('wizard-container');
-    if (!container) return;
-
-    let html = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">
-        <span style="font-weight:800; color:var(--primary-dark);">الخطوة ${window.currentStep} من ${totalWizardSteps}</span>
-        <div style="display:flex; gap:6px;">
-          ${Array.from({length: totalWizardSteps}, (_, i) => `<span style="width:28px; height:8px; border-radius:4px; background:${i + 1 === window.currentStep ? 'var(--primary)' : '#cbd5e1'}"></span>`).join('')}
         </div>
       </div>
     `;
@@ -238,7 +215,7 @@
     html += `
       <div style="display:flex; justify-content:space-between; margin-top:20px;">
         ${window.currentStep > 1 ? '<button type="button" onclick="prevWizardStep()" class="nav-btn" style="background:#334155; color:#fff;">السابق</button>' : '<div></div>'}
-        ${window.currentStep < totalWizardSteps ? '<button type="button" onclick="nextWizardStep()" class="action-btn">التالي ➔</button>' : '<button type="button" onclick="submitFullWizardApplication()" class="action-btn" style="background:#15803d;">✅ تأكيد والرفع النهائي للحالة</button>'}
+        ${window.currentStep < window.totalWizardSteps ? '<button type="button" onclick="nextWizardStep()" class="action-btn">التالي ➔</button>' : '<button type="button" onclick="submitFullWizardApplication()" class="action-btn" style="background:#15803d;">✅ تأكيد والرفع النهائي للحالة</button>'}
       </div>
     `;
 
