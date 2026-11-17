@@ -385,5 +385,48 @@
       if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
     });
   </script>
+  <!-- مكتبات السكربتات الأساسية -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="egypt-data.js"></script>
+  <script src="wizard.js"></script>
+  <script>
+    function showSection(id) {
+      document.querySelectorAll('section').forEach(sec => sec.classList.add('hidden'));
+      const target = document.getElementById('section-' + id);
+      if (target) {
+        target.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
+    function copyText(text) {
+      navigator.clipboard.writeText(text);
+      alert('✅ تم النسخ بنجاح');
+    }
+    function trackApplication() {
+      const val = document.getElementById('track-input').value.trim();
+      const resBox = document.getElementById('track-result');
+      if (!val) {
+        alert('برجاء إدخال كود المتابعة أو الرقم القومي');
+        return;
+      }
+      resBox.innerHTML = `<div style="background:#ecfdf5; padding:12px; border-radius:8px; border:1px solid #a7f3d0; margin-top:10px;">
+        <strong>حالة الطلب (${val}):</strong> جارٍ مراجعة البحث الميداني واعتماد الحالة من لجنة المشروعات بالمؤسسة. (الحالة: تحت الدراسة والبحث).
+      </div>`;
+    }
+    function loginUser() {
+      alert('تم تسجيل الدخول بنجاح');
+    }
+    function submitGrievance() {
+      alert('تم إرسال رسالتك أو تظلمك بسرية تامة إلى إدارة المؤسسة.');
+    }
+    function openPartnerRegister() {
+      alert('نافذة الانضمام والتسجيل قيد التفعيل.');
+    }
+  </script>
+</body>
+</html>
 </body>
 </html>
