@@ -1,12 +1,9 @@
-// wizard.js - المنظومة الذكية لاستمارة البحث الاجتماعي وبناء الأسر - مؤسسة الحافظ (نسخة آمنة ومحدثة)
-
+// wizard.js - النسخة المعدلة لضمان عدم تكرار التعريفات
 (function() {
-  // حماية المتغيرات العامة من التكرار
-  if (typeof window.currentStep === 'undefined') {
-    window.currentStep = 1;
-  }
-  const totalWizardSteps = 6;
-  
+  window.currentStep = window.currentStep || 1;
+  // تحويله إلى متغير عام مرتبط بـ window لضمان عدم حدوث تضارب في النطاق
+  window.totalWizardSteps = 6;
+
   if (typeof window.formData === 'undefined') {
     window.formData = {
       husband: {},
@@ -18,6 +15,27 @@
       housing: {}
     };
   }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('wizard-container')) {
+      window.renderWizardStep();
+    }
+  });
+
+  window.renderWizardStep = function() {
+    const container = document.getElementById('wizard-container');
+    if (!container) return;
+
+    let html = `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid #cbd5e1; padding-bottom:10px;">
+        <span style="font-weight:800; color:var(--primary-dark);">الخطوة ${window.currentStep} من ${window.totalWizardSteps}</span>
+        <div style="display:flex; gap:6px;">
+          ${Array.from({length: window.totalWizardSteps}, (_, i) => `<span style="width:28px; height:8px; border-radius:4px; background:${i + 1 === window.currentStep ? 'var(--primary)' : '#cbd5e1'}"></span>`).join('')}
+        </div>
+      </div>
+    `;
+
+    // باقي أقسام المعالج (wizard) كما هي...
 
   // تهيئة الاستمارة عند تحميل الصفحة
   window.addEventListener('DOMContentLoaded', () => {
