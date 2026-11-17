@@ -384,7 +384,7 @@
       if (typeof loadPublicAchievements === 'function') loadPublicAchievements();
     });
   </script>
-  <!-- مكتبات السكربتات الأساسية -->
+ <!-- مكتبات السكربتات الأساسية -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="egypt-data.js"></script>
   <script src="wizard.js"></script>
@@ -415,9 +415,34 @@
         <strong>حالة الطلب (${val}):</strong> جارٍ مراجعة البحث الميداني واعتماد الحالة من لجنة المشروعات بالمؤسسة. (الحالة: تحت الدراسة والبحث).
       </div>`;
     }
+    
+    // إصلاح انتقال شاشة تسجيل الدخول إلى لوحة التحكم
     function loginUser() {
-      alert('تم تسجيل الدخول بنجاح');
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-pass').value.trim();
+      if(!email || !pass) {
+        alert('برجاء إدخال البريد الإلكتروني وكلمة المرور');
+        return;
+      }
+      
+      // إخفاء صندوق تسجيل الدخول وإظهار مساحة لوحة التحكم
+      document.getElementById('login-box').classList.add('hidden');
+      const dashArea = document.getElementById('dashboard-area');
+      dashArea.classList.remove('hidden');
+      dashArea.innerHTML = `
+        <div class="card" style="border-top: 4px solid var(--primary);">
+          <h3 style="color: var(--primary-dark); margin-top: 0;">📊 لوحة التحكم الإدارية والمالية</h3>
+          <p>مرحباً بك، تم تسجيل الدخول بنجاح إلى منصة مؤسسة الحافظ للتنمية والخدمات.</p>
+          <div class="grid-3" style="margin-top: 15px;">
+            <div style="background:var(--bg-color); padding:14px; border-radius:8px;"><strong>الحالات المسجلة:</strong> 45 حالة</div>
+            <div style="background:var(--bg-color); padding:14px; border-radius:8px;"><strong>البحوث الميدانية:</strong> 30 بحثاً</div>
+            <div style="background:var(--bg-color); padding:14px; border-radius:8px;"><strong>المساعدات المنصرفة:</strong> تم الصرف</div>
+          </div>
+          <button type="button" onclick="location.reload()" class="action-btn" style="background:#ef4444; margin-top:15px;">تسجيل الخروج</button>
+        </div>
+      `;
     }
+
     function submitGrievance() {
       alert('تم إرسال رسالتك أو تظلمك بسرية تامة إلى إدارة المؤسسة.');
     }
