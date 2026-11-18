@@ -1,4 +1,4 @@
-// wizard.js - النسخة الشاملة والمحدثة بالكامل (خانات اختيار وتوثيق دقيق)
+// wizard.js - النسخة المحدثة بالترتيب الجديد (البداية بنوع التدخل، ثم الزوج، ثم الزوجة...)
 (function() {
   window.currentStep = window.currentStep || 1;
   window.totalWizardSteps = 8;
@@ -11,7 +11,7 @@
       children: [],
       expenses: {},
       incomes: {},
-      debts: { hasDebt: 'لا', items: [] },
+      debts: { hasDebt: 'لا' },
       marriage: {},
       housing: {},
       documents: {}
@@ -37,32 +37,54 @@
       </div>
     `;
 
-    // --- القسم الأول: بيانات الزوج ---
+    // --- الخطوة 1: تحديد نوع التدخل والمساعدات الخاصة (أول خطوة) ---
     if (window.currentStep === 1) {
+      html += `
+        <h4 style="color:var(--primary-dark); margin-top:0;">🎯 الخطوة الأولى: تحديد نوع التدخل والمساعدات الخاصة</h4>
+        <div style="margin-bottom:14px;">
+          <label style="font-weight:700;">نوع المساعدة الأساسية المطلوبة للأسرة *</label>
+          <select id="intervention-type" onchange="toggleMarriageStepVisibility()">
+            <option value="مساعدة اجتماعية شاملة" ${window.formData.interventionType==='مساعدة اجتماعية شاملة'?'selected':''}>مساعدة اجتماعية نقدية أو شهرية شاملة</option>
+            <option value="وصلات مياه شرب" ${window.formData.interventionType==='وصلات مياه شرب'?'selected':''}>تركيب وصلة مياه شرب نقية</option>
+            <option value="ستر ودفا" ${window.formData.interventionType==='ستر ودفا'?'selected':''}>حملات ستر ودفا (بطاطين ومساعدات شتوية)</option>
+            <option value="مساعدة طبية وعلاجية" ${window.formData.interventionType==='مساعدة طبية وعلاجية'?'selected':''}>مساعدة طبية وعلاجية / عمليات جراحية</option>
+            <option value="مساعدة زواج أيتام وفتيات" ${window.formData.interventionType==='مساعدة زواج أيتام وفتيات'?'selected':''}>مساعدة زواج أيتام وفتيات (تجهيز عرائس)</option>
+            <option value="مساعدة غارمين" ${window.formData.interventionType==='مساعدة غارمين'?'selected':''}>سداد ديون الغارمين وفك كرب</option>
+          </select>
+        </div>
+        <p style="font-size:13px; color:#64748b;">اضغط على زر (التالي ➔) للانتقال إلى بيانات الزوج ورب الأسرة.</p>
+      `;
+    }
+    // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
+    else if (window.currentStep === 2) {
       html += `
         <h4 style="color:var(--primary-dark); margin-top:0;">👤 القسم الأول: بيانات الزوج (رب الأسرة)</h4>
         <div class="grid-3">
           <div><label>الاسم الأول *</label><input id="h-name1" value="${window.formData.husband.name1 || ''}"></div>
           <div><label>الاسم الثاني *</label><input id="h-name2" value="${window.formData.husband.name2 || ''}"></div>
-          <div><label>الاسم الثالث *</label><input id="h-name3" value="${window.formData.husband.name3 || ''}"></div>
+          <div><label>الاسم الثالث والعائلة *</label><input id="h-name3" value="${window.formData.husband.name3 || ''}"></div>
         </div>
         <div class="grid-2">
           <div>
-            <label>حالة الزوج *</label>
-            <select id="h-status" onchange="toggleHusbandStatus()">
-              <option value="سليم" ${window.formData.husband.status==='سليم'?'selected':''}>سليم وبصحة جيدة</option>
+            <label>الحالة الاجتماعية *</label>
+            <select id="h-status">
               <option value="متوفى" ${window.formData.husband.status==='متوفى'?'selected':''}>متوفى</option>
               <option value="أرمل" ${window.formData.husband.status==='أرمل'?'selected':''}>أرمل</option>
               <option value="مسجون" ${window.formData.husband.status==='مسجون'?'selected':''}>مسجون</option>
               <option value="مطلق" ${window.formData.husband.status==='مطلق'?'selected':''}>مطلق</option>
               <option value="هجر" ${window.formData.husband.status==='هجر'?'selected':''}>هجر (مهجورة / هارب)</option>
+              <option value="مقيم مع الأسرة" ${window.formData.husband.status==='مقيم مع الأسرة'?'selected':''}>مقيم مع الأسرة (سليم/مريض)</option>
             </select>
           </div>
-          <div><label>الرقم القومي (14 رقم) *</label><input id="h-nid" maxlength="14" placeholder="14 رقم حصراً" value="${window.formData.husband.nid || ''}"></div>
+          <div><label>الرقم القومي (14 رقم حصراً) *</label><input id="h-nid" maxlength="14" placeholder="14 رقم حصراً بالأرقام" value="${window.formData.husband.nid || ''}"></div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <label>العنوان بالتفصيل (كما مدون في البطاقة) *</label>
+          <input id="h-address" placeholder="المحافظة - المركز - القرية - الشارع - الحارة" value="${window.formData.husband.address || ''}">
         </div>
         <div class="grid-2">
-          <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" value="${window.formData.husband.phone || ''}"></div>
-          <div><label>رقم الواتساب أو تليفون بديل (11 رقم)</label><input id="h-whatsapp" maxlength="11" value="${window.formData.husband.whatsapp || ''}"></div>
+          <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" placeholder="11 رقم" value="${window.formData.husband.phone || ''}"></div>
+          <div><label>رقم الواتساب أو تليفون بديل (11 رقم)</label><input id="h-whatsapp" maxlength="11" placeholder="11 رقم" value="${window.formData.husband.whatsapp || ''}"></div>
         </div>
         <div class="grid-2">
           <div>
@@ -75,26 +97,25 @@
           <div id="h-edu-detail-box" class="${window.formData.husband.eduLevel === 'متعلم' ? '' : 'hidden'}">
             <label>حدد المؤهل:</label>
             <select id="h-edu">
-              <option value="ابتدائية" ${window.formData.husband.edu==='ابتدائية'?'selected':''}>ابتدائية</option>
-              <option value="إعدادية" ${window.formData.husband.edu==='إعدادية'?'selected':''}>إعدادية</option>
-              <option value="ثانوي" ${window.formData.husband.edu==='ثانوي'?'selected':''}>ثانوي</option>
-              <option value="دبلوم" ${window.formData.husband.edu==='دبلوم'?'selected':''}>دبلوم فني</option>
-              <option value="جامعي" ${window.formData.husband.edu==='جامعي'?'selected':''}>جامعي</option>
-              <option value="ماجستير" ${window.formData.husband.edu==='ماجستير'?'selected':''}>ماجستير</option>
-              <option value="دكتوراه" ${window.formData.husband.edu==='دكتوراه'?'selected':''}>دكتوراه</option>
+              <option value="ابتدائية">ابتدائية</option>
+              <option value="إعدادية">إعدادية</option>
+              <option value="ثانوي">ثانوي</option>
+              <option value="دبلوم فني">دبلوم فني</option>
+              <option value="جامعي">جامعي</option>
+              <option value="ماجستير / دكتوراه">ماجستير / دكتوراه</option>
             </select>
           </div>
         </div>
         <div class="grid-2">
           <div>
-            <label>الوظيفة الحالية (اختر من القائمة)</label>
+            <label>الوظيفة الحالية (اختر من القائمة) *</label>
             <select id="h-job">
-              <option value="عامل باليومية" ${window.formData.husband.job==='عامل باليومية'?'selected':''}>عامل باليومية</option>
-              <option value="حرفي / مهني" ${window.formData.husband.job==='حرفي / مهني'?'selected':''}>حرفي / مهني</option>
-              <option value="مزارع / فلاح" ${window.formData.husband.job==='مزارع / فلاح'?'selected':''}>مزارع / فلاح</option>
-              <option value="موظف حكومي أو بالقطاع الخاص" ${window.formData.husband.job==='موظف حكومي أو بالقطاع الخاص'?'selected':''}>موظف حكومي أو بالقطاع الخاص</option>
-              <option value="بدون عمل / عاطل" ${window.formData.husband.job==='بدون عمل / عاطل'?'selected':''}>بدون عمل / عاطل</option>
-              <option value="أصحاب أمراض / غير قادر" ${window.formData.husband.job==='أصحاب أمراض / غير قادر'?'selected':''}>أصحاب أمراض / غير قادر</option>
+              <option value="عامل باليومية">عامل باليومية</option>
+              <option value="حرفي / مهني">حرفي / مهني</option>
+              <option value="مزارع / فلاح">مزارع / فلاح</option>
+              <option value="موظف حكومي أو قطاع خاص">موظف حكومي أو قطاع خاص</option>
+              <option value="بدون عمل / عاطل">بدون عمل / عاطل</option>
+              <option value="أصحاب أمراض وعجز / غير قادر">أصحاب أمراض وعجز / غير قادر</option>
             </select>
           </div>
           <div>
@@ -109,22 +130,23 @@
           <div class="grid-2">
             <div>
               <label>نوع المرض:</label>
-              <select id="h-illness-type" onchange="toggleIllnessType('h')">
-                <option value="مزمن" ${window.formData.husband.illnessType==='مزمن'?'selected':''}>مرض مزمن (سكر، ضغط، كبد، كلوي...)</option>
-                <option value="مؤقت" ${window.formData.husband.illnessType==='مؤقت'?'selected':''}>إصابة أو مرض مؤقت / علاج طارئ</option>
+              <select id="h-illness-type">
+                <option value="مرض مؤقت">مرض مؤقت (إصابة، كسر، جراحة طارئة، التهاب حاد)</option>
+                <option value="مرض مزمن">مرض مزمن (سكر، ضغط، كبد، كلوي، قلب، أورام، روماتويد)</option>
               </select>
             </div>
             <div>
               <label>نوع الإجراء الطبي المطلوب:</label>
               <select id="h-surgery-type">
-                <option value="عملية جراحية" ${window.formData.husband.surgeryType==='عملية جراحية'?'selected':''}>عملية جراحية</option>
-                <option value="أجهزة تعويضية أو صناعية" ${window.formData.husband.surgeryType==='أجهزة تعويضية أو صناعية'?'selected':''}>أجهزة تعويضية أو صناعية</option>
-                <option value="علاج شهري ثابت" ${window.formData.husband.surgeryType==='علاج شهري ثابت'?'selected':''}>علاج شهري ثابت</option>
-                <option value="اشعة وتحاليل باهظة" ${window.formData.husband.surgeryType==='اشعة وتحاليل باهظة'?'selected':''}>أشعة وتحاليل باهظة</option>
+                <option value="عملية جراحية كبرى أو صغرى">عملية جراحية كبرى أو صغرى</option>
+                <option value="أجهزة تعويضية">أجهزة تعويضية</option>
+                <option value="أطراف صناعية">أطراف صناعية</option>
+                <option value="علاج شهري ثابت">علاج شهري ثابت</option>
+                <option value="أشعة وتحاليل باهظة">أشعة وتحاليل باهظة</option>
               </select>
             </div>
           </div>
-          <div style="margin-top:8px;"><label>رفع التقرير الطبي والبحث الاجتماعي:</label><input type="file" id="h-medical-doc"></div>
+          <div style="margin-top:8px;"><label>رفع التقرير الطبي - البحث الاجتماعي:</label><input type="file" id="h-medical-doc"></div>
         </div>
         <div class="grid-2">
           <div><label>صورة بطاقة الزوج (وش) *</label><input type="file" id="h-id-front"></div>
@@ -132,50 +154,54 @@
         </div>
       `;
     }
-    // --- القسم الثاني: بيانات الزوجة ---
-    else if (window.currentStep === 2) {
+    // --- الخطوة 3: بيانات الزوجة ---
+    else if (window.currentStep === 3) {
       html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">👩 القسم الثاني: بيانات الزوجة</h4>
+        <h4 style="color:var(--primary-dark); margin-top:0;">👩 القسم الثاني: بيانات الزوجة (نفس التفاصيل ما عدا العنوان)</h4>
         <div class="grid-3">
           <div><label>الاسم الأول *</label><input id="w-name1" value="${window.formData.wife.name1 || ''}"></div>
           <div><label>الاسم الثاني *</label><input id="w-name2" value="${window.formData.wife.name2 || ''}"></div>
-          <div><label>الاسم الثالث *</label><input id="w-name3" value="${window.formData.wife.name3 || ''}"></div>
+          <div><label>الاسم الثالث والعائلة *</label><input id="w-name3" value="${window.formData.wife.name3 || ''}"></div>
         </div>
         <div class="grid-2">
-          <div><label>الرقم القومي (14 رقم) *</label><input id="w-nid" maxlength="14" value="${window.formData.wife.nid || ''}"></div>
-          <div><label>رقم التليفون (11 رقم)</label><input id="w-phone" maxlength="11" value="${window.formData.wife.phone || ''}"></div>
+          <div><label>الرقم القومي (14 رقم حصراً) *</label><input id="w-nid" maxlength="14" value="${window.formData.wife.nid || ''}"></div>
+          <div><label>رقم التليفون الأساسي (11 رقم)</label><input id="w-phone" maxlength="11" value="${window.formData.wife.phone || ''}"></div>
         </div>
         <div class="grid-2">
           <div>
             <label>المستوى التعليمي *</label>
             <select id="w-edu">
-              <option value="غير متعلمة" ${window.formData.wife.edu==='غير متعلمة'?'selected':''}>غير متعلمة (لا تقرأ ولا تكتب)</option>
-              <option value="ابتدائية" ${window.formData.wife.edu==='ابتدائية'?'selected':''}>ابتدائية</option>
-              <option value="إعدادية" ${window.formData.wife.edu==='إعدادية'?'selected':''}>إعدادية</option>
-              <option value="ثانوي / دبلوم" ${window.formData.wife.edu==='ثانوي / دبلوم'?'selected':''}>ثانوي أو دبلوم فني</option>
-              <option value="جامعي" ${window.formData.wife.edu==='جامعي'?'selected':''}>جامعي</option>
+              <option value="غير متعلمة">غير متعلمة (لا تقرأ ولا تكتب)</option>
+              <option value="ابتدائية">ابتدائية</option>
+              <option value="إعدادية">إعدادية</option>
+              <option value="ثانوي / دبلوم فني">ثانوي أو دبلوم فني</option>
+              <option value="جامعي">جامعي</option>
             </select>
           </div>
           <div>
             <label>الوظيفة / النشاط *</label>
             <select id="w-job">
-              <option value="ربة منزل" ${window.formData.wife.job==='ربة منزل'?'selected':''}>ربة منزل</option>
-              <option value="تشتغل باليومية / زراعة" ${window.formData.wife.job==='تشتغل باليومية / زراعة'?'selected':''}>تشتغل باليومية / زراعة</option>
-              <option value="حرفية / أعمال منزلية" ${window.formData.wife.job==='حرفية / أعمال منزلية'?'selected':''}>حرفية / أعمال منزلية</option>
-              <option value="موظفة" ${window.formData.wife.job==='موظفة'?'selected':''}>موظفة</option>
+              <option value="ربة منزل">ربة منزل</option>
+              <option value="تشتغل باليومية / زراعة">تشتغل باليومية / زراعة</option>
+              <option value="حرفية / أعمال منزلية">حرفية / أعمال منزلية</option>
+              <option value="موظفة">موظفة</option>
             </select>
           </div>
         </div>
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px;">
           <label>الحالة الصحية:</label>
           <select id="w-health" onchange="toggleHealth('w')">
-            <option value="سليم" ${window.formData.wife.health==='سليم'?'selected':''}>سليمة وبصحة جيدة</option>
-            <option value="مريض" ${window.formData.wife.health==='مريض'?'selected':''}>مريضة</option>
+            <option value="سليم">سليمة وبصحة جيدة</option>
+            <option value="مريض">مريضة</option>
           </select>
-          <div id="w-health-box" class="${window.formData.wife.health === 'مريض' ? '' : 'hidden'}" style="margin-top:8px;">
+          <div id="w-health-box" class="hidden" style="margin-top:8px;">
             <select id="w-illness-type">
-              <option value="مزمن">مرض مزمن</option>
-              <option value="مؤقت">مرض أو علاج طارئ</option>
+              <option value="مرض مؤقت">مرض مؤقت</option>
+              <option value="مرض مزمن">مرض مزمن</option>
+            </select>
+            <select id="w-surgery-type" style="margin-top:6px;">
+              <option value="عملية جراحية">عملية جراحية</option>
+              <option value="علاج شهري">علاج شهري</option>
             </select>
             <input type="file" id="w-medical-doc" style="margin-top:6px;">
           </div>
@@ -186,8 +212,8 @@
         </div>
       `;
     }
-    // --- القسم الثالث: بيانات الأبناء ---
-    else if (window.currentStep === 3) {
+    // --- الخطوة 4: بيانات الأبناء والتابعين ---
+    else if (window.currentStep === 4) {
       html += `
         <h4 style="color:var(--primary-dark); margin-top:0;">👶 القسم الثالث: بيانات الأبناء والتابعين</h4>
         <div id="children-list">
@@ -198,26 +224,26 @@
                 <input placeholder="اسم الابن ثلاثي" class="c-name" value="${c.name || ''}">
                 <input placeholder="الرقم القومي (14 رقم)" maxlength="14" class="c-nid" value="${c.nid || ''}">
                 <select class="c-edu">
-                  <option value="دون السن / حضانة" ${c.edu==='دون السن / حضانة'?'selected':''}>دون السن / حضانة</option>
-                  <option value="ابتدائي - أول" ${c.edu==='ابتدائي - أول'?'selected':''}>ابتدائي - الصف الأول</option>
-                  <option value="ابتدائي - ثان" ${c.edu==='ابتدائي - ثان'?'selected':''}>ابتدائي - الصف الثاني</option>
-                  <option value="ابتدائي - ثالث" ${c.edu==='ابتدائي - ثالث'?'selected':''}>ابتدائي - الصف الثالث</option>
-                  <option value="ابتدائي - رابع" ${c.edu==='ابتدائي - رابع'?'selected':''}>ابتدائي - الصف الرابع</option>
-                  <option value="ابتدائي - خامس" ${c.edu==='ابتدائي - خامس'?'selected':''}>ابتدائي - الصف الخامس</option>
-                  <option value="ابتدائي - سادس" ${c.edu==='ابتدائي - سادس'?'selected':''}>ابتدائي - الصف السادس</option>
-                  <option value="إعدادي - أول" ${c.edu==='إعدادي - أول'?'selected':''}>إعدادي - الصف الأول</option>
-                  <option value="إعدادي - ثان" ${c.edu==='إعدادي - ثان'?'selected':''}>إعدادي - الصف الثاني</option>
-                  <option value="إعدادي - ثالث" ${c.edu==='إعدادي - ثالث'?'selected':''}>إعدادي - الصف الثالث</option>
-                  <option value="ثانوي عام / فني" ${c.edu==='ثانوي عام / فني'?'selected':''}>ثانوي عام أو فني</option>
-                  <option value="تعليم جامعي" ${c.edu==='تعليم جامعي'?'selected':''}>تعليم جامعي</option>
+                  <option value="دون السن / حضانة">دون السن / حضانة</option>
+                  <option value="ابتدائي - الصف الأول">ابتدائي - الصف الأول</option>
+                  <option value="ابتدائي - الصف الثاني">ابتدائي - الصف الثاني</option>
+                  <option value="ابتدائي - الصف الثالث">ابتدائي - الصف الثالث</option>
+                  <option value="ابتدائي - الصف الرابع">ابتدائي - الصف الرابع</option>
+                  <option value="ابتدائي - الصف الخامس">ابتدائي - الصف الخامس</option>
+                  <option value="ابتدائي - الصف السادس">ابتدائي - الصف السادس</option>
+                  <option value="إعدادي - الصف الأول">إعدادي - الصف الأول</option>
+                  <option value="إعدادي - الصف الثاني">إعدادي - الصف الثاني</option>
+                  <option value="إعدادي - الصف الثالث">إعدادي - الصف الثالث</option>
+                  <option value="ثانوي عام / فني">ثانوي عام أو فني</option>
+                  <option value="تعليم جامعي">تعليم جامعي</option>
                 </select>
               </div>
               <div class="grid-2" style="margin-top:6px;">
-                <div><label style="font-size:11px;">شهادة الميلاد:</label> <input type="file" class="c-cert"></div>
+                <div><label style="font-size:11px;">صورة شهادة الميلاد:</label> <input type="file" class="c-cert"></div>
                 <div>
                   <label style="font-size:11px;">الحالة الصحية للابن:</label>
                   <select class="c-health">
-                    <option value="سليم">سليم</option>
+                    <option value="سليم">سليم وبصحة جيدة</option>
                     <option value="مريض بمرض مزمن أو إعاقة">مريض بمرض مزمن أو إعاقة</option>
                   </select>
                 </div>
@@ -229,8 +255,39 @@
         <button type="button" onclick="addChildRow()" class="action-btn" style="background:#0f172a; margin-top:10px;">+ إضافة ابن آخر</button>
       `;
     }
-    // --- القسم الرابع: المصروفات ---
-    else if (window.currentStep === 4) {
+    // --- الخطوة التفاعلية الاختيارية (قسم العروسة في حالة اختيار الزواج) ---
+    else if (window.currentStep === 5) {
+      const isMarriage = window.formData.interventionType === 'مساعدة زواج أيتام وفتيات';
+      if (!isMarriage) {
+        // تخطي هذه الخطوة والذهاب للمصروفات مباشرة إن لم تكن حالة زواج
+        window.currentStep = 6;
+        return window.renderWizardStep();
+      }
+      html += `
+        <h4 style="color:#be185d; margin-top:0;">💍 القسم الإضافي: بيانات العروسة وتجهيز الزواج</h4>
+        <div style="background:#fdf2f8; border:1px solid #fbcfe8; padding:14px; border-radius:10px;">
+          <div class="grid-3">
+            <div><label>اسم العروسة الأول</label><input id="m-name1" value="${window.formData.marriage.name1 || ''}"></div>
+            <div><label>اسم العروسة الثاني</label><input id="m-name2" value="${window.formData.marriage.name2 || ''}"></div>
+            <div><label>اسم العروسة الثالث والعائلة</label><input id="m-name3" value="${window.formData.marriage.name3 || ''}"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label>الرقم القومي للعروسة (14 رقم)</label><input id="m-nid" maxlength="14" value="${window.formData.marriage.nid || ''}"></div>
+            <div><label>رقم تليفون العروسة أو وليها</label><input id="m-phone" maxlength="11" value="${window.formData.marriage.phone || ''}"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label>موعد الزفاف المقترح</label><input type="date" id="m-date" value="${window.formData.marriage.date || ''}"></div>
+            <div><label>المتفرّرات لدى العروسة (منقولات)</label><input id="m-available" value="${window.formData.marriage.available || ''}"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label>صورة قسيمة الزواج أو إشهار الخطوبة</label><input type="file" id="m-cert-doc"></div>
+            <div><label>الشهادة الصحية للعروسين (وش وظهر)</label><input type="file" id="m-health-doc"></div>
+          </div>
+        </div>
+      `;
+    }
+    // --- الخطوة 6: المصروفات والأعباء الشهرية ---
+    else if (window.currentStep === 6) {
       html += `
         <h4 style="color:var(--primary-dark); margin-top:0;">💸 القسم الرابع: المصروفات والأعباء الشهرية</h4>
         <div class="grid-2">
@@ -240,7 +297,7 @@
           <div><label>فواتير غاز أو أنبوبة</label><input type="number" id="exp-gas" value="${window.formData.expenses.gas || 0}" oninput="calcTotals()"></div>
           <div><label>مصاريف تعليم الأبناء</label><input type="number" id="exp-edu" value="${window.formData.expenses.edu || 0}" oninput="calcTotals()"></div>
           <div><label>مصاريف العلاج والأدوية المزمنة</label><input type="number" id="exp-health" value="${window.formData.expenses.health || 0}" oninput="calcTotals()"></div>
-          <div><label>المستلزمات المعيشية (مأكل ومسكن)</label><input type="number" id="exp-food" value="${window.formData.expenses.food || 0}" oninput="calcTotals()"></div>
+          <div><label>المستلزمات المعيشية الأساسية (مأكل ومسكن)</label><input type="number" id="exp-food" value="${window.formData.expenses.food || 0}" oninput="calcTotals()"></div>
           <div><label>أقساط ديون والتزامات أخرى</label><input type="number" id="exp-debts" value="${window.formData.expenses.debts || 0}" oninput="calcTotals()"></div>
         </div>
         <div style="background:#fee2e2; border:1px solid #fecaca; padding:12px; border-radius:8px; margin-top:12px; text-align:center;">
@@ -248,15 +305,15 @@
         </div>
       `;
     }
-    // --- القسم الخامس: مصادر الدخل ---
-    else if (window.currentStep === 5) {
+    // --- الخطوة 7: مصادر الدخل والفائض أو العجز ---
+    else if (window.currentStep === 7) {
       html += `
         <h4 style="color:var(--primary-dark); margin-top:0;">💵 القسم الخامس: مصادر الدخل والفائض أو العجز</h4>
         <div class="grid-2">
           <div><label>دخل الزوج من العمل / المهنة</label><input type="number" id="inc-husband" value="${window.formData.incomes.husband || 0}" oninput="calcTotals()"></div>
           <div><label>دخل الزوجة أو الأبناء العاملين</label><input type="number" id="inc-others" value="${window.formData.incomes.others || 0}" oninput="calcTotals()"></div>
-          <div><label>معاش حكومي / تكافل وكرامة</label><input type="number" id="inc-pension" value="${window.formData.incomes.pension || 0}" oninput="calcTotals()"></div>
-          <div><label>مساعدات ثابتة من أهل الخير</label><input type="number" id="inc-aid" value="${window.formData.incomes.aid || 0}" oninput="calcTotals()"></div>
+          <div><label>معاش حكومي / تضامن اجتماعي / تكافل وكرامة</label><input type="number" id="inc-pension" value="${window.formData.incomes.pension || 0}" oninput="calcTotals()"></div>
+          <div><label>مساعدات ثابتة من أهل الخير / الجمعيات</label><input type="number" id="inc-aid" value="${window.formData.incomes.aid || 0}" oninput="calcTotals()"></div>
         </div>
         <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:12px; border-radius:8px; margin-top:12px; text-align:center;">
           <p style="margin:0 0 4px; font-weight:700; color:#065f46;">إجمالي الدخل الشهري: <strong id="total-inc-display">0</strong> جنيه</p>
@@ -265,88 +322,10 @@
         </div>
       `;
     }
-    // --- القسم السادس: الديون، القضايا، وحالات الغارمين ---
-    else if (window.currentStep === 6) {
-      html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">⚖️ القسم السادس: الديون، القضايا، ومساعدات الغارمين</h4>
-        <div style="background:#f8fafc; padding:12px; border-radius:8px; margin-bottom:12px;">
-          <label style="font-weight:700;">هل توجد ديون مترتبة على الأسرة أو حالات غارمين؟</label>
-          <select id="has-debt-select" onchange="toggleDebtSection()">
-            <option value="لا" ${window.formData.debts.hasDebt==='لا'?'selected':''}>لا توجد ديون</option>
-            <option value="نعم" ${window.formData.debts.hasDebt==='نعم'?'selected':''}>نعم، توجد ديون ومطالبات قانونية</option>
-          </select>
-        </div>
-        <div id="debt-details-box" class="${window.formData.debts.hasDebt === 'نعم' ? '' : 'hidden'}">
-          <div class="grid-2" style="margin-bottom:10px;">
-            <div>
-              <label>نوع التوثيق القانوني:</label>
-              <select id="debt-type">
-                <option value="إيصالات أمانة">إيصالات أمانة</option>
-                <option value="شيكات بنكية">شيكات بنكية</option>
-                <option value="أحكام قضائية / قضايا متداولة">أحكام قضائية / قضايا متداولة</option>
-              </select>
-            </div>
-            <div><label>قيمة الدين الإجمالية (جنيه)</label><input type="number" id="debt-amount" value="${window.formData.debts.amount || ''}"></div>
-          </div>
-          <div class="grid-2" style="margin-bottom:10px;">
-            <div><label>اسم الدائن (صاحب الحق)</label><input id="debt-creditor" placeholder="اسم الشخص أو التاجر" value="${window.formData.debts.creditor || ''}"></div>
-            <div><label>رقم تليفون الدائن</label><input id="debt-phone" maxlength="11" placeholder="للاستعلام الميداني" value="${window.formData.debts.phone || ''}"></div>
-          </div>
-          <div style="margin-bottom:10px;">
-            <label>سبب الدين (اختر من القائمة):</label>
-            <select id="debt-reason">
-              <option value="علاج طارئ وعمليات">علاج طارئ وعمليات</option>
-              <option value="زواج بنات وتجهيز عرائس">زواج بنات وتجهيز عرائس</option>
-              <option value="تعثر مشروع / ضائقة تجارية">تعثر مشروع / ضائقة تجارية</option>
-              <option value="مصاريف معيشة واستهلاك أساسي">مصاريف معيشة واستهلاك أساسي</option>
-            </select>
-          </div>
-          <div><label>رفع صورة المستند (إيصال الأمانة / الشيك / شهادة الجدول المحكمة / الحكم):</label><input type="file" id="debt-doc"></div>
-        </div>
-      `;
-    }
-    // --- القسم السابع: نوع التدخل والمساعدات الخاصة (مياه - ستر ودفا - زواج) ---
-    else if (window.currentStep === 7) {
-      html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">🎯 القسم السابع: تحديد نوع التدخل والمساعدات الخاصة</h4>
-        <div style="margin-bottom:12px;">
-          <label style="font-weight:700;">نوع المساعدة الأساسية المطلوبة للأسرة *</label>
-          <select id="intervention-type" onchange="toggleMarriageSection()">
-            <option value="مساعدة اجتماعية شاملة">مساعدة اجتماعية نقدية أو شهرية شاملة</option>
-            <option value="وصلات مياه شرب">تركيب وصلة مياه شرب نقية</option>
-            <option value="ستر ودفا">حملات ستر ودفا (بطاطين ومساعدات شتوية)</option>
-            <option value="مساعدة طبية وعلاجية">مساعدة طبية وعلاجية / عمليات جراحية</option>
-            <option value="مساعدة زواج أيتام وفتيات">مساعدة زواج أيتام وفتيات (تجهيز عرائس)</option>
-            <option value="مساعدة غارمين">سداد ديون الغارمين وفك كرب</option>
-          </select>
-        </div>
-        
-        <div id="marriage-section-box" class="hidden" style="background:#fdf2f8; border:1px solid #fbcfe8; padding:12px; border-radius:8px; margin-top:10px;">
-          <h5 style="color:#be185d; margin-top:0;">💍 بيانات العروسة وتجهيز الزواج</h5>
-          <div class="grid-3">
-            <div><label>اسم العروسة الأول</label><input id="m-name1"></div>
-            <div><label>اسم العروسة الثاني</label><input id="m-name2"></div>
-            <div><label>اسم العروسة الثالث</label><input id="m-name3"></div>
-          </div>
-          <div class="grid-2" style="margin-top:8px;">
-            <div><label>الرقم القومي للعروسة (14 رقم)</label><input id="m-nid" maxlength="14"></div>
-            <div><label>رقم تليفون العروسة أو وليها</label><input id="m-phone" maxlength="11"></div>
-          </div>
-          <div class="grid-2" style="margin-top:8px;">
-            <div><label>موعد الزفاف المقترح</label><input type="date" id="m-date"></div>
-            <div><label>المتفرّرات لدى العروسة</label><input id="m-available" placeholder="الأجهزة أو المنقولات المتوفرة"></div>
-          </div>
-          <div class="grid-2" style="margin-top:8px;">
-            <div><label>صورة قسيمة الزواج أو إشهار الخطوبة</label><input type="file" id="m-cert-doc"></div>
-            <div><label>الشهادة الصحية للعروسين (وش وظهر)</label><input type="file" id="m-health-doc"></div>
-          </div>
-        </div>
-      `;
-    }
-    // --- القسم الثامن: السكن، المستندات الرسمية، ورأي الباحث ---
+    // --- الخطوة 8: السكن، المستندات الرسمية، ورأي الباحث ---
     else if (window.currentStep === 8) {
       html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">📋 القسم الثامن: وصف السكن، المستندات الرسمية، ورأي الباحث</h4>
+        <h4 style="color:var(--primary-dark); margin-top:0;">📋 القسم السادس والسابع: وصف السكن، المستندات الرسمية، ورأي الباحث</h4>
         <div class="grid-2" style="margin-bottom:10px;">
           <div>
             <label>نوع السكن:</label>
@@ -371,10 +350,10 @@
             <label>وصف السقف:</label>
             <select id="h-roof">
               <option value="خشب">خشب</option>
-              <option value="مسلح">مسلح (خرسانة)</option>
+              <option value="مسلح">مسلح</option>
               <option value="جريد">جريد</option>
               <option value="بوص">بوص</option>
-              <option value="عفش / عشش">عفش / عشش</option>
+              <option value="عفش">عفش</option>
             </select>
           </div>
           <div>
@@ -399,7 +378,7 @@
         <div style="margin-bottom:10px;">
           <label>وصف الفرش والأثاث:</label>
           <select id="h-furniture">
-            <option value="رذيء / معدوم">رديء / معدوم</option>
+            <option value="رديء / معدوم">رديء / معدوم</option>
             <option value="متوسط">متوسط</option>
             <option value="جيد">جيد</option>
             <option value="جيد جداً">جيد جداً</option>
@@ -441,10 +420,9 @@
     `;
 
     container.innerHTML = html;
-    if (window.currentStep === 4 || window.currentStep === 5) window.calcTotals();
+    if (window.currentStep === 6 || window.currentStep === 7) window.calcTotals();
   };
 
-  // --- دوال المساعدة التفاعلية ---
   window.nextWizardStep = function() {
     saveCurrentStepData();
     window.currentStep++;
@@ -475,24 +453,6 @@
     }
   };
 
-  window.toggleDebtSection = function() {
-    const val = document.getElementById('has-debt-select')?.value;
-    const box = document.getElementById('debt-details-box');
-    if (box) {
-      if (val === 'نعم') box.classList.remove('hidden');
-      else box.classList.add('hidden');
-    }
-  };
-
-  window.toggleMarriageSection = function() {
-    const val = document.getElementById('intervention-type')?.value;
-    const box = document.getElementById('marriage-section-box');
-    if (box) {
-      if (val === 'مساعدة زواج أيتام وفتيات') box.classList.remove('hidden');
-      else box.classList.add('hidden');
-    }
-  };
-
   window.toggleLease = function() {
     const val = document.getElementById('h-status-case')?.value;
     const box = document.getElementById('lease-doc-box');
@@ -502,9 +462,14 @@
     }
   };
 
+  window.toggleMarriageStepVisibility = function() {
+    const val = document.getElementById('intervention-type')?.value;
+    window.formData.interventionType = val;
+  };
+
   window.addChildRow = function() {
     if (!window.formData.children) window.formData.children = [];
-    window.formData.children.push({ name: '', nid: '', edu: 'ابتدائي - أول' });
+    window.formData.children.push({ name: '', nid: '', edu: 'ابتدائي - الصف الأول' });
     window.renderWizardStep();
   };
 
@@ -540,7 +505,7 @@
     const balDisplay = document.getElementById('balance-display');
     if (balDisplay) {
       if (balance < 0) {
-        balDisplay.innerHTML = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;">${Math.abs(balance)} جنيه</span> (حالة مستحقة)`;
+        balDisplay.innerHTML = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;">${Math.abs(balance)} جنيه</span> (حالة مستحقة للدعم)`;
       } else {
         balDisplay.innerHTML = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;">${balance} جنيه</span>`;
       }
@@ -549,12 +514,15 @@
 
   function saveCurrentStepData() {
     if (window.currentStep === 1) {
+      window.formData.interventionType = document.getElementById('intervention-type')?.value || 'مساعدة اجتماعية شاملة';
+    } else if (window.currentStep === 2) {
       window.formData.husband = {
         name1: document.getElementById('h-name1')?.value || '',
         name2: document.getElementById('h-name2')?.value || '',
         name3: document.getElementById('h-name3')?.value || '',
         status: document.getElementById('h-status')?.value || '',
         nid: document.getElementById('h-nid')?.value || '',
+        address: document.getElementById('h-address')?.value || '',
         phone: document.getElementById('h-phone')?.value || '',
         whatsapp: document.getElementById('h-whatsapp')?.value || '',
         eduLevel: document.getElementById('h-edu-level')?.value || '',
@@ -564,7 +532,7 @@
         illnessType: document.getElementById('h-illness-type')?.value || '',
         surgeryType: document.getElementById('h-surgery-type')?.value || ''
       };
-    } else if (window.currentStep === 2) {
+    } else if (window.currentStep === 3) {
       window.formData.wife = {
         name1: document.getElementById('w-name1')?.value || '',
         name2: document.getElementById('w-name2')?.value || '',
@@ -575,7 +543,7 @@
         job: document.getElementById('w-job')?.value || '',
         health: document.getElementById('w-health')?.value || ''
       };
-    } else if (window.currentStep === 3) {
+    } else if (window.currentStep === 4) {
       const rows = document.querySelectorAll('#children-list > div');
       window.formData.children = [];
       rows.forEach(r => {
@@ -586,35 +554,7 @@
           health: r.querySelector('.c-health')?.value || ''
         });
       });
-    } else if (window.currentStep === 4) {
-      window.formData.expenses = {
-        rent: parseFloat(document.getElementById('exp-rent')?.value) || 0,
-        water: parseFloat(document.getElementById('exp-water')?.value) || 0,
-        electric: parseFloat(document.getElementById('exp-electric')?.value) || 0,
-        gas: parseFloat(document.getElementById('exp-gas')?.value) || 0,
-        edu: parseFloat(document.getElementById('exp-edu')?.value) || 0,
-        health: parseFloat(document.getElementById('exp-health')?.value) || 0,
-        food: parseFloat(document.getElementById('exp-food')?.value) || 0,
-        debts: parseFloat(document.getElementById('exp-debts')?.value) || 0
-      };
     } else if (window.currentStep === 5) {
-      window.formData.incomes = {
-        husband: parseFloat(document.getElementById('inc-husband')?.value) || 0,
-        others: parseFloat(document.getElementById('inc-others')?.value) || 0,
-        pension: parseFloat(document.getElementById('inc-pension')?.value) || 0,
-        aid: parseFloat(document.getElementById('inc-aid')?.value) || 0
-      };
-    } else if (window.currentStep === 6) {
-      window.formData.debts = {
-        hasDebt: document.getElementById('has-debt-select')?.value || 'لا',
-        type: document.getElementById('debt-type')?.value || '',
-        amount: parseFloat(document.getElementById('debt-amount')?.value) || 0,
-        creditor: document.getElementById('debt-creditor')?.value || '',
-        phone: document.getElementById('debt-phone')?.value || '',
-        reason: document.getElementById('debt-reason')?.value || ''
-      };
-    } else if (window.currentStep === 7) {
-      window.formData.interventionType = document.getElementById('intervention-type')?.value || 'مساعدة اجتماعية شاملة';
       if (window.formData.interventionType === 'مساعدة زواج أيتام وفتيات') {
         window.formData.marriage = {
           name1: document.getElementById('m-name1')?.value || '',
@@ -626,6 +566,24 @@
           available: document.getElementById('m-available')?.value || ''
         };
       }
+    } else if (window.currentStep === 6) {
+      window.formData.expenses = {
+        rent: parseFloat(document.getElementById('exp-rent')?.value) || 0,
+        water: parseFloat(document.getElementById('exp-water')?.value) || 0,
+        electric: parseFloat(document.getElementById('exp-electric')?.value) || 0,
+        gas: parseFloat(document.getElementById('exp-gas')?.value) || 0,
+        edu: parseFloat(document.getElementById('exp-edu')?.value) || 0,
+        health: parseFloat(document.getElementById('exp-health')?.value) || 0,
+        food: parseFloat(document.getElementById('exp-food')?.value) || 0,
+        debts: parseFloat(document.getElementById('exp-debts')?.value) || 0
+      };
+    } else if (window.currentStep === 7) {
+      window.formData.incomes = {
+        husband: parseFloat(document.getElementById('inc-husband')?.value) || 0,
+        others: parseFloat(document.getElementById('inc-others')?.value) || 0,
+        pension: parseFloat(document.getElementById('inc-pension')?.value) || 0,
+        aid: parseFloat(document.getElementById('inc-aid')?.value) || 0
+      };
     } else if (window.currentStep === 8) {
       window.formData.housing = {
         type: document.getElementById('h-type')?.value || '',
@@ -661,7 +619,6 @@
       husband_data: window.formData.husband,
       wife_data: window.formData.wife,
       children_data: window.formData.children,
-      debts_data: window.formData.debts,
       marriage_data: window.formData.marriage,
       housing_data: window.formData.housing
     };
