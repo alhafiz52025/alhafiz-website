@@ -1,11 +1,11 @@
-// wizard.js - المعالج الشامل والمحدث للاستمارة
+// wizard.js - المعالج الشامل والنهائي لاستمارة البحث الاجتماعي لمؤسسة الحافظ
 (function() {
   window.currentStep = window.currentStep || 1;
   window.totalWizardSteps = 8;
 
   if (typeof window.formData === 'undefined') {
     window.formData = {
-      interventionType: 'مساعدة اجتماعية شاملة',
+      interventionType: 'كفالة أيتام شهرية',
       husband: {},
       wife: {},
       children: [],
@@ -37,7 +37,7 @@
       </div>
     `;
 
-    // --- الخطوة 1: نوع التدخل الأساسي ---
+    // --- الخطوة 1: تحديد نوع التدخل الأساسي ---
     if (window.currentStep === 1) {
       const aidOptions = (window.AID_TYPES || []).map(a => `<option value="${a}" ${window.formData.interventionType===a?'selected':''}>${a}</option>`).join('');
       html += `
@@ -48,10 +48,10 @@
             ${aidOptions}
           </select>
         </div>
-        <p style="font-size:13px; color:#64748b;">اضغط على زر (التالي ➔) للانتقال لبيانات الزوج ورب الأسرة.</p>
+        <p style="font-size:13px; color:#64748b;">اضغط على زر (التالي ➔) للانتقال إلى بيانات الزوج ورب الأسرة.</p>
       `;
     }
-    // --- الخطوة 2: بيانات الزوج مع الفلترة الجغرافية (محافظة -> مركز -> قرية) ---
+    // --- الخطوة 2: بيانات الزوج مع الفلترة الجغرافية والإجراءات الطبية الدقيقة ---
     else if (window.currentStep === 2) {
       const locs = window.EGYPT_LOCATIONS || {};
       const selectedGov = window.formData.husband?.gov || 'بني سويف';
@@ -125,37 +125,48 @@
             <select id="h-job">${jobOptions}</select>
           </div>
         </div>
+
         <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:10px;">
-          <label>الحالة الصحية *</label>
-          <select id="h-health" onchange="toggleHealth('h')">
-            <option value="سليم">سليم وبصحة جيدة</option>
-            <option value="مريض">مريض</option>
-          </select>
-          <div id="h-health-box" class="hidden" style="margin-top:8px;">
+          <div class="grid-2">
+            <div>
+              <label>الحالة الصحية *</label>
+              <select id="h-health" onchange="renderHealthSection('h')">
+                <option value="سليم" selected>سليم وبصحة جيدة</option>
+                <option value="مريض">مريض</option>
+              </select>
+            </div>
+            <div id="h-illness-type-container" class="hidden">
+              <label>نوع المرض:</label>
+              <select id="h-illness-type" onchange="renderHealthSection('h')">
+                <option value="مؤقت">مرض أو إصابة مؤقتة</option>
+                <option value="مزمن">مرض مزمن مستمر</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="h-health-box" class="hidden" style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
             <div class="grid-2">
               <div>
-                <label>نوع المرض:</label>
-                <select id="h-illness-type">
-                  <option value="مؤقت">مرض مؤقت (إصابة، كسر، جراحة طارئة)</option>
-                  <option value="مزمن">مرض مزمن (سكر، ضغط، كبد، كلوي، قلب)</option>
+                <label>الإجراء الطبي المطلوب:</label>
+                <select id="h-medical-need" onchange="renderDynamicMedicalFields('h')">
+                  <!-- يتم تعبئتها ديناميكياً -->
                 </select>
               </div>
               <div>
-                <label>الإجراء الطبي المطلوب:</label>
-                <select id="h-surgery-type">
-                  <option value="عملية جراحية">عملية جراحية</option>
-                  <option value="أجهزة تعويضية">أجهزة تعويضية</option>
-                  <option value="أطراف صناعية">أطراف صناعية</option>
-                  <option value="علاج شهري ثابت">علاج شهري ثابت</option>
-                </select>
+                <label>رفع التقرير الطبي (مختوم) *</label>
+                <input type="file" id="h-medical-doc">
               </div>
             </div>
-            <div class="grid-2" style="margin-top:8px;">
-              <div><label>رفع التقرير الطبي (مختوم):</label><input type="file" id="h-medical-doc"></div>
-              <div><label>رفع البحث الاجتماعي (مختوم):</label><input type="file" id="h-social-doc"></div>
+            <div style="margin-top:8px;">
+              <label>رفع البحث الاجتماعي (مختوم) *</label>
+              <input type="file" id="h-social-doc">
+            </div>
+            <div id="h-dynamic-medical-fields" style="margin-top:10px;">
+              <!-- الحقول الديناميكية للعمليات والتكاليف والأطراف -->
             </div>
           </div>
         </div>
+
         <div class="grid-2">
           <div><label>صورة بطاقة الزوج (وش) *</label><input type="file" id="h-id-front"></div>
           <div><label>صورة بطاقة الزوج (ظهر) *</label><input type="file" id="h-id-back"></div>
@@ -192,23 +203,37 @@
             <select id="w-job">${jobOptions}</select>
           </div>
         </div>
-        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px;">
-          <label>الحالة الصحية:</label>
-          <select id="w-health" onchange="toggleHealth('w')">
-            <option value="سليم">سليمة وبصحة جيدة</option>
-            <option value="مريض">مريضة</option>
-          </select>
-          <div id="w-health-box" class="hidden" style="margin-top:8px;">
-            <select id="w-illness-type">
-              <option value="مؤقت">مرض مؤقت</option>
-              <option value="مزمن">مرض مزمن</option>
-            </select>
-            <div class="grid-2" style="margin-top:6px;">
-              <div><label>التقرير الطبي (مختوم):</label><input type="file" id="w-medical-doc"></div>
-              <div><label>البحث الاجتماعي (مختوم):</label><input type="file" id="w-social-doc"></div>
+        
+        <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-bottom:10px;">
+          <div class="grid-2">
+            <div>
+              <label>الحالة الصحية:</label>
+              <select id="w-health" onchange="renderHealthSection('w')">
+                <option value="سليم" selected>سليمة وبصحة جيدة</option>
+                <option value="مريض">مريضة</option>
+              </select>
+            </div>
+            <div id="w-illness-type-container" class="hidden">
+              <label>نوع المرض:</label>
+              <select id="w-illness-type" onchange="renderHealthSection('w')">
+                <option value="مؤقت">مرض مؤقت</option>
+                <option value="مزمن">مرض مزمن</option>
+              </select>
             </div>
           </div>
+          <div id="w-health-box" class="hidden" style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+            <div class="grid-2">
+              <div>
+                <label>الإجراء الطبي المطلوب:</label>
+                <select id="w-medical-need" onchange="renderDynamicMedicalFields('w')"></select>
+              </div>
+              <div><label>التقرير الطبي (مختوم):</label><input type="file" id="w-medical-doc"></div>
+            </div>
+            <div style="margin-top:8px;"><label>البحث الاجتماعي (مختوم):</label><input type="file" id="w-social-doc"></div>
+            <div id="w-dynamic-medical-fields" style="margin-top:10px;"></div>
+          </div>
         </div>
+
         <div class="grid-2">
           <div><label>صورة بطاقة الزوجة (وش)</label><input type="file" id="w-id-front"></div>
           <div><label>صورة بطاقة الزوجة (ظهر)</label><input type="file" id="w-id-back"></div>
@@ -251,7 +276,7 @@
         <button type="button" onclick="addChildRow()" class="action-btn" style="background:#0f172a; margin-top:10px;">+ إضافة ابن آخر</button>
       `;
     }
-    // --- الخطوة 5: قسم الزواج (إذا تم اختياره) ---
+    // --- الخطوة 5: قسم الزواج (يظهر فقط عند اختيار تجهيز عروسة) ---
     else if (window.currentStep === 5) {
       if (window.formData.interventionType !== 'تجهيز عروسة (أجهزة كهربائية / مفروشات)') {
         window.currentStep = 6;
@@ -417,11 +442,10 @@
     if (window.currentStep === 6 || window.currentStep === 7) window.calcTotals();
   };
 
-  // الفلترة الجغرافية التفاعلية (تعمل بنظام القوائم المترابطة مثل البنوك)
+  // --- دوال الفلترة الجغرافية والإجراءات الطبية التفاعلية ---
   window.updateGeoCenters = function() {
     const gov = document.getElementById('h-gov')?.value;
     const centerSelect = document.getElementById('h-center');
-    const villageSelect = document.getElementById('h-village');
     const locs = window.EGYPT_LOCATIONS || {};
     if (centerSelect && locs[gov]) {
       const centers = Object.keys(locs[gov]);
@@ -441,17 +465,100 @@
     }
   };
 
+  window.renderHealthSection = function(type = 'h') {
+    const healthStatus = document.getElementById(type + '-health')?.value || 'سليم';
+    const illnessContainer = document.getElementById(type + '-illness-type-container');
+    const healthBox = document.getElementById(type + '-health-box');
+    
+    if (!healthBox || !illnessContainer) return;
+
+    if (healthStatus === 'مريض') {
+      illnessContainer.classList.remove('hidden');
+      healthBox.classList.remove('hidden');
+    } else {
+      illnessContainer.classList.add('hidden');
+      healthBox.classList.add('hidden');
+      return;
+    }
+
+    const illnessType = document.getElementById(type + '-illness-type')?.value || 'مؤقت';
+    const medicalNeedSelect = document.getElementById(type + '-medical-need');
+    if (!medicalNeedSelect) return;
+
+    if (illnessType === 'مؤقت') {
+      medicalNeedSelect.innerHTML = `
+        <option value="عملية جراحية">إجراء عملية جراحية</option>
+        <option value="أشعة وتحاليل طبية">أشعة وتحاليل طبية وفحوصات</option>
+        <option value="أجهزة تعويضية">أجهزة تعويضية</option>
+        <option value="تركيب طرف صناعي">تركيب طرف صناعي</option>
+        <option value="جلسات علاج طبيعي أو تخاطب">جلسات علاج طبيعي أو تخاطب</option>
+      `;
+    } else {
+      medicalNeedSelect.innerHTML = `
+        <option value="دواء وعلاج شهري مزمن">دواء وعلاج شهري مزمن</option>
+        <option value="جلسات غسيل كلوي أو علاج كيماوي">جلسات غسيل كلوي أو علاج كيماوي</option>
+        <option value="أشعة وتحاليل طبية">أشعة وتحاليل طبية وفحوصات</option>
+      `;
+    }
+    window.renderDynamicMedicalFields(type);
+  };
+
+  window.renderDynamicMedicalFields = function(type = 'h') {
+    const medicalNeed = document.getElementById(type + '-medical-need')?.value;
+    const container = document.getElementById(type + '-dynamic-medical-fields');
+    if (!container) return;
+
+    let html = '';
+    if (medicalNeed === 'عملية جراحية') {
+      html = `
+        <label style="font-size:12px; font-weight:700; color:#b91c1c;">اختر نوع العملية الجراحية المطلوبة:</label>
+        <select id="${type + '-sub-detail'}" style="margin-top:4px;">
+          <option value="جراحة قلب مفتوح / قسطرة وتركيب دعامات">جراحة قلب مفتوح / قسطرة وتركيب دعامات</option>
+          <option value="جراحة العظام والعمود الفقري (تثبيت فقرات / تغيير مفصل)">جراحة العظام والعمود الفقري (تثبيت فقرات / تغيير مفصل)</option>
+          <option value="جراحة العيون (إزالة مياه بيضاء / زراعة قرنية / شبكية)">جراحة العيون (إزالة مياه بيضاء / زراعة قرنية / شبكية)</option>
+          <option value="جراحة المخ والأعصاب وورم الرأس">جراحة المخ والأعصاب وورم الرأس</option>
+          <option value="استئصال أورام / جراحات الأورام السرطانية">استئصال أورام / جراحات الأورام السرطانية</option>
+          <option value="جراحات الكبد والمعدة والأمعاء">جراحات الكبد والمعدة والأمعاء (فتق / زوائد)</option>
+          <option value="جراحة المسالك البولية وتفتيت حصوات الكلى">جراحة المسالك البولية وتفتيت حصوات الكلى</option>
+          <option value="عمليات النساء والتوليد">عمليات النساء والتوليد (قيصرية / أورام ليفية)</option>
+          <option value="جراحات الأطفال الطارئة والعيوب الخلقية">جراحات الأطفال الطارئة والعيوب الخلقية</option>
+          <option value="حروق بليغة وترميم جلد">حروق بليغة وترميم جلد</option>
+        </select>
+      `;
+    } else if (['دواء وعلاج شهري مزمن', 'جلسات غسيل كلوي أو علاج كيماوي', 'أشعة وتحاليل طبية', 'جلسات علاج طبيعي أو تخاطب'].includes(medicalNeed)) {
+      html = `
+        <label style="font-size:12px; font-weight:700; color:#065f46;">التكلفة الشهرية التقديرية (جنيه):</label>
+        <input type="number" id="${type + '-monthly-cost'}" placeholder="أدخل المبلغ الشهري المطلوب" style="margin-top:4px;">
+      `;
+    } else if (medicalNeed === 'تركيب طرف صناعي') {
+      html = `
+        <label style="font-size:12px; font-weight:700; color:#1e3a8a;">اختر نوع الطرف الصناعي المطلوب:</label>
+        <select id="${type + '-sub-detail'}" style="margin-top:4px;">
+          <option value="طرف صناعي سفلي فوق الركبة">طرف صناعي سفلي فوق الركبة</option>
+          <option value="طرف صناعي سفلي تحت الركبة">طرف صناعي سفلي تحت الركبة</option>
+          <option value="طرف صناعي علوي فوق الكوع">طرف صناعي علوي فوق الكوع</option>
+          <option value="طرف صناعي علوي تحت الكوع">طرف صناعي علوي تحت الكوع</option>
+          <option value="مشط قدم صناعي متطور">مشط قدم صناعي متطور</option>
+        </select>
+      `;
+    } else if (medicalNeed === 'أجهزة تعويضية') {
+      html = `
+        <label style="font-size:12px; font-weight:700; color:#1e3a8a;">اختر نوع الجهاز التعويضي المطلوب:</label>
+        <select id="${type + '-sub-detail'}" style="margin-top:4px;">
+          <option value="كرسي متحرك (عادي أو كهربي)">كرسي متحرك (عادي أو كهربي)</option>
+          <option value="سماعة أذن طبية">سماعة أذن طبية</option>
+          <option value="مرتبة هوائية لمنع قرح الفراش">مرتبة هوائية لمنع قرح الفراش</option>
+          <option value="عكازات طبية أو مشاية ألومنيوم">عكازات طبية أو مشاية ألومنيوم</option>
+          <option value="حزام ظهر طبي أو جبيرة تثبيت">حزام ظهر طبي أو جبيرة تثبيت</option>
+          <option value="جهاز تنفس صناعي / أنبوب أوكسجين">جهاز تنفس صناعي / أنبوب أوكسجين</option>
+        </select>
+      `;
+    }
+    container.innerHTML = html;
+  };
+
   window.nextWizardStep = function() { saveCurrentStepData(); window.currentStep++; window.renderWizardStep(); };
   window.prevWizardStep = function() { saveCurrentStepData(); window.currentStep--; window.renderWizardStep(); };
-
-  window.toggleHealth = function(type) {
-    const val = document.getElementById(type + '-health')?.value;
-    const box = document.getElementById(type + '-health-box');
-    if (box) {
-      if (val === 'مريض') box.classList.remove('hidden');
-      else box.classList.add('hidden');
-    }
-  };
 
   window.toggleLease = function() {
     const val = document.getElementById('h-status-case')?.value;
@@ -509,7 +616,7 @@
 
   function saveCurrentStepData() {
     if (window.currentStep === 1) {
-      window.formData.interventionType = document.getElementById('intervention-type')?.value || 'مساعدة اجتماعية شاملة';
+      window.formData.interventionType = document.getElementById('intervention-type')?.value || 'كفالة أيتام شهرية';
     } else if (window.currentStep === 2) {
       window.formData.husband = {
         name1: document.getElementById('h-name1')?.value || '',
@@ -525,7 +632,7 @@
         whatsapp: document.getElementById('h-whatsapp')?.value || '',
         health: document.getElementById('h-health')?.value || '',
         illnessType: document.getElementById('h-illness-type')?.value || '',
-        surgeryType: document.getElementById('h-surgery-type')?.value || ''
+        medicalNeed: document.getElementById('h-medical-need')?.value || ''
       };
     } else if (window.currentStep === 3) {
       window.formData.wife = {
