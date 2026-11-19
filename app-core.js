@@ -40,24 +40,24 @@
   };
 
   window.toggleLanguage = function() {
-    currentLang = currentLang === 'ar' ? 'en' : 'ar';
-    const root = document.getElementById('html-root');
-    if (root) {
-      root.lang = currentLang;
-      root.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  currentLang = currentLang === 'ar' ? 'en' : 'ar';
+  const root = document.getElementById('html-root');
+  if (root) {
+    root.lang = currentLang;
+    root.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  }
+  if (typeof window.applyLanguageDictionary === 'function') {
+    window.applyLanguageDictionary(currentLang);
+  }
+  document.querySelectorAll('[data-ar][data-en]').forEach(el => {
+    const val = currentLang === 'ar' ? el.getAttribute('data-ar') : el.getAttribute('data-en');
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = val;
+    } else if (el.children.length === 0) {
+      el.textContent = val;
     }
-    const btn = document.getElementById('lang-toggle-btn');
-    if (btn) btn.innerText = currentLang === 'ar' ? 'English' : 'العربية';
-
-    document.querySelectorAll('[data-ar][data-en]').forEach(el => {
-      const val = currentLang === 'ar' ? el.getAttribute('data-ar') : el.getAttribute('data-en');
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        el.placeholder = val;
-      } else if (el.children.length === 0) {
-        el.textContent = val;
-      }
-    });
-  };
+  });
+};
 
   window.adjustFontSize = function(delta) {
     currentFontScale = Math.min(130, Math.max(85, currentFontScale + delta * 5));
