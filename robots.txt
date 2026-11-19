@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://alhafiz-eg.azurewebsites.net/sitemap.xml
