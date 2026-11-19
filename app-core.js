@@ -1,4 +1,4 @@
-// app-core.js - المحرك الأساسي للموقع ولوحة الإدارة والتظلمات والنماذج الرسمية لمؤسسة الحافظ
+// app-core.js - المحرك الأساسي الموحد لمؤسسة الحافظ للتنمية والخدمات
 (function() {
   const DEFAULT_ADMIN = {
     email: 'alhafiz52025@gmail.com',
@@ -13,11 +13,11 @@
   let editingAchievementId = null;
   let uploadedAchievementImageData = '';
 
-  // تهيئة عميل Supabase إذا كانت بياناته موجودة
   if (!window.supabaseClient && window.SUPABASE_URL && window.SUPABASE_ANON_KEY && window.supabase) {
     window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
   }
 
+  // --- الإعدادات المؤسسية وأرقام الهواتف وبيانات الدخول ---
   window.getFoundationSettings = function() {
     const saved = JSON.parse(localStorage.getItem('hf_foundation_settings') || 'null');
     const creds = JSON.parse(localStorage.getItem('hf_admin_creds') || 'null');
@@ -58,7 +58,7 @@
       phone2: phone2 || '01155540066'
     }));
 
-    if (window.currentUser) {
+    if (window.currentUser && window.currentUser.role === 'admin') {
       window.currentUser.email = adminEmail;
       sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
     }
@@ -67,6 +67,247 @@
     renderDashboard();
   };
 
+  // --- إدارة الأعضاء والباحثين والمتطوعين والشركاء والمانحين ---
+  window.getManagedMembers = function() {
+    return JSON.parse(localStorage.getItem('hf_members_directory') || '[]');
+  };
+
+  window.saveManagedMembers = function(list) {
+    localStorage.setItem('hf_members_directory', JSON.stringify(list));
+  };
+
+  window.syncMembershipToDirectory = function(memberObj) {
+    const list = window.getManagedMembers();
+    const idx = list.findIndex(
+      m => (memberObj.code && m.code === memberObj.code) ||
+           (memberObj.email && m.email && m.email.toLowerCase() === memberObj.email.toLowerCase()) ||
+           (memberObj.phone && m.phone && m.phone === memberObj.phone)
+    );
+    const record = {
+      code: memberObj.code || ('MBR-' + Math.floor(1000 + Math.random() * 9000)),
+      full_name: memberObj.full_name || '',
+      role: memberObj.role || 'researcher',
+      phone: memberObj.phone || '',
+      email: (memberObj.email || '').trim(),
+      password: memberObj.password || '22022025',
+      status: memberObj.status || 'active',
+      updated_at: new Date().toISOString()
+    };
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...record };
+    } else {
+      list.unshift(record);
+    }
+    window.saveManagedMembers(list);
+    return record;
+  };
+
+  window.addOrUpdateMemberAccount = async function() {
+    const name = (document.getElementById('mgr-mem-name')?.value || '').trim();
+    const role = document.getElementById('mgr-mem-role')?.value || 'researcher';
+    const phone = (document.getElementById('mgr-mem-phone')?.value || '').trim();
+    const email = (document.getElementById('mgr-mem-email')?.value || '').trim();
+    const password = (document.getElementById('mgr-mem-pass')?.value || '').trim();
+    const status = document.getElementById('mgr-mem-status')?.value || 'active';
+    const editTarget = (document.getElementById('mgr-mem-editing-code')?.value || '').trim();
+
+    if (!name || !phone || !email || !password) {
+      alert('⚠️ يرجى إدخال الاسم، رقم الهاتف، البريد الإلكتروني، وكلمة السر.');
+      return;
+    }
+
+    const list = window.getManagedMembers();
+    if (editTarget) {
+      const idx = list.findIndex(m => m.code === editTarget);
+      if (idx >= 0) {
+        const oldEmail = list[idx].email;
+        list[idx] = {
+          ...list[idx],
+          full_name: name,
+          role,
+          phone,
+          email,
+          password,
+          status,
+          updated_at: new Date().toISOString()
+        };
+        window.saveManagedMembers(list);
+
+        if (window.supabaseClient) {
+          await window.supabaseClient.from('users_profiles').update({
+            full_name: name,
+            role,
+            phone,
+            email,
+            account_status: status
+          }).eq('email', oldEmail || email);
+        }
+
+        alert('✅ تم تعديل بيانات العضو والبريد الإلكتروني والرقم السري بنجاح.');
+      }
+    } else {
+      const newCode = 'MBR-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+      window.syncMembershipToDirectory({
+        code: newCode,
+        full_name: name,
+        role,
+        phone,
+        email,
+        password,
+        status
+      });
+
+      if (window.supabaseClient) {
+        await window.supabaseClient.from('users_profiles').insert([{
+          full_name: name,
+          role,
+          phone,
+          email,
+          account_status: status
+        }]);
+      }
+
+      alert('✅ تم إضافة حساب العضو الجديد بنجاح.');
+    }
+
+    window.resetMemberForm();
+    window.refreshMembersTableOnly();
+  };
+
+  window.editMemberAccount = function(code) {
+    const item = window.getManagedMembers().find(m => m.code === code);
+    if (!item) return;
+    document.getElementById('mgr-mem-editing-code').value = item.code;
+    document.getElementById('mgr-mem-name').value = item.full_name || '';
+    document.getElementById('mgr-mem-role').value = item.role || 'researcher';
+    document.getElementById('mgr-mem-phone').value = item.phone || '';
+    document.getElementById('mgr-mem-email').value = item.email || '';
+    document.getElementById('mgr-mem-pass').value = item.password || '';
+    document.getElementById('mgr-mem-status').value = item.status || 'active';
+    const btn = document.getElementById('mgr-mem-save-btn');
+    if (btn) btn.textContent = '💾 حفظ التعديلات على العضو';
+  };
+
+  window.resetMemberForm = function() {
+    ['mgr-mem-editing-code', 'mgr-mem-name', 'mgr-mem-phone', 'mgr-mem-email', 'mgr-mem-pass'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const roleEl = document.getElementById('mgr-mem-role');
+    if (roleEl) roleEl.value = 'researcher';
+    const stEl = document.getElementById('mgr-mem-status');
+    if (stEl) stEl.value = 'active';
+    const btn = document.getElementById('mgr-mem-save-btn');
+    if (btn) btn.textContent = '+ إضافة / حفظ حساب العضو';
+  };
+
+  window.deleteMemberAccount = async function(code) {
+    if (!confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) return;
+    const list = window.getManagedMembers();
+    const target = list.find(m => m.code === code);
+    const filtered = list.filter(m => m.code !== code);
+    window.saveManagedMembers(filtered);
+
+    if (window.supabaseClient && target && target.email) {
+      await window.supabaseClient.from('users_profiles').delete().eq('email', target.email);
+    }
+
+    alert('🗑️ تم حذف الحساب بنجاح.');
+    window.refreshMembersTableOnly();
+  };
+
+  window.refreshMembersTableOnly = function() {
+    const tbody = document.getElementById('managed-members-tbody');
+    if (!tbody) return;
+    const search = (document.getElementById('mgr-mem-search')?.value || '').trim().toLowerCase();
+    const roleLabels = {
+      researcher: 'باحث ميداني',
+      volunteer: 'متطوع',
+      partner: 'جهة شريكة',
+      donor: 'جهة مانحة'
+    };
+
+    const list = window.getManagedMembers().filter(m => {
+      if (!search) return true;
+      return [m.code, m.full_name, m.phone, m.email, m.role].some(
+        v => String(v || '').toLowerCase().includes(search)
+      );
+    });
+
+    if (list.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">لا توجد حسابات أعضاء مسجلة أو مطابقة للبحث.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map(m => `
+      <tr>
+        <td><strong>${m.code}</strong></td>
+        <td>${m.full_name}<br><small>هاتف: ${m.phone || '-'}</small></td>
+        <td>${roleLabels[m.role] || m.role}</td>
+        <td><strong>البريد:</strong> ${m.email || '-'}<br><strong>السر:</strong> ${m.password || '-'}</td>
+        <td>${m.status === 'active' ? '✅ نشط' : '⛔ موقوف'}</td>
+        <td class="no-print">
+          <button type="button" onclick="editMemberAccount('${m.code}')" class="nav-btn btn-gold" style="padding:4px 8px; font-size:11px;">✏️ تعديل</button>
+          <button type="button" onclick="deleteMemberAccount('${m.code}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:4px 8px; font-size:11px;">🗑️ حذف</button>
+        </td>
+      </tr>
+    `).join('');
+  };
+
+  // --- استعادة البريد أو الرقم السري عند النسيان ---
+  window.openForgotCredentialsBox = function() {
+    const loginBox = document.getElementById('login-box');
+    if (!loginBox) return;
+    let recoveryBox = document.getElementById('hf-recovery-panel');
+    if (!recoveryBox) {
+      recoveryBox = document.createElement('div');
+      recoveryBox.id = 'hf-recovery-panel';
+      recoveryBox.style.cssText = 'margin-top:14px; padding:14px; border-radius:10px; background:#f8fafc; border:1px solid #cbd5e1; text-align:right; color:#0f172a;';
+      loginBox.appendChild(recoveryBox);
+    }
+    recoveryBox.classList.remove('hidden');
+    recoveryBox.innerHTML = `
+      <h4 style="margin:0 0 8px; color:var(--primary-dark);">🔑 استعادة البريد أو إعادة تعيين الرقم السري</h4>
+      <p style="font-size:12px; margin:0 0 8px;">أدخل رقم الهاتف المسجل أو كود العضوية لعرض بيانات الحساب أو تعيين رقم سري جديد:</p>
+      <input id="rec-lookup-input" placeholder="رقم الهاتف (11 رقم) أو كود العضوية" style="margin-bottom:8px;">
+      <input id="rec-new-pass" type="text" placeholder="الرقم السري الجديد المطلوب (اختياري)" style="margin-bottom:8px;">
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" onclick="lookupOrRequestPasswordReset()" class="action-btn" style="padding:7px 14px; font-size:12px;">بحث / تحديث الرقم السري</button>
+        <button type="button" onclick="document.getElementById('hf-recovery-panel').classList.add('hidden')" class="nav-btn" style="padding:7px 12px; font-size:12px;">إغلاق</button>
+      </div>
+      <div id="rec-result-msg" style="margin-top:8px; font-size:12px;"></div>
+    `;
+  };
+
+  window.lookupOrRequestPasswordReset = function() {
+    const q = (document.getElementById('rec-lookup-input')?.value || '').trim().toLowerCase();
+    const desiredPass = (document.getElementById('rec-new-pass')?.value || '').trim();
+    const out = document.getElementById('rec-result-msg');
+    if (!q || !out) return;
+
+    const members = window.getManagedMembers();
+    const found = members.find(m =>
+      String(m.phone || '').toLowerCase() === q ||
+      String(m.code || '').toLowerCase() === q ||
+      String(m.email || '').toLowerCase() === q
+    );
+
+    if (found) {
+      if (desiredPass) {
+        found.password = desiredPass;
+        found.updated_at = new Date().toISOString();
+        window.saveManagedMembers(members);
+        out.innerHTML = `<div style="color:#065f46; font-weight:700;">✅ تم تحديث الرقم السري لحساب (${found.full_name}) وبريده المسجل هو: <strong>${found.email}</strong>. يمكنك تسجيل الدخول الآن.</div>`;
+      } else {
+        out.innerHTML = `<div style="color:#065f46; font-weight:700;">✅ الحساب موجود: <strong>${found.full_name}</strong><br>البريد المسجل: <strong>${found.email}</strong><br>الرقم السري الحالي: <strong>${found.password}</strong></div>`;
+      }
+      return;
+    }
+
+    out.innerHTML = `<div style="color:#92400e; font-weight:700;">⚠️ لم يتم العثور على مطابقة؛ يمكنك التواصل مع إدارة المؤسسة (01155540066 / واتساب 01000880156) لتأكيد بياناتك وتحديث البريد أو الرقم السري.</div>`;
+  };
+
+  // --- التعريب الكامل للعناوين والتوضيحات ---
   function setElementTranslatedText(el, text) {
     if (text === undefined || text === null) return;
     if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
@@ -177,7 +418,7 @@
     `).join('');
   }
 
-  // --- إدارة الإنجازات الكاملة (إضافة - تعديل - حذف - رفع صورة - تعدد الإنجازات) ---
+  // --- إدارة الإنجازات الكاملة ---
   window.handleAchievementFileSelect = function(inputEl) {
     const file = inputEl && inputEl.files && inputEl.files[0];
     if (!file) return;
@@ -414,7 +655,7 @@
     alert('💾 تم حفظ مسودة الاستمارة محلياً على جهازك.');
   };
 
-  // --- إرسال التظلمات السرية وحفظها في قاعدة البيانات وإرسال واتساب فوري ---
+  // --- التظلمات السرية والاستعلام ---
   window.submitGrievance = async function() {
     const feedback = document.getElementById('grievance-feedback');
     const type = document.getElementById('grievance-type')?.value || 'تظلم من رفض طلب مساعدة';
@@ -450,10 +691,7 @@
     localStorage.setItem('hf_local_grievances', JSON.stringify(localList));
 
     if (window.supabaseClient) {
-      const res = await window.supabaseClient.from('grievances').insert([row]);
-      if (res.error) {
-        if (feedback) feedback.innerHTML = `<div style="color:#b91c1c; font-weight:700;">⚠️ تم الحفظ مؤقتاً؛ تعذر الإرسال السحابي: ${res.error.message}</div>`;
-      }
+      await window.supabaseClient.from('grievances').insert([row]);
     }
 
     const waMsg = `مؤسسة الحافظ للتنمية والخدمات\nتم استلام رسالتكم / تظلمكم بنجاح.\nرقم الطلب: ${code}\nالاسم: ${fullName}\nسيتم الفحص والرد في أقرب وقت.`;
@@ -474,7 +712,6 @@
     });
   };
 
-  // --- الاستعلام عن طلب مساعدة أو تظلم ---
   window.trackApplication = async function() {
     const q = (document.getElementById('track-input')?.value || '').trim();
     const resBox = document.getElementById('track-result');
@@ -531,9 +768,30 @@
       window.currentUser = { email: creds.email, name: creds.name, role: creds.role };
       sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
       renderDashboard();
-    } else {
-      alert('⚠️ البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+      return;
     }
+
+    const managedMember = window.getManagedMembers().find(
+      m => (m.email || '').trim().toLowerCase() === email && String(m.password || '') === pass
+    );
+
+    if (managedMember) {
+      if (managedMember.status !== 'active') {
+        alert('⏳ حسابك موقوف مؤقتاً من قبل الإدارة.');
+        return;
+      }
+      window.currentUser = {
+        email: managedMember.email,
+        name: managedMember.full_name,
+        role: managedMember.role || 'member',
+        code: managedMember.code
+      };
+      sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
+      renderDashboard();
+      return;
+    }
+
+    alert('⚠️ البريد الإلكتروني أو كلمة المرور غير صحيحة.');
   };
 
   window.logoutUser = function() {
@@ -632,6 +890,18 @@
       localStorage.setItem('hf_local_memberships', JSON.stringify(localMem));
     }
 
+    if (statusVal === 'approved' && targetItem) {
+      window.syncMembershipToDirectory({
+        code: targetItem.request_code || code,
+        full_name: targetItem.full_name || '',
+        role: targetItem.requested_role || roleVal || 'researcher',
+        phone: targetItem.phone || '',
+        email: targetItem.email || '',
+        password: targetItem.password || '22022025',
+        status: 'active'
+      });
+    }
+
     if (window.supabaseClient && code) {
       const upd = {};
       if (statusVal) upd.status = statusVal;
@@ -688,7 +958,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:12px;">
           <div>
             <h3 style="margin:0; color:var(--primary-dark);">🛡️ غرفة العمليات ولوحة التحكم الإدارية</h3>
-            <small>المستخدم: <strong>${window.currentUser?.name || 'رئيس مجلس الأمناء'}</strong> (${cfg.adminEmail}) — هواتف المؤسسة: ${cfg.phone1} / ${cfg.phone2}</small>
+            <small>المستخدم: <strong>${window.currentUser?.name || 'رئيس مجلس الأمناء'}</strong> (${window.currentUser?.email || cfg.adminEmail}) — هواتف المؤسسة: ${cfg.phone1} / ${cfg.phone2}</small>
           </div>
           <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" onclick="exportCasesCsv()" class="nav-btn btn-gold">📥 تصدير CSV / Excel</button>
@@ -782,7 +1052,7 @@
             </tbody>
           </table>
 
-          <h4 style="margin-top:20px;">👥 طلبات الانضمام وإدارة الأعضاء (باحثون / متطوعون / شركاء / مانحون)</h4>
+          <h4 style="margin-top:20px;">👥 طلبات الانضمام (باحثون / متطوعون / شركاء / مانحون)</h4>
           <table>
             <thead><tr><th>الكود</th><th>الاسم والهاتف والبريد</th><th>الصفة والملاحظات</th><th>الحالة والاعتماد</th></tr></thead>
             <tbody>
@@ -849,12 +1119,56 @@
             <div style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border);">
               <h4 style="margin-top:0;">🛡️ مصفوفة الصلاحيات حسب الدور</h4>
               <ul style="font-size:13px; padding-right:18px; margin:0; line-height:1.9;">
-                <li><strong>رئيس مجلس الأمناء / الإدارة:</strong> إدارة كاملة للحالات، التوزيع، الاعتماد، قبول/رفض طلبات الانضمام، تعديل بيانات الدخول والهواتف، التقارير، والمحاضر والتفويضات.</li>
+                <li><strong>رئيس مجلس الأمناء / الإدارة:</strong> إدارة كاملة للحالات، التوزيع، الاعتماد، قبول/رفض طلبات الانضمام، تعديل وحذف حسابات الأعضاء، تعديل بيانات الدخول والهواتف، التقارير، والمحاضر والتفويضات.</li>
                 <li><strong>الباحث الميداني:</strong> تسجيل البحوث، إدخال التوصيات، ومتابعة الحالات المسندة إليه.</li>
                 <li><strong>المتطوع:</strong> المشاركة في الأنشطة والقوافل الميدانية المسندة.</li>
                 <li><strong>الجهة الشريكة / المانحة:</strong> متابعة التقارير والإحصاءات وحالات التنفيذ المتفق عليها ضمن نطاق الشراكة.</li>
               </ul>
             </div>
+          </div>
+
+          <div style="margin-top:24px; background:var(--bg-color); padding:16px; border-radius:12px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <h4 style="margin:0; color:var(--primary-dark);">👤 إدارة حسابات الأعضاء (باحثون / متطوعون / شركاء / مانحون) — تعديل / تغيير بريد ورقم سري / حذف</h4>
+              <input id="mgr-mem-search" oninput="refreshMembersTableOnly()" placeholder="ابحث بالاسم أو الهاتف أو البريد أو الكود..." style="max-width:300px; margin:0; padding:6px 10px; font-size:12px;">
+            </div>
+
+            <input type="hidden" id="mgr-mem-editing-code">
+            <div class="grid-3" style="margin-bottom:10px;">
+              <input id="mgr-mem-name" placeholder="الاسم الكامل أو اسم الجهة *" style="margin:0;">
+              <select id="mgr-mem-role" style="margin:0;">
+                <option value="researcher">باحث ميداني</option>
+                <option value="volunteer">متطوع</option>
+                <option value="partner">جهة شريكة / جمعية</option>
+                <option value="donor">جهة مانحة</option>
+              </select>
+              <select id="mgr-mem-status" style="margin:0;">
+                <option value="active">✅ نشط (مسموح بالدخول)</option>
+                <option value="suspended">⛔ موقوف مؤقتاً</option>
+              </select>
+              <input id="mgr-mem-phone" placeholder="رقم الهاتف (11 رقم) *" style="margin:0;">
+              <input id="mgr-mem-email" type="email" placeholder="البريد الإلكتروني *" style="margin:0;">
+              <input id="mgr-mem-pass" type="text" placeholder="كلمة السر / الرقم السري *" style="margin:0;">
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+              <button id="mgr-mem-save-btn" type="button" onclick="addOrUpdateMemberAccount()" class="action-btn">+ إضافة / حفظ حساب العضو</button>
+              <button type="button" onclick="resetMemberForm()" class="nav-btn">تفريغ الحقول</button>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>الكود</th>
+                  <th>الاسم والهاتف</th>
+                  <th>الصفة / الدور</th>
+                  <th>البريد والرقم السري</th>
+                  <th>الحالة</th>
+                  <th class="no-print">إجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="managed-members-tbody"></tbody>
+            </table>
           </div>
         </div>
 
@@ -869,248 +1183,18 @@
       </div>
     `;
 
+    window.refreshMembersTableOnly();
     renderOfficialForm('board_minutes');
   };
-// --- إدارة الأعضاء والباحثين والمتطوعين والشركاء والمانحين (تعديل / تغيير بريد وكلمة سر / حذف / استعادة) ---
-window.getManagedMembers = function() {
-  return JSON.parse(localStorage.getItem('hf_members_directory') || '[]');
-};
 
-window.saveManagedMembers = function(list) {
-  localStorage.setItem('hf_members_directory', JSON.stringify(list));
-};
-
-window.syncMembershipToDirectory = function(memberObj) {
-  const list = window.getManagedMembers();
-  const idx = list.findIndex(
-    m => (memberObj.code && m.code === memberObj.code) ||
-         (memberObj.email && m.email && m.email.toLowerCase() === memberObj.email.toLowerCase()) ||
-         (memberObj.phone && m.phone && m.phone === memberObj.phone)
-  );
-  const record = {
-    code: memberObj.code || ('USR-' + Math.floor(1000 + Math.random() * 9000)),
-    full_name: memberObj.full_name || '',
-    role: memberObj.role || 'researcher',
-    phone: memberObj.phone || '',
-    email: (memberObj.email || '').trim(),
-    password: memberObj.password || '123456',
-    status: memberObj.status || 'active',
-    updated_at: new Date().toISOString()
-  };
-  if (idx >= 0) {
-    list[idx] = { ...list[idx], ...record };
-  } else {
-    list.unshift(record);
-  }
-  window.saveManagedMembers(list);
-  return record;
-};
-
-window.addOrUpdateMemberAccount = async function(existingCode = null) {
-  const name = (document.getElementById('mgr-mem-name')?.value || '').trim();
-  const role = document.getElementById('mgr-mem-role')?.value || 'researcher';
-  const phone = (document.getElementById('mgr-mem-phone')?.value || '').trim();
-  const email = (document.getElementById('mgr-mem-email')?.value || '').trim();
-  const password = (document.getElementById('mgr-mem-pass')?.value || '').trim();
-  const status = document.getElementById('mgr-mem-status')?.value || 'active';
-  const editTarget = existingCode || (document.getElementById('mgr-mem-editing-code')?.value || '').trim();
-
-  if (!name || !phone || !email || !password) {
-    alert('⚠️ يرجى إدخال الاسم، رقم الهاتف، البريد الإلكتروني، وكلمة السر.');
-    return;
-  }
-
-  const list = window.getManagedMembers();
-  if (editTarget) {
-    const idx = list.findIndex(m => m.code === editTarget);
-    if (idx >= 0) {
-      list[idx] = {
-        ...list[idx],
-        full_name: name,
-        role,
-        phone,
-        email,
-        password,
-        status,
-        updated_at: new Date().toISOString()
-      };
-      window.saveManagedMembers(list);
-      if (window.supabaseClient) {
-        await window.supabaseClient.from('users_profiles').update({
-          full_name: name,
-          role,
-          phone,
-          email,
-          account_status: status
-        }).eq('email', list[idx].email);
-      }
-      alert('✅ تم تعديل بيانات العضو والبريد الإلكتروني وكلمة السر بنجاح.');
-    }
-  } else {
-    const newCode = 'MBR-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
-    window.syncMembershipToDirectory({
-      code: newCode,
-      full_name: name,
-      role,
-      phone,
-      email,
-      password,
-      status
-    });
-    if (window.supabaseClient) {
-      await window.supabaseClient.from('users_profiles').insert([{
-        full_name: name,
-        role,
-        phone,
-        email,
-        account_status: status
-      }]);
-    }
-    alert('✅ تم إضافة حساب العضو الجديد بنجاح.');
-  }
-
-  window.resetMemberForm();
-  window.refreshMembersTableOnly();
-};
-
-window.editMemberAccount = function(code) {
-  const item = window.getManagedMembers().find(m => m.code === code);
-  if (!item) return;
-  document.getElementById('mgr-mem-editing-code').value = item.code;
-  document.getElementById('mgr-mem-name').value = item.full_name || '';
-  document.getElementById('mgr-mem-role').value = item.role || 'researcher';
-  document.getElementById('mgr-mem-phone').value = item.phone || '';
-  document.getElementById('mgr-mem-email').value = item.email || '';
-  document.getElementById('mgr-mem-pass').value = item.password || '';
-  document.getElementById('mgr-mem-status').value = item.status || 'active';
-  const btn = document.getElementById('mgr-mem-save-btn');
-  if (btn) btn.textContent = '💾 حفظ التعديلات على العضو';
-};
-
-window.resetMemberForm = function() {
-  ['mgr-mem-editing-code', 'mgr-mem-name', 'mgr-mem-phone', 'mgr-mem-email', 'mgr-mem-pass'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const roleEl = document.getElementById('mgr-mem-role');
-  if (roleEl) roleEl.value = 'researcher';
-  const stEl = document.getElementById('mgr-mem-status');
-  if (stEl) stEl.value = 'active';
-  const btn = document.getElementById('mgr-mem-save-btn');
-  if (btn) btn.textContent = '+ إضافة / حفظ حساب العضو';
-};
-
-window.deleteMemberAccount = async function(code) {
-  if (!confirm('هل أنت متأكد من حذف هذا الحساب نهائياً؟')) return;
-  const list = window.getManagedMembers();
-  const target = list.find(m => m.code === code);
-  const filtered = list.filter(m => m.code !== code);
-  window.saveManagedMembers(filtered);
-
-  if (window.supabaseClient && target && target.email) {
-    await window.supabaseClient.from('users_profiles').delete().eq('email', target.email);
-  }
-
-  alert('🗑️ تم حذف الحساب بنجاح.');
-  window.refreshMembersTableOnly();
-};
-
-window.refreshMembersTableOnly = function() {
-  const tbody = document.getElementById('managed-members-tbody');
-  if (!tbody) return;
-  const search = (document.getElementById('mgr-mem-search')?.value || '').trim().toLowerCase();
-  const roleLabels = {
-    researcher: 'باحث ميداني',
-    volunteer: 'متطوع',
-    partner: 'جهة شريكة',
-    donor: 'جهة مانحة'
-  };
-
-  const list = window.getManagedMembers().filter(m => {
-    if (!search) return true;
-    return [m.code, m.full_name, m.phone, m.email, m.role].some(
-      v => String(v || '').toLowerCase().includes(search)
-    );
-  });
-
-  if (list.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">لا توجد حسابات أعضاء مطابقة.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = list.map(m => `
-    <tr>
-      <td><strong>${m.code}</strong></td>
-      <td>${m.full_name}<br><small>هاتف: ${m.phone || '-'}</small></td>
-      <td>${roleLabels[m.role] || m.role}</td>
-      <td><strong>البريد:</strong> ${m.email || '-'}<br><strong>السر:</strong> ${m.password || '-'}</td>
-      <td>${m.status === 'active' ? '✅ نشط' : '⛔ موقوف'}</td>
-      <td class="no-print">
-        <button type="button" onclick="editMemberAccount('${m.code}')" class="nav-btn btn-gold" style="padding:4px 8px; font-size:11px;">✏️ تعديل</button>
-        <button type="button" onclick="deleteMemberAccount('${m.code}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:4px 8px; font-size:11px;">🗑️ حذف</button>
-      </td>
-    </tr>
-  `).join('');
-};
-
-// --- استعادة البريد أو الرقم السري في حال نسيانه ---
-window.openForgotCredentialsBox = function() {
-  const loginBox = document.getElementById('login-box');
-  if (!loginBox) return;
-  let recoveryBox = document.getElementById('hf-recovery-panel');
-  if (!recoveryBox) {
-    recoveryBox = document.createElement('div');
-    recoveryBox.id = 'hf-recovery-panel';
-    recoveryBox.style.cssText = 'margin-top:14px; padding:14px; border-radius:10px; background:#f8fafc; border:1px solid #cbd5e1; text-align:right; color:#0f172a;';
-    loginBox.appendChild(recoveryBox);
-  }
-  recoveryBox.classList.remove('hidden');
-  recoveryBox.innerHTML = `
-    <h4 style="margin:0 0 8px; color:var(--primary-dark);">🔑 استعادة البريد أو إعادة تعيين الرقم السري</h4>
-    <p style="font-size:12px; margin:0 0 8px;">أدخل رقم الهاتف المسجل أو كود العضوية للبحث عن الحساب أو إرسال طلب إعادة تعيين للإدارة:</p>
-    <input id="rec-lookup-input" placeholder="رقم الهاتف (11 رقم) أو كود العضوية" style="margin-bottom:8px;">
-    <input id="rec-new-pass" type="text" placeholder="الرقم السري الجديد المطلوب (اختياري)" style="margin-bottom:8px;">
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button type="button" onclick="lookupOrRequestPasswordReset()" class="action-btn" style="padding:7px 14px; font-size:12px;">بحث / طلب استعادة</button>
-      <button type="button" onclick="document.getElementById('hf-recovery-panel').classList.add('hidden')" class="nav-btn" style="padding:7px 12px; font-size:12px;">إغلاق</button>
-    </div>
-    <div id="rec-result-msg" style="margin-top:8px; font-size:12px;"></div>
-  `;
-};
-
-window.lookupOrRequestPasswordReset = function() {
-  const q = (document.getElementById('rec-lookup-input')?.value || '').trim().toLowerCase();
-  const desiredPass = (document.getElementById('rec-new-pass')?.value || '').trim();
-  const out = document.getElementById('rec-result-msg');
-  if (!q || !out) return;
-
-  const members = window.getManagedMembers();
-  const found = members.find(m =>
-    String(m.phone || '').toLowerCase() === q ||
-    String(m.code || '').toLowerCase() === q ||
-    String(m.email || '').toLowerCase() === q
-  );
-
-  if (found) {
-    if (desiredPass) {
-      found.password = desiredPass;
-      found.updated_at = new Date().toISOString();
-      window.saveManagedMembers(members);
-      out.innerHTML = `<div style="color:#065f46; font-weight:700;">✅ تم تحديث الرقم السري لحساب (${found.full_name}) وبريده المسجل هو: <strong>${found.email}</strong>. يمكنك تسجيل الدخول الآن.</div>`;
-    } else {
-      out.innerHTML = `<div style="color:#065f46; font-weight:700;">✅ الحساب موجود: <strong>${found.full_name}</strong><br>البريد المسجل: <strong>${found.email}</strong><br>الرقم السري الحالي: <strong>${found.password}</strong></div>`;
-    }
-    return;
-  }
-
-  out.innerHTML = `<div style="color:#92400e; font-weight:700;">⚠️ لم يتم العثور على مطابقة تلقائية؛ يمكنك التواصل مع إدارة المؤسسة (01155540066 / واتساب 01000880156) لتأكيد بياناتك وتحديث البريد أو الرقم السري فوراً.</div>`;
-};
   window.switchAdminTab = function(tab) {
     ['cases', 'grievances', 'achievements', 'roles', 'official'].forEach(t => {
       document.getElementById('admin-tab-' + t)?.classList.toggle('hidden', t !== tab);
     });
     if (tab === 'achievements' && typeof window.renderAdminAchievementsManager === 'function') {
       window.renderAdminAchievementsManager();
+    } else if (tab === 'roles') {
+      window.refreshMembersTableOnly();
     }
   };
 
@@ -1125,20 +1209,6 @@ window.lookupOrRequestPasswordReset = function() {
     const { error } = await window.supabaseClient.from('families').update(updateObj).eq('id', id);
     if (error) alert('خطأ في التحديث: ' + error.message);
     else renderDashboard();
-  };
-
-  window.saveAdminCredentials = function() {
-    const newEmail = (document.getElementById('new-admin-email')?.value || '').trim();
-    const newPass = (document.getElementById('new-admin-pass')?.value || '').trim();
-    if (!newEmail || !newPass) return alert('يرجى إدخال البريد الإلكتروني وكلمة السر الجديدة.');
-    const prev = JSON.parse(localStorage.getItem('hf_admin_creds') || 'null') || DEFAULT_ADMIN;
-    const updated = { ...prev, email: newEmail, pass: newPass };
-    localStorage.setItem('hf_admin_creds', JSON.stringify(updated));
-    if (window.currentUser) {
-      window.currentUser.email = newEmail;
-      sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
-    }
-    alert('✅ تم تحديث البريد الإلكتروني وكلمة السر بنجاح.');
   };
 
   window.exportCasesCsv = async function() {
@@ -1161,7 +1231,7 @@ window.lookupOrRequestPasswordReset = function() {
     URL.revokeObjectURL(url);
   };
 
-  // --- محرر محاضر مجلس الأمناء والتفويضات والمستندات الرسمية (مع إضافة سطر + والطباعة النظيفة A4) ---
+  // --- محرر محاضر مجلس الأمناء والتفويضات والمستندات الرسمية ---
   window.addDynamicLine = function(containerId, placeholderText, numbered = true) {
     const container = document.getElementById(containerId);
     if (!container) return;
