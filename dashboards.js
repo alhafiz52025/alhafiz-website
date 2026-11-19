@@ -680,41 +680,86 @@ window.deleteAchievement = async function(id) {
 };
 
 window.loginUser = async function() {
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value.trim();
-  const creds = getEffectiveAdminCreds();
+  const emailEl = document.getElementById('login-email');
+  const passEl = document.getElementById('login-pass');
+
+  const email = (emailEl ? emailEl.value : '').trim();
+  const pass = (passEl ? passEl.value : '').trim();
 
   if (!email || !pass) {
     alert('برجاء إدخال البريد الإلكتروني وكلمة المرور');
     return;
   }
 
-  if (email.toLowerCase() === creds.email.toLowerCase() && pass === creds.pass) {
-    document.getElementById('login-box').classList.add('hidden');
-    document.getElementById('dashboard-area').classList.remove('hidden');
-    window.renderAdminDashboard('admin (رئيس مجلس الأمناء)', email);
+  let savedCreds = null;
+  try {
+    savedCreds = JSON.parse(localStorage.getItem('hf_admin_creds') || 'null');
+  } catch (e) {
+    savedCreds = null;
+  }
+
+  const adminEmail = ((savedCreds && savedCreds.email) || 'alhafiz52025@gmail.com').trim().toLowerCase();
+  const adminPass = ((savedCreds && savedCreds.pass) || '22022025').trim();
+
+  if (email.toLowerCase() === adminEmail && pass === adminPass) {
+    const loginBox = document.getElementById('login-box');
+    const dashArea = document.getElementById('dashboard-area');
+    if (loginBox) loginBox.classList.add('hidden');
+    if (dashArea) dashArea.classList.remove('hidden');
+
+    if (typeof window.renderAdminDashboard === 'function') {
+      await window.renderAdminDashboard('admin (رئيس مجلس الأمناء)', email);
+    } else {
+      alert('✅ تم تسجيل الدخول بنجاح');
+    }
     return;
   }
 
-  if (window.supabaseClient) {
-    const { data, error } = await window.supabaseClient.from('users_profiles').select('*').eq('email', email).maybeSingle();
-    if (error || !data) {
-      alert('❌ البريد الإلكتروني غير مسجل أو بيانات الدخول غير صحيحة.');
-      return;
-    }
+  const sb = window.supabaseClient || (
+    (window.SUPABASE_URL || window.supabaseUrl) &&
+    (window.SUPABASE_ANON_KEY || window.supabaseAnonKey) &&
+    window.supabase
+      ? window.supabase.createClient(
+          window.SUPABASE_URL || window.supabaseUrl,
+          window.SUPABASE_ANON_KEY || window.supabaseAnonKey
+        )
+      : null
+  );
 
-    const st = data.account_status || data.status || 'pending';
-    if (st !== 'active') {
-      alert('⏳ حسابك قيد المراجعة أو تم إيقافه مؤقتاً من قبل الإدارة.');
-      return;
-    }
+  if (sb) {
+    try {
+      const { data, error } = await sb
+        .from('users_profiles')
+        .select('*')
+        .ilike('email', email)
+        .maybeSingle();
 
-    document.getElementById('login-box').classList.add('hidden');
-    document.getElementById('dashboard-area').classList.remove('hidden');
-    window.renderAdminDashboard(data.role, data.email);
-  } else {
-    alert('✅ تم الدخول بنجاح');
+      if (error || !data) {
+        alert('❌ البريد الإلكتروني غير مسجل أو بيانات الدخول غير صحيحة.');
+        return;
+      }
+
+      const st = data.account_status || data.status || 'pending';
+      if (st !== 'active') {
+        alert('⏳ حسابك قيد المراجعة أو تم إيقافه مؤقتاً من قبل الإدارة.');
+        return;
+      }
+
+      const loginBox = document.getElementById('login-box');
+      const dashArea = document.getElementById('dashboard-area');
+      if (loginBox) loginBox.classList.add('hidden');
+      if (dashArea) dashArea.classList.remove('hidden');
+
+      if (typeof window.renderAdminDashboard === 'function') {
+        await window.renderAdminDashboard(data.role || 'member', data.email || email);
+      }
+      return;
+    } catch (err) {
+      console.error('Login error:', err);
+    }
   }
+
+  alert('❌ البريد الإلكتروني أو كلمة المرور غير صحيحة.');
 };
 
 window.loadPublicAchievements = async function() {
