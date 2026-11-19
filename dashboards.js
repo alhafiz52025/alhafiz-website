@@ -1,25 +1,47 @@
 // dashboards.js - لوحة التحكم الإدارية الشاملة لمؤسسة الحافظ
 window.supabaseClient = window.supabaseClient || (window.supabase ? window.supabase.createClient('https://fwyacpvbhwdlivzeiper.supabase.co', 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz') : null);
+
+function getEffectiveAdminCreds() {
+  const saved = JSON.parse(localStorage.getItem('hf_admin_creds') || 'null');
+  return {
+    email: (saved && saved.email) || 'alhafiz52025@gmail.com',
+    pass: (saved && saved.pass) || '22022025'
+  };
+}
+
+window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+  const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
+  if (!cleanPhone) return;
+  const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0/, ''));
+  const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(messageText)}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
+
 window.renderAdminDashboard = async function(userRole, userEmail) {
   const dashArea = document.getElementById('dashboard-area');
   if (!dashArea) return;
 
   dashArea.innerHTML = `
     <div class="card" style="border-top: 4px solid var(--primary);">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+      <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:20px; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
         <div>
           <h3 style="color: var(--primary-dark); margin: 0;">🛡️ غرفة العمليات ولوحة التحكم الإدارية</h3>
           <p style="font-size:13px; color:#64748b; margin:4px 0 0;">مرحباً بك (${userEmail}) - الصلاحية: <strong>${userRole}</strong></p>
         </div>
-        <button type="button" onclick="location.reload()" class="action-btn" style="background:#ef4444; font-size:12px; padding:6px 12px;">تسجيل الخروج</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة اللوحة</button>
+          <button type="button" onclick="location.reload()" class="action-btn" style="background:#ef4444; font-size:12px; padding:6px 12px;">تسجيل الخروج</button>
+        </div>
       </div>
 
       <!-- تبويبات التحكم -->
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+      <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
         <button type="button" onclick="switchAdminTab('cases')" class="nav-btn btn-primary" id="tab-btn-cases">📂 إدارة الحالات والبحوث</button>
         <button type="button" onclick="switchAdminTab('users')" class="nav-btn" id="tab-btn-users">👥 الأعضاء والباحثون والشركاء</button>
         <button type="button" onclick="switchAdminTab('achievements')" class="nav-btn" id="tab-btn-achievements">🏆 إدارة الإنجازات والمعرض</button>
         <button type="button" onclick="switchAdminTab('grievances')" class="nav-btn" id="tab-btn-grievances">⚖️ التظلمات والرقابة</button>
+        <button type="button" onclick="switchAdminTab('official')" class="nav-btn" id="tab-btn-official">📜 محاضر مجلس الأمناء والتفويضات</button>
+        <button type="button" onclick="switchAdminTab('settings')" class="nav-btn" id="tab-btn-settings">⚙️ الصلاحيات والحساب</button>
       </div>
 
       <!-- محتوى التبويبات -->
@@ -29,12 +51,10 @@ window.renderAdminDashboard = async function(userRole, userEmail) {
     </div>
   `;
 
-  // تحميل القسم الافتراضي (الحالات)
   window.switchAdminTab('cases');
 };
 
 window.switchAdminTab = async function(tabName) {
-  // تحديث شكل الأزرار
   document.querySelectorAll('#dashboard-area .nav-btn').forEach(btn => btn.classList.remove('btn-primary'));
   const activeBtn = document.getElementById('tab-btn-' + tabName);
   if (activeBtn) activeBtn.classList.add('btn-primary');
@@ -83,9 +103,9 @@ window.switchAdminTab = async function(tabName) {
           <td>${hName}<br><span style="font-size:11px; color:#64748b;">${hPhone}</span></td>
           <td>${f.center_city || 'إهناسيا'} - ${f.village_hamlet || ''}</td>
           <td>دخل: ${f.total_income || 0}<br>مصروف: ${f.total_expenses || 0}</td>
-          <td><span style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-size:11px;">${f.source_type || 'مواطن'}</span></td>
+          <td><span style="background:#e2e8f0; color:#0f172a; padding:2px 6px; border-radius:4px; font-size:11px;">${f.source_type || 'مواطن'}</span></td>
           <td>
-            <select onchange="assignCase('${f.id}', this.value)" style="padding:4px; font-size:12px;">
+            <select onchange="assignCase('${f.id}', this.value)" style="padding:4px; font-size:12px; margin:0;">
               <option value="غير مسند" ${f.assigned_to === 'غير مسند' ? 'selected' : ''}>-- غير مسند --</option>
               <option value="أ. نجم الدين حسين" ${f.assigned_to === 'أ. نجم الدين حسين' ? 'selected' : ''}>أ. نجم الدين حسين</option>
               <option value="باحث ميداني 1" ${f.assigned_to === 'باحث ميداني 1' ? 'selected' : ''}>باحث ميداني 1</option>
@@ -93,7 +113,7 @@ window.switchAdminTab = async function(tabName) {
             </select>
           </td>
           <td>
-            <select onchange="updateCaseDecision('${f.id}', this.value)" style="padding:4px; font-size:12px; font-weight:700;">
+            <select onchange="updateCaseDecision('${f.id}', this.value)" style="padding:4px; font-size:12px; font-weight:700; margin:0;">
               <option value="قيد المراجعة والبحث" ${f.decision_by === 'قيد المراجعة والبحث' ? 'selected' : ''}>🔍 جاري البحث</option>
               <option value="معتمد ومقبول للصرف" ${f.decision_by === 'معتمد ومقبول للصرف' ? 'selected' : ''}>✅ مقبول ومعتمد</option>
               <option value="مرفوض لعدم الاستحقاق" ${f.decision_by === 'مرفوض لعدم الاستحقاق' ? 'selected' : ''}>❌ مرفوض</option>
@@ -113,8 +133,15 @@ window.switchAdminTab = async function(tabName) {
     contentArea.innerHTML = `<p>جارٍ جلب قائمة الأعضاء والباحثين والشركاء...</p>`;
     let users = [];
     if (window.supabaseClient) {
-      const { data, error } = await window.supabaseClient.from('users').select('*').order('created_at', { ascending: false });
-      if (!error) users = data || [];
+      const resProfiles = await window.supabaseClient.from('users_profiles').select('*').order('created_at', { ascending: false });
+      if (!resProfiles.error && Array.isArray(resProfiles.data) && resProfiles.data.length > 0) {
+        users = resProfiles.data;
+      } else {
+        const resUsers = await window.supabaseClient.from('users').select('*').order('created_at', { ascending: false });
+        if (!resUsers.error && Array.isArray(resUsers.data)) {
+          users = resUsers.data;
+        }
+      }
     }
 
     let html = `
@@ -123,16 +150,17 @@ window.switchAdminTab = async function(tabName) {
     `;
 
     if (users.length === 0) {
-      html += `<div style="padding:20px; text-align:center; background:#f8fafc; border-radius:8px; margin-top:10px;">لا توجد طلبات انضمام أو أعضاء مسجلين حالياً في جدول المستخدمين.</div>`;
+      html += `<div style="padding:20px; text-align:center; background:#f8fafc; border-radius:8px; margin-top:10px;">لا توجد طلبات انضمام أو أعضاء مسجلين حالياً.</div>`;
     } else {
       html += `<table><thead><tr><th>الاسم الكامل</th><th>البريد الإلكتروني</th><th>الدور / الصلاحية</th><th>الحالة</th><th>الإجراءات</th></tr></thead><tbody>`;
       users.forEach(u => {
+        const currentStatus = u.account_status || u.status || 'pending';
         html += `
           <tr>
-            <td><strong>${u.full_name}</strong><br><span style="font-size:11px;">هاتف: ${u.phone || 'غير متوفر'}</span></td>
-            <td>${u.email}</td>
+            <td><strong>${u.full_name || 'بدون اسم'}</strong><br><span style="font-size:11px;">هاتف: ${u.phone || 'غير متوفر'}</span></td>
+            <td>${u.email || ''}</td>
             <td>
-              <select onchange="updateUserRole('${u.id}', this.value)" style="padding:4px; font-size:12px;">
+              <select onchange="updateUserRole('${u.id}', this.value)" style="padding:4px; font-size:12px; margin:0;">
                 <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>مدير النظام (Admin)</option>
                 <option value="researcher" ${u.role === 'researcher' ? 'selected' : ''}>باحث ميداني</option>
                 <option value="volunteer" ${u.role === 'volunteer' ? 'selected' : ''}>متطوع</option>
@@ -140,10 +168,10 @@ window.switchAdminTab = async function(tabName) {
               </select>
             </td>
             <td>
-              <select onchange="updateUserStatus('${u.id}', this.value)" style="padding:4px; font-size:12px; font-weight:700;">
-                <option value="pending" ${u.status === 'pending' ? 'selected' : ''}>⏳ معلق (انتظار الموافقة)</option>
-                <option value="active" ${u.status === 'active' ? 'selected' : ''}>✅ مقبول ومفعل</option>
-                <option value="suspended" ${u.status === 'suspended' ? 'selected' : ''}>🚫 موقوف</option>
+              <select onchange="updateUserStatus('${u.id}', this.value)" style="padding:4px; font-size:12px; font-weight:700; margin:0;">
+                <option value="pending" ${currentStatus === 'pending' ? 'selected' : ''}>⏳ معلق (انتظار الموافقة)</option>
+                <option value="active" ${currentStatus === 'active' ? 'selected' : ''}>✅ مقبول ومفعل</option>
+                <option value="suspended" ${currentStatus === 'suspended' ? 'selected' : ''}>🚫 موقوف</option>
               </select>
             </td>
             <td>
@@ -171,12 +199,382 @@ window.switchAdminTab = async function(tabName) {
     loadAdminAchievementsList();
 
   } else if (tabName === 'grievances') {
+    contentArea.innerHTML = `<p>جارٍ جلب سجل التظلمات والشكاوى والرقابة المجتمعية...</p>`;
+    let grievances = JSON.parse(localStorage.getItem('hf_local_grievances') || '[]');
+    if (window.supabaseClient) {
+      const { data, error } = await window.supabaseClient.from('grievances').select('*').order('created_at', { ascending: false });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        grievances = data;
+      }
+    }
+
+    if (!grievances || grievances.length === 0) {
+      contentArea.innerHTML = `
+        <h4 style="color:var(--primary-dark);">سجل التظلمات والشكاوى والرقابة المجتمعية</h4>
+        <div style="background:#fffbeb; border:1px solid #fde68a; padding:16px; border-radius:10px;">
+          <p style="margin:0; font-size:14px; color:#92400e;">لا توجد تظلمات جديدة مسجلة حالياً. كافة الشكاوى ورسائل الدعم الفني تُراجع بسرية تامة وتُربط برئيس مجلس الأمناء.</p>
+        </div>
+      `;
+      return;
+    }
+
     contentArea.innerHTML = `
-      <h4 style="color:var(--primary-dark);">سجل التظلمات والشكاوى والرقابة المجتمعية</h4>
-      <div style="background:#fffbeb; border:1px solid #fde68a; padding:16px; border-radius:10px;">
-        <p style="margin:0; font-size:14px; color:#92400e;">لا توجد تظلمات جديدة مسجلة حالياً. كافة الشكاوى ورسائل الدعم الفني تُراجع بسرية تامة وتُربط برئيس مجلس الأمناء.</p>
+      <h4 style="color:var(--primary-dark);">سجل التظلمات والشكاوى والرقابة المجتمعية (${grievances.length})</h4>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>رقم التظلم</th>
+              <th>الاسم / الهاتف</th>
+              <th>العنوان / النوع</th>
+              <th>التفاصيل</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${grievances.map(g => `
+              <tr>
+                <td><strong>${g.tracking_code || '---'}</strong></td>
+                <td>${g.full_name || 'غير محدد'}<br><span style="font-size:11px; color:#64748b;">${g.phone || ''}</span></td>
+                <td>${g.grievance_type || ''}<br><span style="font-size:11px; color:#64748b;">${g.address_details || ''}</span></td>
+                <td>${g.message_body || g.details || ''}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
     `;
+
+  } else if (tabName === 'official') {
+    contentArea.innerHTML = `
+      <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+        <button type="button" onclick="renderOfficialForm('board_minutes')" class="action-btn">📋 نموذج محضر مجلس الأمناء</button>
+        <button type="button" onclick="renderOfficialForm('delegation')" class="action-btn" style="background:#b45309;">📄 نموذج التفويض الرسمي</button>
+        <button type="button" onclick="renderOfficialForm('official_letter')" class="nav-btn">✉️ مستند / خطاب رسمي بنفس الصيغة</button>
+      </div>
+      <div id="official-doc-editor"></div>
+    `;
+    window.renderOfficialForm('board_minutes');
+
+  } else if (tabName === 'settings') {
+    const creds = getEffectiveAdminCreds();
+    contentArea.innerHTML = `
+      <div class="grid-2">
+        <div style="background:#f8fafc; padding:16px; border-radius:10px; border:1px solid #cbd5e1;">
+          <h4 style="margin-top:0; color:var(--primary-dark);">🔑 تحديث بريد الدخول وكلمة السر للإدارة</h4>
+          <input id="admin-new-email" type="email" value="${creds.email}" placeholder="البريد الإلكتروني للإدارة">
+          <input id="admin-new-pass" type="password" value="${creds.pass}" placeholder="كلمة السر للإدارة">
+          <button type="button" onclick="saveAdminCreds()" class="action-btn">حفظ بيانات الدخول</button>
+        </div>
+        <div style="background:#f8fafc; padding:16px; border-radius:10px; border:1px solid #cbd5e1;">
+          <h4 style="margin-top:0; color:var(--primary-dark);">🛡️ الصلاحيات والأدوار المعتمدة</h4>
+          <ul style="font-size:13px; padding-right:18px; margin:0; line-height:1.8;">
+            <li><strong>الإدارة العليا:</strong> صلاحية كاملة لإدارة الحالات، توزيعها على الباحثين، اعتماد القرارات، إدارة الأعضاء والتظلمات، وإصدار المحاضر والتفويضات.</li>
+            <li><strong>الباحث الميداني:</strong> دراسة الحالات المسندة إليه وإدخال نتائج البحث الميداني.</li>
+            <li><strong>المتطوع:</strong> المشاركة في الأنشطة الميدانية وتوزيع المساعدات.</li>
+            <li><strong>الجهة الشريكة / المانحة:</strong> متابعة التنسيق والتقارير والإحصاءات ضمن إطار التعاون.</li>
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+};
+
+window.saveAdminCreds = function() {
+  const email = (document.getElementById('admin-new-email')?.value || '').trim();
+  const pass = (document.getElementById('admin-new-pass')?.value || '').trim();
+  if (!email || !pass) return alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة السر.');
+  localStorage.setItem('hf_admin_creds', JSON.stringify({ email, pass }));
+  alert('✅ تم حفظ بيانات الدخول بنجاح.');
+};
+
+// إرسال التظلمات السرية وحفظها في قاعدة البيانات + إشعار واتساب فوري
+window.submitGrievance = async function() {
+  const type = document.getElementById('grievance-type')?.value || 'appeal';
+  const fullName = (document.getElementById('grievance-name')?.value || '').trim();
+  const email = (document.getElementById('grievance-email')?.value || '').trim();
+  const address = (document.getElementById('grievance-address')?.value || '').trim();
+  const phone = (document.getElementById('grievance-phone')?.value || '').trim();
+  const details = (document.getElementById('grievance-details')?.value || '').trim();
+
+  if (!phone || !details) {
+    alert('⚠️ يرجى إدخال رقم الهاتف وتفاصيل الرسالة أو التظلم.');
+    return;
+  }
+
+  const code = 'GRV-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+  const record = {
+    tracking_code: code,
+    grievance_type: type,
+    full_name: fullName || 'مقدم تظلم',
+    email: email || null,
+    address_details: address || 'غير محدد',
+    phone,
+    message_body: details,
+    status: 'pending'
+  };
+
+  const localList = JSON.parse(localStorage.getItem('hf_local_grievances') || '[]');
+  localList.unshift({ ...record, created_at: new Date().toISOString() });
+  localStorage.setItem('hf_local_grievances', JSON.stringify(localList));
+
+  if (window.supabaseClient) {
+    const { error } = await window.supabaseClient.from('grievances').insert([record]);
+    if (error) {
+      console.warn('Grievance insert notice:', error.message);
+    }
+  }
+
+  const waMsg = `مؤسسة الحافظ للتنمية والخدمات\nتم استلام رسالتكم / تظلمكم بنجاح.\nرقم الطلب: ${code}\nسيتم الفحص والرد في أقرب وقت.`;
+  window.triggerInstantWhatsApp(phone, waMsg);
+
+  alert(`✅ تم إرسال رسالتكم بسرية تامة بنجاح.\nرقم الطلب: ${code}\n\nفي حال وجود أي مشكلة، يرجى التوجه إلى مقر المؤسسة أو شاشة التظلمات، وسوف نرد على حضراتكم في أقرب وقت مع تحيات مؤسسة الحافظ.`);
+
+  ['grievance-name', 'grievance-email', 'grievance-address', 'grievance-phone', 'grievance-details'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+};
+
+// --- محرر محاضر مجلس الأمناء والتفويضات والمستندات الرسمية (+ إضافة سطر وطباعة المستند فقط) ---
+window.addDynamicLine = function(containerId, placeholderText, numbered = true) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const count = container.querySelectorAll('.dyn-line-row').length;
+  const lineNumber = numbered ? (count + 2) : (count + 1);
+  const row = document.createElement('div');
+  row.className = 'dyn-line-row';
+  row.style.cssText = 'display:flex; align-items:center; gap:6px; margin:4px 0;';
+  row.innerHTML = `
+    <span class="line-num" style="font-weight:700; min-width:22px;">${lineNumber}-</span>
+    <input type="text" class="doc-line-input" placeholder="${placeholderText}" style="flex:1; margin:0; padding:5px 8px;">
+    <button type="button" onclick="removeDynamicLine(this, '${containerId}', ${numbered})" class="no-print" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px;">✕</button>
+  `;
+  container.appendChild(row);
+};
+
+window.removeDynamicLine = function(btn, containerId, numbered = true) {
+  const row = btn.closest('.dyn-line-row');
+  if (row) row.remove();
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.querySelectorAll('.dyn-line-row').forEach((r, idx) => {
+    const numSpan = r.querySelector('.line-num');
+    if (numSpan) numSpan.innerText = (numbered ? (idx + 2) : (idx + 1)) + '-';
+  });
+};
+
+window.printOfficialDocumentOnly = function() {
+  const sheet = document.getElementById('printable-official-sheet');
+  if (!sheet) return;
+
+  const clone = sheet.cloneNode(true);
+  clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+  clone.querySelectorAll('input, textarea').forEach(el => {
+    const val = (el.value || '').trim();
+    const span = document.createElement(el.tagName === 'TEXTAREA' ? 'div' : 'span');
+    span.style.cssText = 'font-weight:700; color:#0f172a; padding:0 4px; border-bottom:1px dotted #64748b; display:inline-block; min-width:60px;';
+    if (el.tagName === 'TEXTAREA') {
+      span.style.cssText = 'font-weight:600; color:#0f172a; white-space:pre-wrap; line-height:1.9; margin:6px 0;';
+    }
+    span.textContent = val || (el.placeholder || '....................');
+    el.replaceWith(span);
+  });
+
+  const printWin = window.open('', '_blank', 'width=900,height=1000');
+  if (!printWin) return alert('يرجى السماح بفتح النوافذ المنبثقة للطباعة.');
+
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <title>طباعة مستند رسمي - مؤسسة الحافظ</title>
+      <style>
+        @page { size: A4; margin: 16mm; }
+        body {
+          font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+          margin: 0;
+          padding: 0;
+          color: #0f172a;
+          background: #fff;
+          direction: rtl;
+        }
+        .sheet-wrap {
+          border: 1px solid #cbd5e1;
+          padding: 22px 26px;
+          min-height: 255mm;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          box-sizing: border-box;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="sheet-wrap">${clone.innerHTML}</div>
+      <script>
+        window.onload = function() {
+          window.focus();
+          window.print();
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWin.document.close();
+};
+
+window.renderOfficialForm = function(type) {
+  const box = document.getElementById('official-doc-editor');
+  if (!box) return;
+
+  const headerHtml = `
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:16px; font-size:12px;">
+      <div style="line-height:1.7;">
+        <strong>مديرية التضامن الاجتماعي ببني سويف</strong><br>
+        إدارة إهناسيا الاجتماعية<br>
+        <strong>مؤسسة الحافظ للتنمية والخدمات</strong><br>
+        مشهرة برقم 2202 لسنة 2025
+      </div>
+      <div style="text-align:left;">
+        <img src="logo.jpg" alt="شعار المؤسسة" style="height:56px; width:56px; border-radius:50%; border:1px solid #b45309; object-fit:cover;" onerror="this.style.display='none'">
+      </div>
+    </div>
+  `;
+
+  const footerHtml = `
+    <div style="border-top:1px solid #94a3b8; margin-top:24px; padding-top:8px; display:flex; justify-content:space-between; font-size:11px; color:#475569;">
+      <span>01000880156 - 01155540066</span>
+      <span>alhafiz52025@gmail.com | https://alhafiz-eg.azurewebsites.net</span>
+    </div>
+  `;
+
+  if (type === 'board_minutes') {
+    box.innerHTML = `
+      <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+        <div>
+          ${headerHtml}
+          <h4 style="text-align:center; text-decoration:underline; margin:6px 0 16px; font-size:17px;">
+            محضر مجلس الأمناء رقم ( <input id="bm-num" placeholder="...." style="width:80px; display:inline; padding:4px; margin:0; text-align:center;"> )
+          </h4>
+
+          <div style="margin-bottom:14px;">
+            <strong style="text-decoration:underline; font-size:14px;">جدول الأعمال</strong>
+            <div style="margin-top:6px; font-size:13px;">
+              <div style="margin-bottom:4px;">1- النظر في الجلسة السابقة والتصديق عليها</div>
+              <div id="bm-agenda-lines"></div>
+              <button type="button" onclick="addDynamicLine('bm-agenda-lines', '................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:12px;">
+            <div style="text-align:center; font-weight:700; text-decoration:underline; margin-bottom:8px; font-size:15px;">محضر الجلسة</div>
+            <p style="font-size:13px; line-height:2.1; margin:0;">
+              إنه في يوم <input id="bm-day" placeholder="الأربعاء" style="width:110px; display:inline; padding:4px; margin:0;">
+              الموافق <input id="bm-date" placeholder="يوم/شهر/سنة" style="width:130px; display:inline; padding:4px; margin:0;">
+              وفي تمام الساعة <input id="bm-time" placeholder=".... ص" style="width:90px; display:inline; padding:4px; margin:0;">
+              بمقر المؤسسة اجتمع أعضاء مجلس الأمناء برئاسة السيد /
+              <input id="bm-chairman" placeholder="..............." style="width:180px; display:inline; padding:4px; margin:0;"> رئيس مجلس الأمناء
+              و السيد <input id="bm-acting-name" placeholder="......................" style="width:180px; display:inline; padding:4px; margin:0;">
+              بصفته <input id="bm-acting-role" placeholder="............." style="width:130px; display:inline; padding:4px; margin:0;">
+              قائم بأعمال <input id="bm-acting-duty" placeholder="....................." style="width:160px; display:inline; padding:4px; margin:0;">
+            </p>
+          </div>
+
+          <div style="margin-bottom:12px; font-size:13px;">
+            <strong>بحضور كلا من:-</strong>
+            <div id="bm-attendees-lines" style="margin-top:4px;"></div>
+            <button type="button" onclick="addDynamicLine('bm-attendees-lines', '........................................', false)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+          </div>
+
+          <p style="font-size:13px; line-height:2; margin:10px 0;">
+            ونظراً لاكتمال النصاب القانوني لاجتماع مجلس الأمناء بحضور (
+            <input id="bm-quorum" placeholder="... الأعضاء" style="width:110px; display:inline; padding:4px; margin:0; text-align:center;">
+            ) تم بدء النظر في جدول الأعمال واتخاذ القرارات الآتية:
+          </p>
+
+          <div style="font-size:13px; margin-bottom:14px;">
+            <div style="margin-bottom:4px;">1- تُلي محضر مجلس الجلسة السابقة والتصديق عليه</div>
+            <div id="bm-decisions-lines"></div>
+            <button type="button" onclick="addDynamicLine('bm-decisions-lines', '................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+          </div>
+
+          <p style="font-size:13px; margin-top:14px;">
+            الانتهاء من النظر في جدول الأعمال ورُفعت الجلسة في تمام الساعة
+            <input id="bm-end" placeholder=".........." style="width:100px; display:inline; padding:4px; margin:0; text-align:center;"> صباحاً
+          </p>
+
+          <div style="display:flex; justify-content:space-between; margin-top:28px; padding:0 24px; font-weight:700; font-size:14px;">
+            <span>سكرتير المؤسسة</span>
+            <span>رئيس مجلس الأمناء</span>
+          </div>
+        </div>
+        ${footerHtml}
+      </div>
+      <div class="no-print" style="margin-top:12px; display:flex; gap:10px;">
+        <button type="button" onclick="printOfficialDocumentOnly()" class="action-btn">🖨️ طباعة المحضر فقط</button>
+      </div>
+    `;
+    window.addDynamicLine('bm-agenda-lines', '................................................', true);
+    window.addDynamicLine('bm-attendees-lines', '........................................', false);
+    window.addDynamicLine('bm-decisions-lines', '................................................', true);
+  } else if (type === 'delegation') {
+    box.innerHTML = `
+      <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+        <div>
+          ${headerHtml}
+          <p style="font-weight:700; font-size:14px;">السادة الأفاضل / <input id="del-to" placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:0;"></p>
+          <p style="text-align:center; font-weight:700; font-size:15px;">تحية طيبة وبعد،،،</p>
+          <p style="font-size:13px; line-height:2;">
+            تتشرف مؤسسة الحافظ، المشهرة برقم (2202) لسنة 2025 ونطاق عملها جمهورية مصر العربية، بأن تتقدم لسيادتكم بوافر التقدير على دوركم الرائد في العمل الأهلي.<br>
+            وفي إطار سعي المؤسسة لتوسيع دائرة التعاون مع مؤسستكم الموقرة لخدمة الفئات الأولى بالرعاية، فقد تقرر:<br>
+            <strong>تفويض السيد/ه</strong> <input id="del-name" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
+            <strong>بطاقة رقم قومي</strong> <input id="del-nid" maxlength="14" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
+            <strong>بصفته /</strong> <input id="del-role" placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:2px 0;"><br>
+            وذلك للتمثيل والتنسيق والتعامل في كافة الأنشطة والخدمات والتي تشمل: مشروعات البنية التحتية، المساعدات الموسمية، الجانب الطبي، التمكين الاقتصادي، والجانب الاجتماعي، وللمفوض الحق في تقديم طلبات التعاون وتوقيع محاضر التنسيق الميداني واستلام وتسليم الكشوف والبحوث الاجتماعية الخاصة بالمستفيدين وتمثيل المؤسسة في الاجتماعات التنسيقية والمتابعة الميدانية.<br>
+            هذا التفويض سارٍ من تاريخه وحتى إلغاؤه رسمياً.
+          </p>
+          <p style="text-align:center; font-weight:700; margin-top:12px;">وتفضلوا بقبول فائق الاحترام والتقدير،،،</p>
+          <div style="margin-top:20px; font-weight:700; font-size:13px; line-height:2;">
+            اعتماد رئيس مجلس الأمناء<br>
+            الاسم: <input id="del-sign" placeholder="............................" style="width:220px; display:inline; padding:4px; margin:0;"><br>
+            الختم:
+          </div>
+        </div>
+        ${footerHtml}
+      </div>
+      <div class="no-print" style="margin-top:12px; display:flex; gap:10px;">
+        <button type="button" onclick="printOfficialDocumentOnly()" class="action-btn">🖨️ طباعة التفويض فقط</button>
+      </div>
+    `;
+  } else {
+    box.innerHTML = `
+      <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+        <div>
+          ${headerHtml}
+          <div style="font-size:15px; font-weight:800; margin-top:10px;">
+            السيد / <input id="let-to" placeholder="................................................" style="width:72%; display:inline; padding:4px; margin:0;">
+          </div>
+          <p style="text-align:center; font-weight:700; font-size:15px; margin:14px 0;">تحية طيبة وبعد،</p>
+          <div style="font-size:14px; font-weight:700; margin-bottom:10px;">
+            الموضوع: <input id="let-subj" placeholder="................................................" style="width:75%; display:inline; padding:4px; margin:0;">
+          </div>
+          <div id="let-body-lines" style="margin-top:8px;"></div>
+          <button type="button" onclick="addDynamicLine('let-body-lines', '........................................................................', false)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+
+          <p style="text-align:center; font-weight:700; font-size:15px; margin-top:28px;">وتفضلوا بقبول وافر التحية والتقدير،</p>
+          <div style="text-align:left; font-weight:700; font-size:14px; margin-top:24px; padding-left:24px;">
+            رئيس مجلس الأمناء
+          </div>
+        </div>
+        ${footerHtml}
+      </div>
+      <div class="no-print" style="margin-top:12px; display:flex; gap:10px;">
+        <button type="button" onclick="printOfficialDocumentOnly()" class="action-btn">🖨️ طباعة المستند فقط</button>
+      </div>
+    `;
+    window.addDynamicLine('let-body-lines', '........................................................................', false);
   }
 };
 
@@ -199,13 +597,19 @@ window.updateCaseDecision = async function(id, decision) {
 
 window.updateUserRole = async function(id, role) {
   if (window.supabaseClient) {
-    await window.supabaseClient.from('users').update({ role: role }).eq('id', id);
+    const r1 = await window.supabaseClient.from('users_profiles').update({ role }).eq('id', id);
+    if (r1.error) {
+      await window.supabaseClient.from('users').update({ role }).eq('id', id);
+    }
   }
 };
 
 window.updateUserStatus = async function(id, status) {
   if (window.supabaseClient) {
-    await window.supabaseClient.from('users').update({ status: status }).eq('id', id);
+    const r1 = await window.supabaseClient.from('users_profiles').update({ account_status: status }).eq('id', id);
+    if (r1.error) {
+      await window.supabaseClient.from('users').update({ status }).eq('id', id);
+    }
     alert('✅ تم تحديث حالة العضو بنجاح.');
   }
 };
@@ -255,7 +659,7 @@ window.loadAdminAchievementsList = async function() {
   let html = `<div class="grid-2">`;
   list.forEach(item => {
     html += `
-      <div style="background:#fff; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
+      <div style="background:#fff; border:1px solid #cbd5e1; padding:12px; border-radius:8px; color:#0f172a;">
         <h5 style="margin:0 0 6px; color:var(--primary-dark);">${item.title}</h5>
         <p style="font-size:12px; color:#64748b; margin:0 0 8px;">${item.description || ''}</p>
         <button type="button" onclick="deleteAchievement('${item.id}')" class="nav-btn" style="background:#b91c1c; color:#fff; font-size:11px; padding:4px 8px;">حذف هذا الإنجاز</button>
@@ -275,33 +679,32 @@ window.deleteAchievement = async function(id) {
   }
 };
 
-// ربط تسجيل الدخول الفعلي بجدول المستخدمين
 window.loginUser = async function() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
+  const creds = getEffectiveAdminCreds();
 
   if (!email || !pass) {
     alert('برجاء إدخال البريد الإلكتروني وكلمة المرور');
     return;
   }
 
-  // حساب المدير الرئيسي الافتراضي للمؤسسة
-  if (email === 'alhafiz52025@gmail.com' && pass === '22022025') {
+  if (email.toLowerCase() === creds.email.toLowerCase() && pass === creds.pass) {
     document.getElementById('login-box').classList.add('hidden');
     document.getElementById('dashboard-area').classList.remove('hidden');
     window.renderAdminDashboard('admin (رئيس مجلس الأمناء)', email);
     return;
   }
 
-  // التحقق من جدول المستخدمين في Supabase
   if (window.supabaseClient) {
-    const { data, error } = await window.supabaseClient.from('users').select('*').eq('email', email).single();
+    const { data, error } = await window.supabaseClient.from('users_profiles').select('*').eq('email', email).maybeSingle();
     if (error || !data) {
       alert('❌ البريد الإلكتروني غير مسجل أو بيانات الدخول غير صحيحة.');
       return;
     }
 
-    if (data.status !== 'active') {
+    const st = data.account_status || data.status || 'pending';
+    if (st !== 'active') {
       alert('⏳ حسابك قيد المراجعة أو تم إيقافه مؤقتاً من قبل الإدارة.');
       return;
     }
@@ -313,7 +716,6 @@ window.loginUser = async function() {
     alert('✅ تم الدخول بنجاح');
   }
 };
-// --- دوال الخدمات العامة المرتبطة بـ Supabase ---
 
 window.loadPublicAchievements = async function() {
   const container = document.getElementById('public-achievements-container');
@@ -345,7 +747,7 @@ window.trackApplication = async function() {
   const { data } = await window.supabaseClient.from('families').select('*').eq('tracking_code', val).maybeSingle();
   if (data) {
     box.innerHTML = `
-      <div style="padding:14px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; margin-top:10px;">
+      <div style="padding:14px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px; margin-top:10px; color:#0f172a;">
         <p style="margin:0 0 6px;"><strong>كود الطلب:</strong> ${data.tracking_code}</p>
         <p style="margin:0 0 6px;"><strong>حالة القرار:</strong> ${data.decision_by || 'قيد المراجعة والبحث'}</p>
         <p style="margin:0;"><strong>الباحث المسؤول:</strong> ${data.assigned_to || 'قيد الإسناد'}</p>
@@ -410,7 +812,6 @@ window.submitNewUserRequest = async function() {
     let userId = null;
     if (pass) {
       const authRes = await window.supabaseClient.auth.signUp({ email, password: pass });
-      // إذا كان الإيميل مسجلاً مسبقاً في الـ Auth، نحاول تسجيل الدخول أو تخطي إنشاء الـ Auth واستخدام الإيميل مباشرة
       if (authRes.error) {
         console.log('Auth notice:', authRes.error.message);
       } else if (authRes.data && authRes.data.user) {
@@ -430,12 +831,12 @@ window.submitNewUserRequest = async function() {
       payload.id = userId;
     }
 
-    // استخدام upsert لمنع تضارب المفتاح الأساسي وتحديث السجل إن كان موجوداً
     const { error } = await window.supabaseClient.from('users_profiles').upsert([payload], { onConflict: 'email' });
 
     if (error) {
       alert('❌ خطأ أثناء حفظ الملف الشخصي: ' + error.message);
     } else {
+      window.triggerInstantWhatsApp(phone, `مؤسسة الحافظ للتنمية والخدمات\nتم استلام طلب انضمامكم بنجاح وهو الآن قيد المراجعة.`);
       alert('✅ تم إرسال طلب انضمامك بنجاح!\nحسابك الآن (قيد المراجعة) وسيتم تفعيله من قبل إدارة المؤسسة.');
       location.reload();
     }
@@ -443,3 +844,9 @@ window.submitNewUserRequest = async function() {
     alert('❌ حدث خطأ غير متوقع: ' + err.message);
   }
 };
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (typeof window.loadPublicAchievements === 'function') {
+    window.loadPublicAchievements();
+  }
+});
