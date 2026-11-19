@@ -332,7 +332,6 @@
     let families = [];
     let grievances = JSON.parse(localStorage.getItem('hf_local_grievances') || '[]');
     let memberships = JSON.parse(localStorage.getItem('hf_local_memberships') || '[]');
-    let officialDocs = JSON.parse(localStorage.getItem('hf_official_docs') || '[]');
 
     if (window.supabaseClient) {
       const fRes = await window.supabaseClient.from('families').select('*').order('created_at', { ascending: false });
@@ -343,14 +342,10 @@
 
       const mRes = await window.supabaseClient.from('membership_requests').select('*').order('created_at', { ascending: false });
       if (!mRes.error && mRes.data && mRes.data.length > 0) memberships = mRes.data;
-
-      const dRes = await window.supabaseClient.from('official_documents').select('*').order('created_at', { ascending: false });
-      if (!dRes.error && dRes.data && dRes.data.length > 0) officialDocs = dRes.data;
     }
 
     const approvedCount = families.filter(f => f.status === 'approved').length;
     const rejectedCount = families.filter(f => f.status === 'rejected').length;
-    const pendingCount = families.filter(f => !f.status || f.status === 'pending').length;
 
     area.innerHTML = `
       <div class="card">
@@ -361,7 +356,7 @@
           </div>
           <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" onclick="exportCasesCsv()" class="nav-btn btn-gold">📥 تصدير CSV / Excel</button>
-            <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة / PDF</button>
+            <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة اللوحة</button>
             <button type="button" onclick="logoutUser()" class="nav-btn" style="background:#dc2626; color:#fff;">تسجيل الخروج</button>
           </div>
         </div>
@@ -487,10 +482,10 @@
         </div>
 
         <div id="admin-tab-official" class="hidden" style="margin-top:16px;">
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+          <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
             <button type="button" onclick="renderOfficialForm('board_minutes')" class="action-btn">📋 نموذج محضر مجلس الأمناء</button>
             <button type="button" onclick="renderOfficialForm('delegation')" class="action-btn" style="background:#b45309;">📄 نموذج التفويض الرسمي</button>
-            <button type="button" onclick="renderOfficialForm('official_letter')" class="nav-btn">✉️ خطاب / إفادة رسمية بنفس الصيغة</button>
+            <button type="button" onclick="renderOfficialForm('official_letter')" class="nav-btn">✉️ مستند / خطاب رسمي بنفس الصيغة</button>
           </div>
           <div id="official-doc-editor"></div>
         </div>
@@ -551,27 +546,116 @@
     URL.revokeObjectURL(url);
   };
 
-  // --- محرر محاضر مجلس الأمناء والتفويضات والأوراق الرسمية ---
+  // --- محرر محاضر مجلس الأمناء والتفويضات والمستندات الرسمية (مع إضافة سطر + والطباعة النظيفة A4) ---
+  window.addDynamicLine = function(containerId, placeholderText, numbered = true) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const count = container.querySelectorAll('.dyn-line-row').length;
+    const nextNum = count + 2;
+    const row = document.createElement('div');
+    row.className = 'dyn-line-row';
+    row.style.cssText = 'display:flex; align-items:center; gap:6px; margin:4px 0;';
+    row.innerHTML = `
+      ${numbered ? `<span class="line-num" style="font-weight:700; min-width:22px;">${nextNum}-</span>` : `<span class="line-num" style="font-weight:700; min-width:22px;">${count + 1}-</span>`}
+      <input type="text" class="doc-line-input" placeholder="${placeholderText}" style="flex:1; margin:0; padding:5px 8px;">
+      <button type="button" onclick="removeDynamicLine(this, '${containerId}', ${numbered})" class="no-print" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px;">✕</button>
+    `;
+    container.appendChild(row);
+  };
+
+  window.removeDynamicLine = function(btn, containerId, numbered = true) {
+    const row = btn.closest('.dyn-line-row');
+    if (row) row.remove();
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll('.dyn-line-row').forEach((r, idx) => {
+      const numSpan = r.querySelector('.line-num');
+      if (numSpan) numSpan.innerText = (numbered ? (idx + 2) : (idx + 1)) + '-';
+    });
+  };
+
+  window.printOfficialDocumentOnly = function() {
+    const sheet = document.getElementById('printable-official-sheet');
+    if (!sheet) return;
+
+    const clone = sheet.cloneNode(true);
+    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+
+    clone.querySelectorAll('input, textarea').forEach(el => {
+      const val = (el.value || '').trim();
+      const span = document.createElement(el.tagName === 'TEXTAREA' ? 'div' : 'span');
+      span.style.cssText = 'font-weight:700; color:#0f172a; padding:0 4px; border-bottom:1px dotted #64748b; display:inline-block; min-width:60px;';
+      if (el.tagName === 'TEXTAREA') {
+        span.style.cssText = 'font-weight:600; color:#0f172a; white-space:pre-wrap; line-height:1.9; margin:6px 0;';
+      }
+      span.textContent = val || (el.placeholder || '....................');
+      el.replaceWith(span);
+    });
+
+    const printWin = window.open('', '_blank', 'width=900,height=1000');
+    if (!printWin) return alert('يرجى السماح بفتح النوافذ المنبثقة للطباعة.');
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html lang="ar" dir="rtl">
+      <head>
+        <meta charset="UTF-8">
+        <title>طباعة مستند رسمي - مؤسسة الحافظ</title>
+        <style>
+          @page { size: A4; margin: 16mm; }
+          body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #0f172a;
+            background: #fff;
+            direction: rtl;
+          }
+          .sheet-wrap {
+            border: 1px solid #cbd5e1;
+            padding: 22px 26px;
+            min-height: 255mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="sheet-wrap">${clone.innerHTML}</div>
+        <script>
+          window.onload = function() {
+            window.focus();
+            window.print();
+          };
+        <\/script>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
   window.renderOfficialForm = function(type) {
     const box = document.getElementById('official-doc-editor');
     if (!box) return;
 
     const headerHtml = `
-      <div style="display:flex; justify-content:space-between; border-bottom:2px solid #064e3b; padding-bottom:8px; margin-bottom:14px; font-size:12px;">
-        <div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:16px; font-size:12px;">
+        <div style="line-height:1.7;">
           <strong>مديرية التضامن الاجتماعي ببني سويف</strong><br>
           إدارة إهناسيا الاجتماعية<br>
           <strong>مؤسسة الحافظ للتنمية والخدمات</strong><br>
           مشهرة برقم 2202 لسنة 2025
         </div>
         <div style="text-align:left;">
-          <img src="logo.jpg" alt="شعار المؤسسة" style="height:50px; width:50px; border-radius:50%;" onerror="this.style.display='none'">
+          <img src="logo.jpg" alt="شعار المؤسسة" style="height:56px; width:56px; border-radius:50%; border:1px solid #b45309; object-fit:cover;" onerror="this.style.display='none'">
         </div>
       </div>
     `;
 
     const footerHtml = `
-      <div style="border-top:1px solid #cbd5e1; margin-top:18px; padding-top:8px; display:flex; justify-content:space-between; font-size:11px; color:#64748b;">
+      <div style="border-top:1px solid #94a3b8; margin-top:24px; padding-top:8px; display:flex; justify-content:space-between; font-size:11px; color:#475569;">
         <span>01000880156 - 01155540066</span>
         <span>alhafiz52025@gmail.com | https://alhafiz-eg.azurewebsites.net</span>
       </div>
@@ -579,96 +663,132 @@
 
     if (type === 'board_minutes') {
       box.innerHTML = `
-        <div class="card" style="background:#fff; color:#0f172a;">
-          ${headerHtml}
-          <h4 style="text-align:center; text-decoration:underline; margin:6px 0 14px;">محضر مجلس الأمناء رقم ( <input id="bm-num" placeholder="...." style="width:80px; display:inline; padding:4px; margin:0;"> )</h4>
-          <strong>جدول الأعمال</strong>
-          <div style="margin:6px 0 12px; font-size:13px;">
-            <div>1- النظر في الجلسة السابقة والتصديق عليها</div>
-            <div>2- <input id="bm-ag2" placeholder="............................" style="width:75%; display:inline; padding:4px; margin:2px 0;"></div>
-            <div>3- <input id="bm-ag3" placeholder="............................" style="width:75%; display:inline; padding:4px; margin:2px 0;"></div>
-            <div>4- <input id="bm-ag4" placeholder="............................" style="width:75%; display:inline; padding:4px; margin:2px 0;"></div>
-          </div>
-          <strong>محضر الجلسة</strong>
-          <p style="font-size:13px; line-height:1.9;">
-            إنه في يوم <input id="bm-day" placeholder="الأربعاء" style="width:110px; display:inline; padding:4px; margin:0;"> الموافق
-            <input id="bm-date" type="date" style="width:150px; display:inline; padding:4px; margin:0;">
-            وفي تمام الساعة <input id="bm-time" placeholder="9 ص" style="width:90px; display:inline; padding:4px; margin:0;">
-            بمقر المؤسسة اجتمع أعضاء مجلس الأمناء برئاسة السيد / <strong>نجم الدين حسين خليفه</strong>
-            و <input id="bm-acting-name" placeholder="اسم القائم بالأعمال" style="width:180px; display:inline; padding:4px; margin:0;">
-            بصفته <input id="bm-acting-role" placeholder="قائم أعمال / ....." style="width:150px; display:inline; padding:4px; margin:0;">
-          </p>
-          <div style="font-size:13px;">
-            <strong>بحضور كلا من:-</strong><br>
-            1- <input id="bm-att1" placeholder="........................................" style="width:42%; display:inline; padding:4px; margin:2px;">
-            2- <input id="bm-att2" placeholder="........................................" style="width:42%; display:inline; padding:4px; margin:2px;">
-          </div>
-          <p style="font-size:13px; margin-top:10px;">
-            ونظراً لاكتمال النصاب القانوني لاجتماع مجلس الأمناء بحضور ( <input id="bm-quorum" placeholder="... الأعضاء" style="width:110px; display:inline; padding:4px; margin:0;"> ) تم بدء النظر في جدول الأعمال واتخاذ القرارات الآتية:
-          </p>
-          <div style="font-size:13px;">
-            <div>1- تُلي محضر مجلس الجلسة السابقة والتصديق عليه</div>
-            <div>2- <input id="bm-dec2" placeholder="........................................" style="width:80%; display:inline; padding:4px; margin:2px 0;"></div>
-            <div>3- <input id="bm-dec3" placeholder="........................................" style="width:80%; display:inline; padding:4px; margin:2px 0;"></div>
-            <div>4- <input id="bm-dec4" placeholder="........................................" style="width:80%; display:inline; padding:4px; margin:2px 0;"></div>
-          </div>
-          <p style="font-size:13px; margin-top:10px;">
-            الانتهاء من النظر في جدول الأعمال ورُفعت الجلسة في تمام الساعة <input id="bm-end" placeholder=".........." style="width:110px; display:inline; padding:4px; margin:0;"> صباحاً
-          </p>
-          <div style="display:flex; justify-content:space-between; margin-top:18px; font-weight:700; font-size:13px;">
-            <span>سكرتير المؤسسة</span>
-            <span>رئيس مجلس الأمناء</span>
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${headerHtml}
+            <h4 style="text-align:center; text-decoration:underline; margin:6px 0 16px; font-size:17px;">
+              محضر مجلس الأمناء رقم ( <input id="bm-num" placeholder="...." style="width:80px; display:inline; padding:4px; margin:0; text-align:center;"> )
+            </h4>
+
+            <div style="margin-bottom:14px;">
+              <strong style="text-decoration:underline; font-size:14px;">جدول الأعمال</strong>
+              <div style="margin-top:6px; font-size:13px;">
+                <div style="margin-bottom:4px;">1- النظر في الجلسة السابقة والتصديق عليها</div>
+                <div id="bm-agenda-lines"></div>
+                <button type="button" onclick="addDynamicLine('bm-agenda-lines', '................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+              </div>
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <div style="text-align:center; font-weight:700; text-decoration:underline; margin-bottom:8px; font-size:15px;">محضر الجلسة</div>
+              <p style="font-size:13px; line-height:2.1; margin:0;">
+                إنه في يوم <input id="bm-day" placeholder="الأربعاء" style="width:110px; display:inline; padding:4px; margin:0;">
+                الموافق <input id="bm-date" placeholder="يوم/شهر/سنة" style="width:130px; display:inline; padding:4px; margin:0;">
+                وفي تمام الساعة <input id="bm-time" placeholder=".... ص" style="width:90px; display:inline; padding:4px; margin:0;">
+                بمقر المؤسسة اجتمع أعضاء مجلس الأمناء برئاسة السيد /
+                <input id="bm-chairman" placeholder="..............." style="width:180px; display:inline; padding:4px; margin:0;"> رئيس مجلس الأمناء
+                و السيد <input id="bm-acting-name" placeholder="......................" style="width:180px; display:inline; padding:4px; margin:0;">
+                بصفته <input id="bm-acting-role" placeholder="............." style="width:130px; display:inline; padding:4px; margin:0;">
+                قائم بأعمال <input id="bm-acting-duty" placeholder="....................." style="width:160px; display:inline; padding:4px; margin:0;">
+              </p>
+            </div>
+
+            <div style="margin-bottom:12px; font-size:13px;">
+              <strong>بحضور كلا من:-</strong>
+              <div id="bm-attendees-lines" style="margin-top:4px;"></div>
+              <button type="button" onclick="addDynamicLine('bm-attendees-lines', '........................................', false)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+            </div>
+
+            <p style="font-size:13px; line-height:2; margin:10px 0;">
+              ونظراً لاكتمال النصاب القانوني لاجتماع مجلس الأمناء بحضور (
+              <input id="bm-quorum" placeholder="... الأعضاء" style="width:110px; display:inline; padding:4px; margin:0; text-align:center;">
+              ) تم بدء النظر في جدول الأعمال واتخاذ القرارات الآتية:
+            </p>
+
+            <div style="font-size:13px; margin-bottom:14px;">
+              <div style="margin-bottom:4px;">1- تُلي محضر مجلس الجلسة السابقة والتصديق عليه</div>
+              <div id="bm-decisions-lines"></div>
+              <button type="button" onclick="addDynamicLine('bm-decisions-lines', '................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+            </div>
+
+            <p style="font-size:13px; margin-top:14px;">
+              الانتهاء من النظر في جدول الأعمال ورُفعت الجلسة في تمام الساعة
+              <input id="bm-end" placeholder=".........." style="width:100px; display:inline; padding:4px; margin:0; text-align:center;"> صباحاً
+            </p>
+
+            <div style="display:flex; justify-content:space-between; margin-top:28px; padding:0 24px; font-weight:700; font-size:14px;">
+              <span>سكرتير المؤسسة</span>
+              <span>رئيس مجلس الأمناء</span>
+            </div>
           </div>
           ${footerHtml}
-          <div class="no-print" style="margin-top:14px; display:flex; gap:10px;">
-            <button type="button" onclick="saveOfficialDoc('board_minutes')" class="action-btn">💾 حفظ المحضر</button>
-            <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة المحضر</button>
-          </div>
+        </div>
+        <div class="no-print" style="margin-top:12px; display:flex; gap:10px;">
+          <button type="button" onclick="saveOfficialDoc('board_minutes')" class="action-btn">💾 حفظ المحضر</button>
+          <button type="button" onclick="printOfficialDocumentOnly()" class="nav-btn btn-gold">🖨️ طباعة المحضر فقط</button>
         </div>
       `;
+      window.addDynamicLine('bm-agenda-lines', '................................................', true);
+      window.addDynamicLine('bm-attendees-lines', '........................................', false);
+      window.addDynamicLine('bm-decisions-lines', '................................................', true);
     } else if (type === 'delegation') {
       box.innerHTML = `
-        <div class="card" style="background:#fff; color:#0f172a;">
-          ${headerHtml}
-          <p style="font-weight:700; font-size:14px;">السادة الأفاضل / <input id="del-to" placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:0;"></p>
-          <p style="text-align:center; font-weight:700;">تحية طيبة وبعد،،،</p>
-          <p style="font-size:13px; line-height:1.85;">
-            تتشرف مؤسسة الحافظ، المشهرة برقم (2202) لسنة 2025 ونطاق عملها جمهورية مصر العربية، بأن تتقدم لسيادتكم بوافر التقدير على دوركم الرائد في العمل الأهلي.<br>
-            وفي إطار سعي المؤسسة لتوسيع دائرة التعاون مع مؤسستكم الموقرة لخدمة الفئات الأولى بالرعاية، فقد تقرر:<br>
-            <strong>تفويض السيد/ه</strong> <input id="del-name" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
-            <strong>بطاقة رقم قومي</strong> <input id="del-nid" maxlength="14" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
-            <strong>بصفته /</strong> <input id="del-role" placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:2px 0;"><br>
-            وذلك للتمثيل والتنسيق والتعامل في كافة الأنشطة والخدمات والتمكين الاقتصادي والاجتماعي والطبي والبنية التحتية والمساعدات الموسمية، وله الحق في تقديم طلبات التعاون واستلام الكشوف والبحوث وتمثيل المؤسسة في الاجتماعات التنسيقية.<br>
-            هذا التفويض سارٍ من تاريخه وحتى إلغاؤه رسمياً.
-          </p>
-          <div style="margin-top:16px; font-weight:700; font-size:13px;">
-            اعتماد رئيس مجلس الأمناء<br>
-            الاسم: <input id="del-sign" placeholder="............................" style="width:200px; display:inline; padding:4px; margin:4px 0;"><br>
-            الختم:
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${headerHtml}
+            <p style="font-weight:700; font-size:14px;">السادة الأفاضل / <input id="del-to" placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:0;"></p>
+            <p style="text-align:center; font-weight:700; font-size:15px;">تحية طيبة وبعد،،،</p>
+            <p style="font-size:13px; line-height:2;">
+              تتشرف مؤسسة الحافظ، المشهرة برقم (2202) لسنة 2025 ونطاق عملها جمهورية مصر العربية، بأن تتقدم لسيادتكم بوافر التقدير على دوركم الرائد في العمل الأهلي.<br>
+              وفي إطار سعي المؤسسة لتوسيع دائرة التعاون مع مؤسستكم الموقرة لخدمة الفئات الأولى بالرعاية، فقد تقرر:<br>
+              <strong>تفويض السيد/ه</strong> <input id="del-name" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
+              <strong>بطاقة رقم قومي</strong> <input id="del-nid" maxlength="14" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
+              <strong>بصفته /</strong> <input id="del-role" placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:2px 0;"><br>
+              وذلك للتمثيل والتنسيق والتعامل في كافة الأنشطة والخدمات والتي تشمل: مشروعات البنية التحتية، المساعدات الموسمية، الجانب الطبي، التمكين الاقتصادي، والجانب الاجتماعي، وللمفوض الحق في تقديم طلبات التعاون وتوقيع محاضر التنسيق الميداني واستلام وتسليم الكشوف والبحوث الاجتماعية الخاصة بالمستفيدين وتمثيل المؤسسة في الاجتماعات التنسيقية والمتابعة الميدانية.<br>
+              هذا التفويض سارٍ من تاريخه وحتى إلغاؤه رسمياً.
+            </p>
+            <p style="text-align:center; font-weight:700; margin-top:12px;">وتفضلوا بقبول فائق الاحترام والتقدير،،،</p>
+            <div style="margin-top:20px; font-weight:700; font-size:13px; line-height:2;">
+              اعتماد رئيس مجلس الأمناء<br>
+              الاسم: <input id="del-sign" placeholder="............................" style="width:220px; display:inline; padding:4px; margin:0;"><br>
+              الختم:
+            </div>
           </div>
           ${footerHtml}
-          <div class="no-print" style="margin-top:14px; display:flex; gap:10px;">
-            <button type="button" onclick="saveOfficialDoc('delegation')" class="action-btn">💾 حفظ التفويض</button>
-            <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة التفويض</button>
-          </div>
+        </div>
+        <div class="no-print" style="margin-top:12px; display:flex; gap:10px;">
+          <button type="button" onclick="saveOfficialDoc('delegation')" class="action-btn">💾 حفظ التفويض</button>
+          <button type="button" onclick="printOfficialDocumentOnly()" class="nav-btn btn-gold">🖨️ طباعة التفويض فقط</button>
         </div>
       `;
     } else {
       box.innerHTML = `
-        <div class="card" style="background:#fff; color:#0f172a;">
-          ${headerHtml}
-          <h4 style="text-align:center; text-decoration:underline;">خطاب / إفادة رسمية للمؤسسة</h4>
-          <p style="font-size:13px;"><strong>موجه إلى:</strong> <input id="let-to" placeholder="الجهة المستلمة للخطاب" style="width:75%; display:inline; padding:4px;"></p>
-          <p style="font-size:13px;"><strong>الموضوع:</strong> <input id="let-subj" placeholder="موضوع الخطاب أو الإفادة" style="width:75%; display:inline; padding:4px;"></p>
-          <textarea id="let-body" rows="6" placeholder="نص الخطاب أو الإفادة الرسمية..."></textarea>
-          <div style="font-weight:700; font-size:13px;">اعتماد رئيس مجلس الأمناء / إدارة المؤسسة</div>
-          ${footerHtml}
-          <div class="no-print" style="margin-top:14px; display:flex; gap:10px;">
-            <button type="button" onclick="saveOfficialDoc('official_letter')" class="action-btn">💾 حفظ الورقة الرسمية</button>
-            <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة</button>
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${headerHtml}
+            <div style="font-size:15px; font-weight:800; margin-top:10px;">
+              السيد / <input id="let-to" placeholder="................................................" style="width:72%; display:inline; padding:4px; margin:0;">
+            </div>
+            <p style="text-align:center; font-weight:700; font-size:15px; margin:14px 0;">تحية طيبة وبعد،</p>
+            <div style="font-size:14px; font-weight:700; margin-bottom:10px;">
+              الموضوع: <input id="let-subj" placeholder="................................................" style="width:75%; display:inline; padding:4px; margin:0;">
+            </div>
+            <div id="let-body-lines" style="margin-top:8px;"></div>
+            <button type="button" onclick="addDynamicLine('let-body-lines', '........................................................................', false)" class="nav-btn no-print" style="margin-top:6px; font-size:12px; padding:4px 10px;">+ إضافة سطر</button>
+
+            <p style="text-align:center; font-weight:700; font-size:15px; margin-top:28px;">وتفضلوا بقبول وافر التحية والتقدير،</p>
+            <div style="text-align:left; font-weight:700; font-size:14px; margin-top:24px; padding-left:24px;">
+              رئيس مجلس الأمناء
+            </div>
           </div>
+          ${footerHtml}
+        </div>
+        <div class="no-print" style="margin-top:12px; display:flex; gap:10px;">
+          <button type="button" onclick="saveOfficialDoc('official_letter')" class="action-btn">💾 حفظ المستند</button>
+          <button type="button" onclick="printOfficialDocumentOnly()" class="nav-btn btn-gold">🖨️ طباعة المستند فقط</button>
         </div>
       `;
+      window.addDynamicLine('let-body-lines', '........................................................................', false);
     }
   };
 
@@ -678,10 +798,16 @@
     document.querySelectorAll('#official-doc-editor input, #official-doc-editor textarea').forEach(el => {
       if (el.id) inputs[el.id] = el.value;
     });
+    const dynamicLines = [];
+    document.querySelectorAll('#official-doc-editor .doc-line-input').forEach(inp => {
+      dynamicLines.push(inp.value);
+    });
+    inputs.dynamicLines = dynamicLines;
+
     const record = {
       doc_code: code,
       doc_type: docType,
-      doc_title: docType === 'board_minutes' ? 'محضر مجلس الأمناء' : (docType === 'delegation' ? 'تفويض رسمي' : 'خطاب / إفادة رسمية'),
+      doc_title: docType === 'board_minutes' ? 'محضر مجلس الأمناء' : (docType === 'delegation' ? 'تفويض رسمي' : 'مستند / خطاب رسمي'),
       doc_date: new Date().toISOString().slice(0, 10),
       payload: inputs,
       created_by: window.currentUser?.email || DEFAULT_ADMIN.email
