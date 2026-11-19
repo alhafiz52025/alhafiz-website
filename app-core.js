@@ -1,11 +1,11 @@
 // app-core.js - المحرك الأساسي للموقع ولوحة الإدارة والتظلمات والنماذج الرسمية لمؤسسة الحافظ
 (function() {
   const DEFAULT_ADMIN = {
-    email: 'alhafiz52025@gmail.com',
-    pass: 'Alhafiz@2025',
-    name: 'رئيس مجلس الأمناء',
-    role: 'admin'
-  };
+  email: 'alhafiz52025@gmail.com',
+  pass: '22022025',
+  name: 'رئيس مجلس الأمناء',
+  role: 'admin'
+};
 
   window.currentUser = JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
   let currentLang = 'ar';
