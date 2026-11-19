@@ -1,20 +1,122 @@
 // app-core.js - المحرك الأساسي للموقع ولوحة الإدارة والتظلمات والنماذج الرسمية لمؤسسة الحافظ
 (function() {
   const DEFAULT_ADMIN = {
-  email: 'alhafiz52025@gmail.com',
-  pass: '22022025',
-  name: 'رئيس مجلس الأمناء',
-  role: 'admin'
-};
+    email: 'alhafiz52025@gmail.com',
+    pass: '22022025',
+    name: 'رئيس مجلس الأمناء',
+    role: 'admin'
+  };
 
   window.currentUser = JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
   let currentLang = 'ar';
   let currentFontScale = 100;
+  let editingAchievementId = null;
+  let uploadedAchievementImageData = '';
 
-  // تهيئة عميل Supabase إذا كانت بياناته موجودة في supabase-config.js
+  // تهيئة عميل Supabase إذا كانت بياناته موجودة
   if (!window.supabaseClient && window.SUPABASE_URL && window.SUPABASE_ANON_KEY && window.supabase) {
     window.supabaseClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
   }
+
+  window.getFoundationSettings = function() {
+    const saved = JSON.parse(localStorage.getItem('hf_foundation_settings') || 'null');
+    const creds = JSON.parse(localStorage.getItem('hf_admin_creds') || 'null');
+    return {
+      orgName: (saved && saved.orgName) || 'مؤسسة الحافظ للتنمية والخدمات',
+      regNo: (saved && saved.regNo) || 'مشهرة برقم 2202 لسنة 2025',
+      phone1: (saved && saved.phone1) || '01000880156',
+      phone2: (saved && saved.phone2) || '01155540066',
+      adminEmail: (creds && creds.email) || DEFAULT_ADMIN.email,
+      adminPass: (creds && creds.pass) || DEFAULT_ADMIN.pass
+    };
+  };
+
+  window.saveFoundationAndAdminSettings = function() {
+    const adminEmail = (document.getElementById('cfg-admin-email')?.value || '').trim();
+    const adminPass = (document.getElementById('cfg-admin-pass')?.value || '').trim();
+    const phone1 = (document.getElementById('cfg-phone-1')?.value || '').trim();
+    const phone2 = (document.getElementById('cfg-phone-2')?.value || '').trim();
+    const orgName = (document.getElementById('cfg-org-name')?.value || '').trim();
+    const regNo = (document.getElementById('cfg-reg-no')?.value || '').trim();
+
+    if (!adminEmail || !adminPass) {
+      alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة السر للإدارة.');
+      return;
+    }
+
+    localStorage.setItem('hf_admin_creds', JSON.stringify({
+      email: adminEmail,
+      pass: adminPass,
+      name: 'رئيس مجلس الأمناء',
+      role: 'admin'
+    }));
+
+    localStorage.setItem('hf_foundation_settings', JSON.stringify({
+      orgName: orgName || 'مؤسسة الحافظ للتنمية والخدمات',
+      regNo: regNo || 'مشهرة برقم 2202 لسنة 2025',
+      phone1: phone1 || '01000880156',
+      phone2: phone2 || '01155540066'
+    }));
+
+    if (window.currentUser) {
+      window.currentUser.email = adminEmail;
+      sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
+    }
+
+    alert('✅ تم حفظ بيانات الدخول وأرقام الهواتف والبيانات المؤسسية بنجاح.');
+    renderDashboard();
+  };
+
+  function setElementTranslatedText(el, text) {
+    if (text === undefined || text === null) return;
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = text;
+      return;
+    }
+    const hasDirectText = Array.from(el.childNodes).some(
+      n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0
+    );
+    if (hasDirectText || el.children.length === 0) {
+      el.textContent = text;
+    } else {
+      const target = el.querySelector('p, span, strong, small, label, li') || el;
+      target.textContent = text;
+    }
+  }
+
+  window.applyFullTranslation = function(lang) {
+    const targetLang = (lang === 'en') ? 'en' : 'ar';
+    const root = document.getElementById('html-root') || document.documentElement;
+    if (root) {
+      root.lang = targetLang;
+      root.dir = targetLang === 'ar' ? 'rtl' : 'ltr';
+    }
+
+    if (typeof window.applyLanguageDictionary === 'function') {
+      window.applyLanguageDictionary(targetLang);
+    }
+
+    const dict = (window.HF_TRANSLATIONS && window.HF_TRANSLATIONS[targetLang]) || {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (key && dict[key] !== undefined) {
+        setElementTranslatedText(el, dict[key]);
+      }
+    });
+
+    document.querySelectorAll('[data-ar][data-en]').forEach(el => {
+      const val = targetLang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-ar');
+      setElementTranslatedText(el, val);
+    });
+
+    const toggleBtn = document.getElementById('lang-toggle-btn');
+    if (toggleBtn) {
+      toggleBtn.textContent = targetLang === 'en' ? 'العربية' : 'English';
+    }
+    if (dict.siteTitle) {
+      document.title = dict.siteTitle;
+    }
+  };
 
   window.addEventListener('DOMContentLoaded', () => {
     renderFaqList();
@@ -34,30 +136,17 @@
     }
     if (sectionName === 'apply' && typeof window.renderWizardStep === 'function') {
       window.renderWizardStep();
+    } else if (sectionName === 'achievements') {
+      renderPublicAchievements();
     } else if (sectionName === 'login' && window.currentUser) {
       renderDashboard();
     }
   };
 
   window.toggleLanguage = function() {
-  currentLang = currentLang === 'ar' ? 'en' : 'ar';
-  const root = document.getElementById('html-root');
-  if (root) {
-    root.lang = currentLang;
-    root.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
-  }
-  if (typeof window.applyLanguageDictionary === 'function') {
-    window.applyLanguageDictionary(currentLang);
-  }
-  document.querySelectorAll('[data-ar][data-en]').forEach(el => {
-    const val = currentLang === 'ar' ? el.getAttribute('data-ar') : el.getAttribute('data-en');
-    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-      el.placeholder = val;
-    } else if (el.children.length === 0) {
-      el.textContent = val;
-    }
-  });
-};
+    currentLang = currentLang === 'ar' ? 'en' : 'ar';
+    window.applyFullTranslation(currentLang);
+  };
 
   window.adjustFontSize = function(delta) {
     currentFontScale = Math.min(130, Math.max(85, currentFontScale + delta * 5));
@@ -88,19 +177,228 @@
     `).join('');
   }
 
-  function renderPublicAchievements() {
+  // --- إدارة الإنجازات الكاملة (إضافة - تعديل - حذف - رفع صورة - تعدد الإنجازات) ---
+  window.handleAchievementFileSelect = function(inputEl) {
+    const file = inputEl && inputEl.files && inputEl.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      uploadedAchievementImageData = e.target.result || '';
+      const preview = document.getElementById('ach-img-preview');
+      if (preview) {
+        preview.src = uploadedAchievementImageData;
+        preview.style.display = 'block';
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.getAllAchievements = async function() {
+    const localList = JSON.parse(localStorage.getItem('hf_achievements_list') || '[]');
+    if (window.supabaseClient) {
+      try {
+        const { data, error } = await window.supabaseClient
+          .from('achievements')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && Array.isArray(data) && data.length > 0) {
+          const map = new Map();
+          [...localList, ...data].forEach(item => {
+            const key = String(item.id || item.title);
+            if (!map.has(key)) map.set(key, item);
+          });
+          return Array.from(map.values());
+        }
+      } catch (e) {
+        console.warn('Achievements fetch fallback:', e);
+      }
+    }
+    return localList;
+  };
+
+  window.saveAchievementItem = async function() {
+    const titleEl = document.getElementById('ach-title');
+    const descEl = document.getElementById('ach-desc');
+    const imgUrlEl = document.getElementById('ach-img');
+
+    const title = (titleEl ? titleEl.value : '').trim();
+    const description = (descEl ? descEl.value : '').trim();
+    const manualUrl = (imgUrlEl ? imgUrlEl.value : '').trim();
+    const finalImage = uploadedAchievementImageData || manualUrl || 'logo.jpg';
+
+    if (!title) {
+      alert('⚠️ يرجى كتابة العنوان الرئيسي للإنجاز.');
+      return;
+    }
+
+    const localList = JSON.parse(localStorage.getItem('hf_achievements_list') || '[]');
+
+    if (editingAchievementId !== null) {
+      const idx = localList.findIndex(x => String(x.id) === String(editingAchievementId));
+      const updated = {
+        ...(idx >= 0 ? localList[idx] : {}),
+        id: editingAchievementId,
+        title,
+        description,
+        image_url: finalImage,
+        updated_at: new Date().toISOString()
+      };
+      if (idx >= 0) localList[idx] = updated;
+      else localList.unshift(updated);
+
+      if (window.supabaseClient) {
+        await window.supabaseClient
+          .from('achievements')
+          .update({ title, description, image_url: finalImage })
+          .eq('id', editingAchievementId);
+      }
+
+      localStorage.setItem('hf_achievements_list', JSON.stringify(localList));
+      editingAchievementId = null;
+      uploadedAchievementImageData = '';
+      alert('✅ تم تعديل الإنجاز بنجاح.');
+    } else {
+      const newItem = {
+        id: 'ACH-' + Date.now(),
+        title,
+        description,
+        image_url: finalImage,
+        category: 'إنجازات المؤسسة',
+        created_at: new Date().toISOString()
+      };
+
+      localList.unshift(newItem);
+      localStorage.setItem('hf_achievements_list', JSON.stringify(localList));
+
+      if (window.supabaseClient) {
+        await window.supabaseClient.from('achievements').insert([{
+          title,
+          description,
+          image_url: finalImage,
+          category: 'إنجازات المؤسسة'
+        }]);
+      }
+
+      uploadedAchievementImageData = '';
+      alert('✅ تم نشر الإنجاز الجديد بنجاح.');
+    }
+
+    if (titleEl) titleEl.value = '';
+    if (descEl) descEl.value = '';
+    if (imgUrlEl) imgUrlEl.value = '';
+    const fileEl = document.getElementById('ach-file');
+    if (fileEl) fileEl.value = '';
+    const preview = document.getElementById('ach-img-preview');
+    if (preview) {
+      preview.src = '';
+      preview.style.display = 'none';
+    }
+    const submitBtn = document.getElementById('ach-submit-btn');
+    if (submitBtn) submitBtn.textContent = '+ نشر الإنجاز على الصفحة';
+
+    await window.renderAdminAchievementsManager();
+    await renderPublicAchievements();
+  };
+
+  window.startEditAchievement = async function(id) {
+    const list = await window.getAllAchievements();
+    const item = list.find(x => String(x.id) === String(id));
+    if (!item) return;
+
+    editingAchievementId = item.id;
+    uploadedAchievementImageData = (item.image_url && item.image_url.startsWith('data:image')) ? item.image_url : '';
+
+    const titleEl = document.getElementById('ach-title');
+    const descEl = document.getElementById('ach-desc');
+    const imgUrlEl = document.getElementById('ach-img');
+    const preview = document.getElementById('ach-img-preview');
+    const submitBtn = document.getElementById('ach-submit-btn');
+
+    if (titleEl) titleEl.value = item.title || '';
+    if (descEl) descEl.value = item.description || '';
+    if (imgUrlEl) imgUrlEl.value = (item.image_url && !item.image_url.startsWith('data:image')) ? item.image_url : '';
+    if (preview && item.image_url) {
+      preview.src = item.image_url;
+      preview.style.display = 'block';
+    }
+    if (submitBtn) submitBtn.textContent = '💾 حفظ التعديلات على الإنجاز';
+  };
+
+  window.deleteAchievementItem = async function(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا الإنجاز؟')) return;
+    const localList = JSON.parse(localStorage.getItem('hf_achievements_list') || '[]')
+      .filter(x => String(x.id) !== String(id));
+    localStorage.setItem('hf_achievements_list', JSON.stringify(localList));
+
+    if (window.supabaseClient) {
+      await window.supabaseClient.from('achievements').delete().eq('id', id);
+    }
+
+    await window.renderAdminAchievementsManager();
+    await renderPublicAchievements();
+  };
+
+  window.renderAdminAchievementsManager = async function() {
+    const box = document.getElementById('admin-tab-achievements');
+    if (!box) return;
+    const list = await window.getAllAchievements();
+
+    box.innerHTML = `
+      <div style="background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:20px; color:#0f172a;">
+        <h4 style="margin-top:0; color:var(--primary-dark);">🏆 إضافة / تعديل إنجاز في صفحة الإنجازات</h4>
+        <label style="font-size:12px; font-weight:700;">العنوان الرئيسي للإنجاز:</label>
+        <input id="ach-title" placeholder="اكتب العنوان الرئيسي للإنجاز...">
+
+        <label style="font-size:12px; font-weight:700;">التوضيح والتفاصيل:</label>
+        <textarea id="ach-desc" rows="3" placeholder="اكتب التوضيح الكامل للإنجاز والتفاصيل..."></textarea>
+
+        <label style="font-size:12px; font-weight:700;">رفع صورة من الجهاز (أو إدخال رابط صورة):</label>
+        <input id="ach-file" type="file" accept="image/*" onchange="handleAchievementFileSelect(this)" style="margin-bottom:8px;">
+        <input id="ach-img" placeholder="رابط الصورة (اختياري إذا تم رفع صورة من الجهاز)">
+        <img id="ach-img-preview" src="" alt="معاينة الصورة" style="display:none; max-height:140px; border-radius:8px; margin:8px 0; border:1px solid #cbd5e1;">
+
+        <div style="margin-top:8px;">
+          <button id="ach-submit-btn" type="button" onclick="saveAchievementItem()" class="action-btn">+ نشر الإنجاز على الصفحة</button>
+        </div>
+      </div>
+
+      <h4 style="color:var(--primary-dark);">قائمة الإنجازات المنشورة (${list.length})</h4>
+      ${list.length === 0
+        ? '<p style="color:#64748b;">لا توجد إنجازات منشورة حالياً. يمكنك إضافة إنجازات جديدة من النموذج أعلاه.</p>'
+        : `<div class="grid-2">
+            ${list.map(item => `
+              <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; color:#0f172a;">
+                ${item.image_url ? `<img src="${item.image_url}" alt="${item.title}" style="width:100%; height:160px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+                <div style="padding:12px;">
+                  <h5 style="margin:0 0 6px; color:var(--primary-dark);">${item.title}</h5>
+                  <p style="margin:0 0 12px; font-size:13px; line-height:1.6; white-space:pre-line;">${item.description || ''}</p>
+                  <div style="display:flex; gap:8px;">
+                    <button type="button" onclick="startEditAchievement('${item.id}')" class="nav-btn btn-gold" style="font-size:12px; padding:5px 10px;">✏️ تعديل</button>
+                    <button type="button" onclick="deleteAchievementItem('${item.id}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:12px; padding:5px 10px;">🗑️ حذف</button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>`
+      }
+    `;
+  };
+
+  async function renderPublicAchievements() {
     const container = document.getElementById('public-achievements-container');
     if (!container) return;
-    const sample = [
-      { title: 'قافلة مساعدات غذائية وتنموية', loc: 'قرى مركز إهناسيا - بني سويف', desc: 'توزيع حقائب غذائية ومساندة أسر مستحقة وفق قاعدة بيانات موحدة تمنع التكرار.' },
-      { title: 'مبادرة الدفء الشتوي والأغطية', loc: 'منشأة عبدالصمد ومنهرة وتوابعهما', desc: 'توفير بطاطين وأغطية شتوية للأسر الأولى بالرعاية وكبار السن.' },
-      { title: 'التمكين والدعم الاجتماعي', loc: 'مراكز محافظة بني سويف', desc: 'دراسة الحالات وتقديم الدعم العيني والنقدي والطبي للمستحقين بعد البحث الميداني.' }
-    ];
-    container.innerHTML = sample.map(s => `
-      <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: 12px; padding: 14px;">
-        <strong style="color: var(--primary-dark); font-size: 15px;">${s.title}</strong>
-        <p style="font-size: 12px; color: var(--accent); margin: 4px 0 8px; font-weight: 700;">${s.loc}</p>
-        <p style="font-size: 13px; margin: 0;">${s.desc}</p>
+    const list = await window.getAllAchievements();
+    if (!list || list.length === 0) {
+      container.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#64748b;">لا توجد إنجازات منشورة حالياً.</p>';
+      return;
+    }
+    container.innerHTML = list.map(s => `
+      <div style="background: var(--bg-color); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+        ${s.image_url ? `<img src="${s.image_url}" alt="${s.title}" style="width:100%; height:180px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+        <div style="padding: 14px;">
+          <strong style="color: var(--primary-dark); font-size: 15px; display:block; margin-bottom:6px;">${s.title}</strong>
+          <p style="font-size: 13px; margin: 0; line-height:1.7; white-space:pre-line;">${s.description || ''}</p>
+        </div>
       </div>
     `).join('');
   }
@@ -321,6 +619,43 @@
     }
   };
 
+  window.updateMembershipDecision = async function(code, statusVal, roleVal) {
+    const localMem = JSON.parse(localStorage.getItem('hf_local_memberships') || '[]');
+    const idx = localMem.findIndex(m => (m.request_code || m.id) === code);
+    let targetItem = null;
+
+    if (idx >= 0) {
+      if (statusVal) localMem[idx].status = statusVal;
+      if (roleVal) localMem[idx].requested_role = roleVal;
+      localMem[idx].reviewed_at = new Date().toISOString();
+      targetItem = localMem[idx];
+      localStorage.setItem('hf_local_memberships', JSON.stringify(localMem));
+    }
+
+    if (window.supabaseClient && code) {
+      const upd = {};
+      if (statusVal) upd.status = statusVal;
+      if (roleVal) upd.requested_role = roleVal;
+      await window.supabaseClient.from('membership_requests').update(upd).eq('request_code', code);
+      if (targetItem && targetItem.email) {
+        await window.supabaseClient.from('users_profiles').update({
+          ...(roleVal ? { role: roleVal } : {}),
+          ...(statusVal ? { account_status: statusVal === 'approved' ? 'active' : statusVal } : {})
+        }).eq('email', targetItem.email);
+      }
+    }
+
+    if (statusVal === 'approved' && targetItem && targetItem.phone && typeof window.triggerInstantWhatsApp === 'function') {
+      window.triggerInstantWhatsApp(
+        targetItem.phone,
+        `مؤسسة الحافظ للتنمية والخدمات\nتم اعتماد طلب انضمامكم (${code}) بصفة: ${targetItem.requested_role || 'عضو'}.`
+      );
+    }
+
+    alert('✅ تم تحديث حالة طلب الانضمام والصلاحية بنجاح.');
+    renderDashboard();
+  };
+
   // --- لوحة الإدارة الاحترافية ---
   window.renderDashboard = async function() {
     document.getElementById('login-box')?.classList.add('hidden');
@@ -329,6 +664,7 @@
     if (!area) return;
     area.classList.remove('hidden');
 
+    const cfg = window.getFoundationSettings();
     let families = [];
     let grievances = JSON.parse(localStorage.getItem('hf_local_grievances') || '[]');
     let memberships = JSON.parse(localStorage.getItem('hf_local_memberships') || '[]');
@@ -352,7 +688,7 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:12px;">
           <div>
             <h3 style="margin:0; color:var(--primary-dark);">🛡️ غرفة العمليات ولوحة التحكم الإدارية</h3>
-            <small>المستخدم: <strong>${window.currentUser?.name || 'رئيس مجلس الأمناء'}</strong> (${window.currentUser?.email || ''})</small>
+            <small>المستخدم: <strong>${window.currentUser?.name || 'رئيس مجلس الأمناء'}</strong> (${cfg.adminEmail}) — هواتف المؤسسة: ${cfg.phone1} / ${cfg.phone2}</small>
           </div>
           <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" onclick="exportCasesCsv()" class="nav-btn btn-gold">📥 تصدير CSV / Excel</button>
@@ -378,8 +714,9 @@
 
         <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px; border-bottom:1px solid var(--border); padding-bottom:12px;">
           <button type="button" onclick="switchAdminTab('cases')" class="nav-btn btn-primary">📁 الحالات والتقييم والتوزيع</button>
-          <button type="button" onclick="switchAdminTab('grievances')" class="nav-btn">⚖️ التظلمات وطلبات الانضمام</button>
-          <button type="button" onclick="switchAdminTab('roles')" class="nav-btn">👥 الصلاحيات والحسابات</button>
+          <button type="button" onclick="switchAdminTab('grievances')" class="nav-btn">⚖️ التظلمات وطلبات الانضمام والأعضاء</button>
+          <button type="button" onclick="switchAdminTab('achievements')" class="nav-btn">🏆 إدارة الإنجازات</button>
+          <button type="button" onclick="switchAdminTab('roles')" class="nav-btn">👥 الصلاحيات والحسابات والهواتف</button>
           <button type="button" onclick="switchAdminTab('official')" class="nav-btn btn-gold">📜 محاضر مجلس الأمناء والتفويضات والأوراق</button>
         </div>
 
@@ -445,34 +782,74 @@
             </tbody>
           </table>
 
-          <h4 style="margin-top:20px;">👥 طلبات الانضمام (باحثون / متطوعون / شركاء / مانحون)</h4>
+          <h4 style="margin-top:20px;">👥 طلبات الانضمام وإدارة الأعضاء (باحثون / متطوعون / شركاء / مانحون)</h4>
           <table>
-            <thead><tr><th>الكود</th><th>الاسم والهاتف</th><th>الصفة المطلوبة</th><th>البريد والملاحظات</th></tr></thead>
+            <thead><tr><th>الكود</th><th>الاسم والهاتف والبريد</th><th>الصفة والملاحظات</th><th>الحالة والاعتماد</th></tr></thead>
             <tbody>
-              ${memberships.length === 0 ? '<tr><td colspan="4" style="text-align:center;">لا توجد طلبات انضمام.</td></tr>' : memberships.map(m => `
-                <tr>
-                  <td><strong>${m.request_code}</strong></td>
-                  <td>${m.full_name}<br><small>${m.phone}</small></td>
-                  <td>${m.requested_role}</td>
-                  <td>${m.email || ''}<br><small>${m.notes || ''}</small></td>
-                </tr>
-              `).join('')}
+              ${memberships.length === 0 ? '<tr><td colspan="4" style="text-align:center;">لا توجد طلبات انضمام.</td></tr>' : memberships.map((m, idx) => {
+                const codeVal = m.request_code || m.id || idx;
+                const roleSelId = 'mem-role-' + idx;
+                const statusSelId = 'mem-status-' + idx;
+                return `
+                  <tr>
+                    <td><strong>${m.request_code || '-'}</strong></td>
+                    <td>${m.full_name || ''}<br><small>${m.phone || ''} | ${m.email || ''}</small></td>
+                    <td>
+                      <select id="${roleSelId}" style="margin:0 0 4px; padding:4px; font-size:12px;">
+                        <option value="researcher" ${m.requested_role==='researcher'?'selected':''}>باحث ميداني</option>
+                        <option value="volunteer" ${m.requested_role==='volunteer'?'selected':''}>متطوع</option>
+                        <option value="partner" ${m.requested_role==='partner'?'selected':''}>جهة شريكة / جمعية</option>
+                        <option value="donor" ${m.requested_role==='donor'?'selected':''}>جهة مانحة</option>
+                      </select>
+                      <br><small>${m.notes || ''}</small>
+                    </td>
+                    <td>
+                      <select id="${statusSelId}" style="margin:0 0 4px; padding:4px; font-size:12px;">
+                        <option value="pending" ${(m.status||'pending')==='pending'?'selected':''}>⏳ قيد المراجعة</option>
+                        <option value="approved" ${m.status==='approved'?'selected':''}>✅ مقبول ومفعل</option>
+                        <option value="rejected" ${m.status==='rejected'?'selected':''}>❌ مرفوض</option>
+                      </select>
+                      <br>
+                      <button type="button" onclick="updateMembershipDecision('${codeVal}', document.getElementById('${statusSelId}').value, document.getElementById('${roleSelId}').value)" class="nav-btn btn-primary" style="padding:4px 8px; font-size:11px;">حفظ القرار</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
 
+        <div id="admin-tab-achievements" class="hidden" style="margin-top:16px;"></div>
+
         <div id="admin-tab-roles" class="hidden" style="margin-top:16px;">
           <div class="grid-2">
             <div style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border);">
-              <h4 style="margin-top:0;">🔑 تغيير البريد الإلكتروني وكلمة السر للإدارة</h4>
-              <input id="new-admin-email" type="email" value="${window.currentUser?.email || DEFAULT_ADMIN.email}" placeholder="البريد الإلكتروني الجديد">
-              <input id="new-admin-pass" type="password" placeholder="كلمة السر الجديدة">
-              <button type="button" onclick="saveAdminCredentials()" class="action-btn">حفظ بيانات الدخول</button>
+              <h4 style="margin-top:0;">🔑 تغيير البريد الإلكتروني وكلمة السر وأرقام الهواتف والبيانات المؤسسية</h4>
+              <label style="font-size:12px; font-weight:700;">البريد الإلكتروني للإدارة:</label>
+              <input id="cfg-admin-email" type="email" value="${cfg.adminEmail}" placeholder="البريد الإلكتروني الجديد">
+
+              <label style="font-size:12px; font-weight:700;">كلمة السر للإدارة:</label>
+              <input id="cfg-admin-pass" type="text" value="${cfg.adminPass}" placeholder="كلمة السر الجديدة">
+
+              <label style="font-size:12px; font-weight:700;">رقم الهاتف الأول للمؤسسة:</label>
+              <input id="cfg-phone-1" value="${cfg.phone1}" placeholder="01000880156">
+
+              <label style="font-size:12px; font-weight:700;">رقم الهاتف الثاني للمؤسسة:</label>
+              <input id="cfg-phone-2" value="${cfg.phone2}" placeholder="01155540066">
+
+              <label style="font-size:12px; font-weight:700;">اسم المؤسسة:</label>
+              <input id="cfg-org-name" value="${cfg.orgName}" placeholder="مؤسسة الحافظ للتنمية والخدمات">
+
+              <label style="font-size:12px; font-weight:700;">رقم الإشهار:</label>
+              <input id="cfg-reg-no" value="${cfg.regNo}" placeholder="مشهرة برقم 2202 لسنة 2025">
+
+              <button type="button" onclick="saveFoundationAndAdminSettings()" class="action-btn" style="margin-top:6px;">حفظ الإعدادات بالكامل</button>
             </div>
+
             <div style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border);">
               <h4 style="margin-top:0;">🛡️ مصفوفة الصلاحيات حسب الدور</h4>
-              <ul style="font-size:13px; padding-right:18px; margin:0;">
-                <li><strong>رئيس مجلس الأمناء / الإدارة:</strong> إدارة كاملة للحالات، التوزيع، الاعتماد، الصلاحيات، التقارير، والمحاضر والتفويضات.</li>
+              <ul style="font-size:13px; padding-right:18px; margin:0; line-height:1.9;">
+                <li><strong>رئيس مجلس الأمناء / الإدارة:</strong> إدارة كاملة للحالات، التوزيع، الاعتماد، قبول/رفض طلبات الانضمام، تعديل بيانات الدخول والهواتف، التقارير، والمحاضر والتفويضات.</li>
                 <li><strong>الباحث الميداني:</strong> تسجيل البحوث، إدخال التوصيات، ومتابعة الحالات المسندة إليه.</li>
                 <li><strong>المتطوع:</strong> المشاركة في الأنشطة والقوافل الميدانية المسندة.</li>
                 <li><strong>الجهة الشريكة / المانحة:</strong> متابعة التقارير والإحصاءات وحالات التنفيذ المتفق عليها ضمن نطاق الشراكة.</li>
@@ -496,9 +873,12 @@
   };
 
   window.switchAdminTab = function(tab) {
-    ['cases', 'grievances', 'roles', 'official'].forEach(t => {
+    ['cases', 'grievances', 'achievements', 'roles', 'official'].forEach(t => {
       document.getElementById('admin-tab-' + t)?.classList.toggle('hidden', t !== tab);
     });
+    if (tab === 'achievements' && typeof window.renderAdminAchievementsManager === 'function') {
+      window.renderAdminAchievementsManager();
+    }
   };
 
   window.updateCaseDecision = async function(id, statusVal, evaluatorVal) {
@@ -521,8 +901,10 @@
     const prev = JSON.parse(localStorage.getItem('hf_admin_creds') || 'null') || DEFAULT_ADMIN;
     const updated = { ...prev, email: newEmail, pass: newPass };
     localStorage.setItem('hf_admin_creds', JSON.stringify(updated));
-    window.currentUser.email = newEmail;
-    sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
+    if (window.currentUser) {
+      window.currentUser.email = newEmail;
+      sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
+    }
     alert('✅ تم تحديث البريد الإلكتروني وكلمة السر بنجاح.');
   };
 
@@ -551,13 +933,13 @@
     const container = document.getElementById(containerId);
     if (!container) return;
     const count = container.querySelectorAll('.dyn-line-row').length;
-    const nextNum = count + 2;
+    const nextNum = numbered ? (count + 2) : (count + 1);
     const row = document.createElement('div');
     row.className = 'dyn-line-row';
     row.style.cssText = 'display:flex; align-items:center; gap:6px; margin:4px 0;';
     row.innerHTML = `
-      ${numbered ? `<span class="line-num" style="font-weight:700; min-width:22px;">${nextNum}-</span>` : `<span class="line-num" style="font-weight:700; min-width:22px;">${count + 1}-</span>`}
-      <input type="text" class="doc-line-input" placeholder="${placeholderText}" style="flex:1; margin:0; padding:5px 8px;">
+      ${numbered ? `<span class="line-num" style="font-weight:700; min-width:22px;">${nextNum}-</span>` : ''}
+      <input type="text" class="doc-line-input" placeholder="${placeholderText || '........................................................................'}" style="flex:1; margin:0; padding:5px 8px;">
       <button type="button" onclick="removeDynamicLine(this, '${containerId}', ${numbered})" class="no-print" style="background:#fee2e2; color:#991b1b; border:1px solid #fecaca; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:12px;">✕</button>
     `;
     container.appendChild(row);
@@ -566,11 +948,12 @@
   window.removeDynamicLine = function(btn, containerId, numbered = true) {
     const row = btn.closest('.dyn-line-row');
     if (row) row.remove();
+    if (!numbered) return;
     const container = document.getElementById(containerId);
     if (!container) return;
     container.querySelectorAll('.dyn-line-row').forEach((r, idx) => {
       const numSpan = r.querySelector('.line-num');
-      if (numSpan) numSpan.innerText = (numbered ? (idx + 2) : (idx + 1)) + '-';
+      if (numSpan) numSpan.innerText = (idx + 2) + '-';
     });
   };
 
@@ -639,14 +1022,15 @@
   window.renderOfficialForm = function(type) {
     const box = document.getElementById('official-doc-editor');
     if (!box) return;
+    const cfg = window.getFoundationSettings();
 
     const headerHtml = `
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:16px; font-size:12px;">
         <div style="line-height:1.7;">
           <strong>مديرية التضامن الاجتماعي ببني سويف</strong><br>
           إدارة إهناسيا الاجتماعية<br>
-          <strong>مؤسسة الحافظ للتنمية والخدمات</strong><br>
-          مشهرة برقم 2202 لسنة 2025
+          <strong>${cfg.orgName}</strong><br>
+          ${cfg.regNo}
         </div>
         <div style="text-align:left;">
           <img src="logo.jpg" alt="شعار المؤسسة" style="height:56px; width:56px; border-radius:50%; border:1px solid #b45309; object-fit:cover;" onerror="this.style.display='none'">
@@ -656,8 +1040,8 @@
 
     const footerHtml = `
       <div style="border-top:1px solid #94a3b8; margin-top:24px; padding-top:8px; display:flex; justify-content:space-between; font-size:11px; color:#475569;">
-        <span>01000880156 - 01155540066</span>
-        <span>alhafiz52025@gmail.com | https://alhafiz-eg.azurewebsites.net</span>
+        <span>${cfg.phone1} - ${cfg.phone2}</span>
+        <span>${cfg.adminEmail} | https://alhafiz-eg.azurewebsites.net</span>
       </div>
     `;
 
