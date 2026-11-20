@@ -137,6 +137,6 @@
       window.translateDynamicContainer(document.body, 'en');
     }
 
-    if (dict.siteTitle) document.title = dict.siteTitle;
+        if (dict.siteTitle) document.title = dict.siteTitle;
   };
 })();
