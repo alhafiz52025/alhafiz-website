@@ -1,24 +1,21 @@
 // i18n.js - نظام التعريب الشامل (عربي / إنجليزي) لكامل الموقع
-// يحتوي الكود على كائن الترجمات (HF_TRANSLATIONS) للغتين العربية والإنجليزية
-// يمكنك الاطلاع على النسخة الكاملة للأكواد ونصوص الواجهات المتاحة في المصدر المرجعي.
 (function() {
   window.HF_TRANSLATIONS = {
     ar: {
       siteTitle: "مؤسسة الحافظ للتنمية والخدمات | إشهار 2202 لسنة 2025",
       navHome: "الرئيسية",
       navAbout: "من نحن",
-      heroTitle: "معاً.. نصنع أثراً يمتد ويبقى"
-      // ... باقي النصوص العربية
+      heroTitle: "معاً.. نصنع أثراً يمتد ويبقى",
+      // ... باقي النصوص العربية المتاحة في المصدر المرجعي
     },
     en: {
       siteTitle: "Al-Hafiz Foundation for Development and Services | Reg. 2202/2025",
       navHome: "Home",
       navAbout: "About Us",
-      heroTitle: "Together.. We Create Lasting Impact"
-      // ... باقي النصوص الإنجليزية
-       }
+      heroTitle: "Together.. We Create Lasting Impact",
+      // ... باقي النصوص الإنجليزية المتاحة في المصدر المرجعي
+    }
   };
-})();
   const DYNAMIC_PHRASES_EN = {
     "مؤسسة الحافظ للتنمية والخدمات": "Al-Hafiz Foundation for Development and Services",
     "مشهرة برقم 2202 لسنة 2025": "Registered No. 2202 of 2025",
@@ -29,16 +26,12 @@
     "الاسم المشهر:": "Registered Name:",
     "رقم الإشهار:": "Registration No.:",
     "المقر الرئيسي:": "Headquarters:",
-    "فرع ومكتب الإدارة:": "Admin Branch:",
     "المكتب الفرعي:": "Branch Office:",
-    "رقم الإدارة والتواصل:": "Admin Phone:",
-    "إدارة المؤسسة:": "Foundation Admin:",
-    "واتساب:": "WhatsApp:",
     "واتساب رسمي:": "Official WhatsApp:",
     "البريد الإلكتروني:": "Email:",
     "1. مجلس الأمناء": "1. Board of Trustees",
-    "2. الإدارة التنفيذية ولجان البحث والتقييم": "2. Executive Management & Research Committees",
-    "3. الباحثون والمتطوعون والشركاء والمانحون": "3. Researchers, Volunteers, Partners & Donors",
+    "2. الإدارة التنفيذية ولجان البحث": "2. Executive Management & Research Committees",
+    "3. الباحثون والمتطوعون والمانحون": "3. Researchers, Volunteers & Donors",
     "الخطوة 1 من 8": "Step 1 of 8",
     "الخطوة 2 من 8": "Step 2 of 8",
     "الخطوة 3 من 8": "Step 3 of 8",
@@ -48,41 +41,37 @@
     "الخطوة 7 من 8": "Step 7 of 8",
     "الخطوة 8 من 8": "Step 8 of 8",
     "🎯 الخطوة الأولى: تحديد نوع التدخل والمساعدات الخاصة": "🎯 Step 1: Select Aid & Intervention Type",
-    "نوع المساعدة الأساسية المطلوبة للأسرة *": "Primary Assistance Required for the Family *",
-    "👤 القسم الأول: بيانات الزوج (رب الأسرة)": "👤 Section 1: Husband (Head of Family) Details",
+    "نوع المساعدة الأساسية المطلوبة للأسرة *": "Primary Assistance Required *",
+    "👤 القسم الأول: بيانات الزوج (رب الأسرة)": "👤 Section 1: Husband Details",
     "الاسم الأول *": "First Name *",
     "الاسم الثاني *": "Middle Name *",
-    "الاسم الثالث والعائلة *": "Last / Family Name *",
+    "الاسم الثالث والعائلة *": "Last Name *",
     "الحالة الاجتماعية *": "Marital Status *",
-    "الرقم القومي (14 رقم حصراً) *": "National ID (14 Digits Only) *",
-    "النوع (تلقائي من الرقم القومي)": "Gender (Auto from National ID)",
-    "تاريخ الميلاد (تلقائي من الرقم القومي)": "Birth Date (Auto from National ID)",
+    "الرقم القومي (14 رقم حصراً) *": "National ID (14 Digits) *",
+    "النوع (تلقائي من الرقم القومي)": "Gender (Auto)",
+    "تاريخ الميلاد (تلقائي من الرقم القومي)": "Birth Date (Auto)",
     "المستوى التعليمي *": "Education Level *",
-    "العنوان الإداري (التسلسل الجغرافي المعتمد) *": "Administrative Address (Official Hierarchy) *",
-    "المحافظة:": "Governorate:",
-    "المركز / القسم:": "District / Center:",
-    "القرية أو التابع (التابع للمركز فقط):": "Village or Hamlet:",
-    "رقم التليفون الأساسي (11 رقم) *": "Primary Phone Number (11 Digits) *",
+    "العنوان الإداري (التسلسل الجغرافي المعتمد) *": "Administrative Address *",
+    "1. المحافظة:": "1. Governorate:",
+    "2. المركز / القسم:": "2. District / Center:",
+    "3. القرية أو التابع:": "3. Village or Hamlet:",
+    "رقم التليفون الأساسي (11 رقم) *": "Primary Phone (11 Digits) *",
     "رقم الواتساب (11 رقم)": "WhatsApp Number (11 Digits)",
     "الوظيفة الحالية *": "Current Occupation *",
     "👩 القسم الثاني: بيانات الزوجة": "👩 Section 2: Wife Details",
-    "👶 القسم الثالث: بيانات الأبناء والتابعين": "👶 Section 3: Children & Dependents Details",
-    "+ إضافة ابن آخر": "+ Add Another Child",
-    "💍 القسم الإضافي: بيانات العروسة وتجهيز الزواج": "💍 Additional Section: Bride & Marriage Details",
-    "💸 القسم الرابع: المصروفات والأعباء الشهرية": "💸 Section 4: Monthly Expenses & Obligations",
-    "💵 القسم الخامس: مصادر الدخل والفائض أو العجز": "💵 Section 5: Income Sources & Surplus/Deficit",
-    "📋 القسم السادس: وصف السكن، المستندات الرسمية، ورأي الباحث": "📋 Section 6: Housing, Official Documents & Researcher Opinion",
+    "👶 القسم الثالث: بيانات الأبناء والتابعين": "👶 Section 3: Children Details",
+    "+ إضافة ابن آخر": "+ Add Child",
+    "💍 القسم الإضافي: بيانات العروسة وتجهيز الزواج": "💍 Bride & Marriage Details",
+    "💸 القسم الرابع: المصروفات والأعباء الشهرية": "💸 Section 4: Monthly Expenses",
+    "💵 القسم الخامس: مصادر الدخل والفائض أو العجز": "💵 Section 5: Income & Balance",
+    "📋 القسم السادس: وصف السكن، المستندات الرسمية، ورأي الباحث": "📋 Section 6: Housing & Documents",
     "السابق": "Previous",
     "التالي ➔": "Next ➔",
-    "✅ تأكيد والرفع النهائي للحالة": "✅ Confirm & Submit Case",
-    "🛡️ غرفة العمليات ولوحة التحكم الإدارية": "🛡️ Operations Room & Admin Dashboard",
-    "🖨️ طباعة اللوحة": "🖨️ Print Dashboard",
+    "✅ تأكيد والرفع النهائي للحالة": "✅ Confirm & Submit",
+    "🛡️ لوحة التحكم الإدارية": "🛡️ Admin Control Dashboard",
     "تسجيل الخروج": "Sign Out",
-    "روابط سريعة": "Quick Links",
-    "التواصل والمقرات": "Contact & Offices",
-    "كلمة المرور:": "Password:",
-    "تسجيل الدخول": "Sign In",
-    "🔑 نسيت البريد أو الرقم السري؟": "🔑 Forgot Email or Password?"
+    "خروج": "Logout",
+    "تسجيل الدخول": "Sign In"
   };
 
   window.currentSiteLang = 'ar';
@@ -137,6 +126,6 @@
       window.translateDynamicContainer(document.body, 'en');
     }
 
-        if (dict.siteTitle) document.title = dict.siteTitle;
+    if (dict.siteTitle) document.title = dict.siteTitle;
   };
 })();
