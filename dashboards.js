@@ -1,15 +1,12 @@
 // dashboards.js - لوحة الإدارة الشاملة ولوحات الأعضاء والكشوف والإقرارات
 (function() {
-     window.triggerInstantWhatsApp = function(rawPhone, messageText) {
-    const clean = String(rawPhone || '').replace(/\D/g, '');
-    if (!clean) return;
-    const intl = clean.startsWith('20') ? clean : ('20' + clean.replace(/^0/, ''));
-    const base = 'https://' + '://whatsapp.com' + '/send';
-    const waUrl = base + '?phone=' + intl + '&text=' + encodeURIComponent(messageText);
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
-  };
-
-
+    window.triggerInstantWhatsApp = function (rawPhone, messageText) {
+  const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
+  if (!cleanPhone) return;
+  const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0/, ''));
+  const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(messageText || '')}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
   window.getOfficialHeaderHtml = function(cfg) {
     return `
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:14px; font-size:12px;">
