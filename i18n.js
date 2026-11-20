@@ -16,7 +16,7 @@
       navAbout: "About Us",
       heroTitle: "Together.. We Create Lasting Impact"
       // ... باقي النصوص الإنجليزية
-    }
+       }
   };
 })();
   const DYNAMIC_PHRASES_EN = {
