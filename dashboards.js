@@ -1,12 +1,14 @@
 // dashboards.js - لوحة الإدارة الشاملة ولوحات الأعضاء والكشوف والإقرارات
 (function() {
-    window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+     window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const clean = String(rawPhone || '').replace(/\D/g, '');
     if (!clean) return;
     const intl = clean.startsWith('20') ? clean : ('20' + clean.replace(/^0/, ''));
-    const waUrl = 'https://whatsapp.com' + intl + '&text=' + encodeURIComponent(messageText);
+    const base = 'https://' + '://whatsapp.com' + '/send';
+    const waUrl = base + '?phone=' + intl + '&text=' + encodeURIComponent(messageText);
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
+
 
   window.getOfficialHeaderHtml = function(cfg) {
     return `
