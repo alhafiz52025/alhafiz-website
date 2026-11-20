@@ -1002,7 +1002,9 @@
       </table>`;
   };
 
-  function buildPrintableSheetHtml(cfg, bodyContent, docTitle) {
+  function buildPrintableSheetHtml(cfg, bodyContent, docTitle, includeChrome = true) {
+    const headerPart = includeChrome ? window.getOfficialHeaderHtml(cfg) : '';
+    const footerPart = includeChrome ? window.getOfficialFooterHtml(cfg) : '';
     return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
       <title>${window.escapeHtml(docTitle || 'مستند رسمي - مؤسسة الحافظ')}</title>
       <style>
@@ -1015,10 +1017,10 @@
       </style></head><body>
       <div class="box">
         <div>
-          ${window.getOfficialHeaderHtml(cfg)}
+          ${headerPart}
           ${bodyContent}
         </div>
-        ${window.getOfficialFooterHtml(cfg)}
+        ${footerPart}
       </div>
       <script>window.onload=function(){window.print();};<\/script>
       </body></html>`;
@@ -1169,7 +1171,7 @@
     });
   };
 
-  window.printOfficialDocSheetOnly = async function(saveType = '', docNumInputId = '', docDateInputId = '', titleInputId = '') {
+ window.printOfficialDocSheetOnly = async function(saveType = '', docNumInputId = '', docDateInputId = '', titleInputId = '') {
     const sheet = document.getElementById('printable-official-sheet');
     if (!sheet) return;
     const clone = sheet.cloneNode(true);
@@ -1192,7 +1194,7 @@
       });
     }
 
-    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, clone.innerHTML, `${getDocTypeLabel(saveType || 'letter')} - ${docNum}`));
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, clone.innerHTML, `${getDocTypeLabel(saveType || 'letter')} - ${docNum}`, false));
   };
 
   window.saveAndPrintOutgoingDoc = async function() {
