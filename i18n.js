@@ -1,11 +1,21 @@
-// i18n.js - نظام تعريب شامل ومستمر لكامل الموقع والاستمارات والنماذج
+// i18n.js - نظام تعريب وترجمة شامل لكامل الموقع والاستمارات والنماذج
 (function() {
   const ORIGINAL_TEXT_MAP = new WeakMap();
   const ORIGINAL_ATTR_MAP = new WeakMap();
   const LANG_STORAGE_KEY = 'hf_site_lang_v1';
 
+  // ترتيب المفاتيح من الأطول للأقصر لتجنب استبدال جزء من نص قبل الجملة الكاملة
+  let SORTED_ENTRIES = [];
+
+  function rebuildSortedEntries() {
+    const dict = window.FULL_DICTIONARY || {};
+    SORTED_ENTRIES = Object.entries(dict)
+      .filter(([k]) => typeof k === 'string' && k.trim().length > 0)
+      .sort((a, b) => b[0].length - a[0].length);
+  }
+
   window.FULL_DICTIONARY = {
-    // عنوان الصفحة وشريط الوصول والهوية
+    // 1. الهوية، شريط الوصول، والتنقل العلوي
     "مؤسسة الحافظ للتنمية والخدمات | إشهار 2202 لسنة 2025": "Al-Hafiz Foundation for Development & Services | Reg. 2202/2025",
     "اللغة:": "Language:",
     "حجم الخط:": "Font Size:",
@@ -18,8 +28,6 @@
     "مؤسسة الحافظ": "Al-Hafiz Foundation",
     "للتنمية والخدمات - مركز إهناسيا": "Development & Services - Ihnasia District",
     "شعار مؤسسة الحافظ": "Al-Hafiz Foundation Logo",
-
-    // أزرار التنقل العلوية
     "الرئيسية": "Home",
     "من نحن": "About Us",
     "📢 المنح والمبادرات": "📢 Grants & Initiatives",
@@ -31,7 +39,7 @@
     "🔒 الخصوصية": "🔒 Privacy",
     "🔐 دخول": "🔐 Login",
 
-    // الصفحة الرئيسية والأثر الميداني وحسابات التبرع
+    // 2. الصفحة الرئيسية، الأثر الميداني، وحسابات التبرع
     "منظومة حوكمة وشفافية رقمية لخدمة مركز إهناسيا وجميع المحافظات": "Digital Governance & Transparency System Serving Ihnasia & All Governorates",
     "معاً.. نصنع أثراً يمتد ويبقى": "Together.. We Create Lasting Impact",
     "نعمل كمظلة تنموية تربط كبرى المؤسسات المانحة بالجمعيات القاعدية، بنظام إلكتروني دقيق يمنع الازدواجية ويضمن وصول الدعم لمستحقيه.": "We serve as a developmental umbrella linking major donor institutions with grassroots associations through a precise electronic system that prevents duplication and ensures support reaches eligible families.",
@@ -50,25 +58,22 @@
     "📋 نسخ رقم الحساب": "📋 Copy Account Number",
     "📋 نسخ رقم المحفظة": "📋 Copy Wallet Number",
 
-    // من نحن والرؤية والرسالة والقيم والمحاور والحوكمة والنطاق والهيكل
-    "مؤسسة الحافظ للتنمية والخدمات مؤسسة أهلية غير ربحية تعمل تحت إشراف وزارة التضامن الاجتماعي لخدمة الأسر الأولى بالرعاية بمركز إهناسيا وبني سويف.": "Al-Hafiz Foundation for Development & Services is a non-profit civil society foundation operating under the supervision of the Ministry of Social Solidarity to serve underprivileged families in Ihnasia and Beni Suef.",
+    // 3. من نحن، الرؤية، الرسالة، القيم، المحاور، الحوكمة، النطاق، والهيكل
     "مؤسسة الحافظ للتنمية والخدمات هي مؤسسة أهلية تنموية وخيرية خاضعة لأحكام قانون تنظيم ممارسة العمل الأهلي، ومشهرة رسميًا برقم (2202) لسنة 2025. تعمل المؤسسة على الارتقاء بجودة حياة الأسر الأولى بالرعاية، من خلال الجمع بين التدخل الإغاثي العاجل لتوفير مقومات الحياة الأساسية، والتنمية المستدامة لتمكين الأفراد اقتصاديًا واجتماعيًا. تنطلق المؤسسة من قلب صعيد مصر، واضعةً محافظة بني سويف (مركز إهناسيا وضواحيها) كأولوية ونقطة ارتكاز رئيسية، مع امتداد خدماتها ومبادراتها لتشمل مختلف محافظات الجمهورية.": "Al-Hafiz Foundation for Development & Services is a developmental and charitable civil foundation governed by the Civil Work Regulation Law and officially registered under No. (2202) of 2025. The foundation works to improve the quality of life for underprivileged families by combining urgent relief interventions for basic life necessities with sustainable development for economic and social empowerment. Launching from Upper Egypt, it prioritizes Beni Suef Governorate (Ihnasia District and its surroundings) as its main hub while extending services and initiatives across Egyptian governorates.",
     "👁️ الرؤية": "👁️ Vision",
-    "أن تكون المؤسسة نموذجاً رائداً في العمل التنموي يجمع بين الدقة الرقمية والعدالة الاجتماعية.": "To be a leading model in developmental work combining digital precision with social justice.",
     "أن نكون نموذجًا رائدًا وموثوقًا في العمل الخيري والتنموي المتكامل، لبناء مجتمع متكافل ينعم أفراده بحياة كريمة وبيئة آمنة، ويتحول فيه المستفيدون من دائرة الاحتياج إلى دائرة الإنتاج والاكتفاء الذاتي المستدام.": "To be a leading, trusted model in integrated charitable and developmental work, building a cohesive society where citizens enjoy a dignified life and safe environment, and beneficiaries transition from dependency to sustainable production and self-sufficiency.",
     "🎯 الرسالة": "🎯 Mission",
-    "تقديم خدمات تنموية وإغاثية منضبطة للأسر المستحقة وفق بحث ميداني موثق وحوكمة شفافة.": "Delivering disciplined developmental and relief services to eligible families based on documented field research and transparent governance.",
     "تقديم رعاية إنسانية وتنموية شاملة للأسر الأولى بالرعاية على مستوى الجمهورية، مع تركيز خاص على أهالينا في محافظة بني سويف ومركز إهناسيا وضواحيها؛ وذلك عبر التدخل السريع لتوفير متطلبات الحياة الأساسية (المسكن الآمن، المياه النظيفة، الإغاثة، والكفالات)، بالتوازي مع التمكين الاقتصادي، والخدمات الصحية والتعليمية؛ من خلال منظومة عمل مؤسسية تُطبّق أعلى معايير الحوكمة، والشفافية، والاستدامة.": "Providing comprehensive humanitarian and developmental care for underprivileged families nationwide, with special focus on our communities in Beni Suef Governorate and Ihnasia District; through rapid intervention for basic life requirements (safe housing, clean water, relief, and sponsorships), alongside economic empowerment, healthcare, and education within an institutional system applying the highest standards of governance, transparency, and sustainability.",
     "قيمنا الجوهرية ومبادئ العمل": "Core Values & Working Principles",
-    "الكرامة الإنسانية": "Human Dignity",
+    "الكرامة الإنسانية:": "Human Dignity:",
     "حفظ كرامة المستفيدين وصون خصوصيتهم في كافة مراحل البحث، والدعم، والمساعدة.": "Preserving beneficiaries' dignity and privacy across all stages of research, support, and assistance.",
-    "الحوكمة الرشيدة": "Good Governance",
+    "الحوكمة الرشيدة:": "Good Governance:",
     "إدارة موارد المؤسسة وفق أنظمة إدارية ومالية دقيقة، تخضع للرقابة الداخلية والخارجية لضمان النزاهة والكفاءة.": "Managing foundation resources through accurate administrative and financial systems subject to internal and external oversight to ensure integrity and efficiency.",
-    "الشفافية والمصداقية": "Transparency & Credibility",
+    "الشفافية والمصداقية:": "Transparency & Credibility:",
     "توجيه التبرعات والمساعدات لمستحقيها الفعليين بدقة ووضوح تام، مع إتاحة تقارير دورية حول أوجه الصرف والإنجازات.": "Directing donations and aid to actual eligible recipients with full accuracy and clarity, while providing periodic reports on disbursements and achievements.",
-    "الاستدامة للكل": "Sustainability for All",
+    "الاستدامة للكل:": "Sustainability for All:",
     "تبني حلول تنموية طويلة الأمد تضمن استمرارية الأثر الإيجابي على الفرد والأسرة والمجتمع بأسره.": "Adopting long-term developmental solutions that ensure lasting positive impact on individuals, families, and the entire community.",
-    "الاستجابة السريعة": "Rapid Response",
+    "الاستجابة السريعة:": "Rapid Response:",
     "الجاهزية الدائمة والمرونة الميدانية للتدخل الفوري في حالات الطوارئ، والأزمات، والإغاثة العاجلة.": "Constant readiness and field flexibility for immediate intervention in emergencies, crises, and urgent relief.",
     "مجالات العمل والمحاور الاستراتيجية": "Areas of Work & Strategic Pillars",
     "1. محور الإغاثة والمساعدات الإنسانية": "1. Humanitarian Relief & Aid Pillar",
@@ -117,18 +122,13 @@
     "المقر الرئيسي: مركز إهناسيا – محافظة بني سويف": "Main Headquarters: Ihnasia District – Beni Suef Governorate",
     "أرقام التواصل والواتساب: 01155540066 / 01000880156": "Contact & WhatsApp Numbers: 01155540066 / 01000880156",
 
-    // المنح والإنجازات والأسئلة الشائعة
+    // 4. المنح، الإنجازات، الأسئلة الشائعة، الاستعلام، التواصل، التظلمات، الخصوصية، والدخول
     "📢 المنح والمبادرات المفتوحة والإعلانات": "📢 Open Grants, Initiatives & Announcements",
     "تابع أحدث المبادرات المفتوحة للتقديم وقدّم طلبك مباشرة.": "Follow the latest open initiatives and submit your application directly.",
     "🏆 معرض الإنجازات والأنشطة الميدانية": "🏆 Field Achievements & Activities Gallery",
     "توثيق مصور لكافة قوافل ومساعدات مؤسسة الحافظ المنفذة.": "Visual documentation of Al-Hafiz Foundation's convoys and executed aid programs.",
     "❓ الأسئلة الشائعة للمستفيدين والشركاء": "❓ Frequently Asked Questions for Beneficiaries & Partners",
     "في حال وجود أي مشكلة أو استفسار خاص بطلبك، يرجى التوجه إلى مقر المؤسسة أو الدخول إلى شاشة التظلمات السرية، وسوف نرد على حضراتكم في أقرب وقت مع تحيات مؤسسة الحافظ.": "If you have any issue or inquiry regarding your request, please visit the foundation's headquarters or submit via the confidential grievances screen, and we will respond as soon as possible. Best regards, Al-Hafiz Foundation.",
-
-    // استمارة طلب المساعدة والاستعلام والتواصل والخصوصية والدخول
-    "استمارة تسجيل وبحث حالة اجتماعية": "Social Case Registration & Research Form",
-    "لا يُسمح بالانتقال إلى القسم التالي إلا بعد استكمال القسم الحالي (باستثناء قسم الأبناء عند عدم وجود أبناء)": "Moving to the next section is not allowed until the current section is completed (except the children section when there are no children)",
-    "💾 حفظ مسودة": "💾 Save Draft",
     "🔍 الاستعلام الفوري عن طلب": "🔍 Instant Request Tracking",
     "لحماية سرية وخصوصية الأسر، يرجى إدخال رقم الطلب المرسل إليك عبر الواتساب فقط (مثل: HF-2026-10001)": "To protect family privacy and confidentiality, please enter only the tracking code sent to you via WhatsApp (e.g., HF-2026-10001)",
     "أدخل رقم الطلب المرسل على الواتساب فقط (HF-...)": "Enter the tracking code sent via WhatsApp only (HF-...)",
@@ -141,7 +141,7 @@
     "البريد:": "Email:",
     "⚖️ نموذج التظلمات السرية": "⚖️ Confidential Grievances Form",
     "تظلم من رفض طلب مساعدة": "Appeal Against Rejected Aid Request",
-    "إبلاغ عن حالة غير مستحقة": "Report Ineligible Case (Community Oversight)",
+    "إبلاغ عن حالة غير مستحقة": "Report Ineligible Case",
     "إبلاغ عن حالة غير مستحقة (رقابة مجتمعية)": "Report Ineligible Case (Community Oversight)",
     "طلب دعم فني للمنصة": "Platform Technical Support Request",
     "الاسم كاملاً *": "Full Name *",
@@ -155,11 +155,232 @@
     "كلمة المرور أو الرمز المؤقت": "Password or Temporary Code",
     "تسجيل الدخول": "Sign In",
     "+ طلب انضمام جديد": "+ New Membership Request",
-
-    // التذييل
     "مؤسسة أهلية تنموية مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي.": "A civil developmental foundation registered under No. 2202 of 2025 with the Ministry of Social Solidarity.",
-    "© 2026 جميع الحقوق محفوظة لمؤسسة الحافظ للتنمية والخدمات": "© 2026 All Rights Reserved - Al-Hafiz Foundation for Development & Services"
+    "© 2026 جميع الحقوق محفوظة لمؤسسة الحافظ للتنمية والخدمات": "© 2026 All Rights Reserved - Al-Hafiz Foundation for Development & Services",
+
+    // 5. معالج استمارة البحث الاجتماعي (wizard.js) - الخطوات، الحقول، والخيارات
+    "استمارة تسجيل وبحث حالة اجتماعية": "Social Case Registration & Research Form",
+    "لا يُسمح بالانتقال إلى القسم التالي إلا بعد استكمال القسم الحالي (باستثناء قسم الأبناء عند عدم وجود أبناء)": "Moving to the next section is not allowed until the current section is completed (except the children section when there are no children)",
+    "💾 حفظ مسودة": "💾 Save Draft",
+    "الخطوة": "Step",
+    "من": "of",
+    "🎯 الخطوة الأولى: تحديد نوع التدخل والمساعدات الخاصة": "🎯 Step 1: Select Type of Intervention & Special Assistance",
+    "نوع المساعدة الأساسية المطلوبة للأسرة *": "Primary Assistance Type Required for the Family *",
+    "يرجى استكمال كل قسم بالكامل قبل الانتقال إلى القسم التالي.": "Please complete each section in full before moving to the next section.",
+    "كفالة أيتام شهرية": "Monthly Orphan Sponsorship",
+    "تجهيز عروسة (أجهزة كهربائية / مفروشات)": "Bride Trousseau (Appliances / Furnishings)",
+
+    // الخطوة 2: بيانات الزوج
+    "👤 القسم الأول: بيانات الزوج (رب الأسرة)": "👤 Section 1: Husband Data (Head of Household)",
+    "الاسم الأول *": "First Name *",
+    "الاسم الثاني *": "Second Name *",
+    "الاسم الثالث والعائلة *": "Third Name & Family Name *",
+    "الحالة الاجتماعية *": "Marital Status *",
+    "الرقم القومي (14 رقم حصراً) *": "National ID (14 digits only) *",
+    "النوع (تلقائي من الرقم القومي)": "Gender (Auto from National ID)",
+    "ذكر": "Male",
+    "أنثى": "Female",
+    "تاريخ الميلاد (تلقائي من الرقم القومي)": "Birth Date (Auto from National ID)",
+    "المستوى التعليمي *": "Educational Level *",
+    "غير متعلم": "Illiterate",
+    "غير متعلم (لا يقرأ ولا يكتب)": "Illiterate (Cannot Read or Write)",
+    "متعلم": "Educated",
+    "العنوان الإداري (التسلسل الجغرافي المعتمد) *": "Administrative Address (Approved Geographic Hierarchy) *",
+    "1. المحافظة:": "1. Governorate:",
+    "2. المركز / القسم:": "2. District / City:",
+    "3. القرية أو التابع:": "3. Village or Sub-village:",
+    "-- اختر المحافظة أولاً --": "-- Select Governorate First --",
+    "-- اختر المركز / القسم --": "-- Select District / City --",
+    "-- اختر المركز أولاً --": "-- Select District First --",
+    "-- اختر القرية أو التابع --": "-- Select Village or Sub-village --",
+    "+ إضافة قرية / عزبة / تابع جديد غير مدرج": "+ Add New Unlisted Village / Hamlet / Sub-village",
+    "اكتب اسم القرية / العزبة / التابع الجديد بدقة ليُحفظ في النظام *": "Enter the exact name of the new village / hamlet / sub-village to save in the system *",
+    "شارع / رقم الحارة / التفاصيل كما مدون بالبطاقة *": "Street / Alley Number / Details as Written on National ID *",
+    "رقم التليفون الأساسي (11 رقم) *": "Primary Phone Number (11 digits) *",
+    "رقم الواتساب (11 رقم)": "WhatsApp Number (11 digits)",
+    "الوظيفة الحالية *": "Current Occupation *",
+    "صورة بطاقة الزوج (وش) *": "Husband National ID Photo (Front) *",
+    "صورة بطاقة الزوج (ظهر) *": "Husband National ID Photo (Back) *",
+    "الزوج": "Husband",
+
+    // الخطوة 3: بيانات الزوجة
+    "👩 القسم الثاني: بيانات الزوجة": "👩 Section 2: Wife Data",
+    "الحالة الاجتماعية للزوجة *": "Wife Marital Status *",
+    "رقم التليفون الأساسي (11 رقم)": "Primary Phone Number (11 digits)",
+    "الوظيفة / النشاط *": "Occupation / Activity *",
+    "غير متعلمة": "Illiterate",
+    "ابتدائية": "Primary",
+    "إعدادية": "Preparatory",
+    "ثانوي / دبلوم": "Secondary / Diploma",
+    "ثانوي أو دبلوم فني": "Secondary or Technical Diploma",
+    "جامعي": "University",
+    "صورة بطاقة الزوجة (وش) *": "Wife National ID Photo (Front) *",
+    "صورة بطاقة الزوجة (ظهر) *": "Wife National ID Photo (Back) *",
+    "الزوجة": "Wife",
+
+    // الخطوة 4: الأبناء
+    "👶 القسم الثالث: بيانات الأبناء والتابعين": "👶 Section 3: Children & Dependents Data",
+    "ملاحظة: إذا لم يكن للأسرة أبناء، يمكنك الانتقال مباشرة إلى الخطوة التالية دون إضافة أبناء.": "Note: If the family has no children, you may proceed directly to the next step without adding children.",
+    "الابن / الابنة رقم": "Child No.",
+    "اسم الابن ثلاثي *": "Child Triple Name *",
+    "الرقم القومي (14 رقم) *": "National ID (14 digits) *",
+    "النوع (تلقائي):": "Gender (Auto):",
+    "تاريخ الميلاد (تلقائي):": "Birth Date (Auto):",
+    "المرحلة التعليمية:": "Educational Stage:",
+    "حضانة": "Nursery / Kindergarten",
+    "ابتدائي": "Primary",
+    "إعدادي": "Preparatory",
+    "ثانوي / فني": "Secondary / Technical",
+    "ثانوي أو فني": "Secondary or Technical",
+    "تعليم جامعي": "University Education",
+    "شهادة الميلاد / المستند:": "Birth Certificate / Document:",
+    "الحالة الصحية:": "Health Status:",
+    "سليم": "Healthy",
+    "مريض": "Ill",
+    "مريض بمرض مزمن أو إعاقة": "Chronic Illness or Disability",
+    "حذف هذا الابن": "Remove This Child",
+    "+ إضافة ابن آخر": "+ Add Another Child",
+
+    // الخطوة 5: الزواج وتجهيز العروسة
+    "💍 القسم الإضافي: بيانات العروسة وتجهيز الزواج": "💍 Additional Section: Bride Data & Marriage Preparation",
+    "اسم العروسة الأول *": "Bride First Name *",
+    "اسم العروسة الثاني *": "Bride Second Name *",
+    "اسم العروسة الثالث والعائلة *": "Bride Third Name & Family Name *",
+    "الرقم القومي للعروسة (14 رقم) *": "Bride National ID (14 digits) *",
+    "رقم تليفون العروسة أو وليها *": "Bride or Guardian Phone Number *",
+    "موعد الزفاف المقترح *": "Proposed Wedding Date *",
+    "المتوفرات لدى العروسة *": "Items Already Available with Bride *",
+    "صورة قسيمة الزواج / الخطوبة *": "Marriage / Engagement Certificate Photo *",
+    "الشهادة الصحية للعروسين (وش وظهر) *": "Pre-Marriage Medical Certificates (Front & Back) *",
+
+    // الخطوة 6: المصروفات
+    "💸 القسم الرابع: المصروفات والأعباء الشهرية": "💸 Section 4: Monthly Expenses & Obligations",
+    "قيمة الإيجار الشهري *": "Monthly Rent Amount *",
+    "فواتير مياه *": "Water Bills *",
+    "فواتير كهرباء *": "Electricity Bills *",
+    "فواتير غاز أو أنبوبة *": "Gas or Cylinder Bills *",
+    "مصاريف تعليم الأبناء *": "Children Education Expenses *",
+    "مصاريف العلاج والأدوية المزمنة *": "Treatment & Chronic Medication Expenses *",
+    "المستلزمات المعيشية الأساسية (مأكل ومسكن) *": "Basic Living Essentials (Food & Shelter) *",
+    "أقساط ديون والتزامات أخرى *": "Debt Installments & Other Obligations *",
+    "إجمالي المصروفات الشهرية:": "Total Monthly Expenses:",
+    "جنيه": "EGP",
+
+    // الخطوة 7: الدخل والفائض أو العجز
+    "💵 القسم الخامس: مصادر الدخل والفائض أو العجز": "💵 Section 5: Income Sources & Surplus or Deficit",
+    "دخل الزوج من العمل / المهنة *": "Husband Income from Work / Profession *",
+    "دخل الزوجة أو الأبناء العاملين *": "Income of Wife or Working Children *",
+    "معاش حكومي / تكافل وكرامة *": "Government Pension / Takaful & Karama *",
+    "مساعدات ثابتة من أهل الخير *": "Regular Support from Benefactors *",
+    "إجمالي الدخل الشهري:": "Total Monthly Income:",
+    "صافي الوضع المالي:": "Net Financial Status:",
+    "يوجد عجز مالي شهري بقيمة:": "Monthly financial deficit of:",
+    "يوجد فائض مالي شهري بقيمة:": "Monthly financial surplus of:",
+
+    // الخطوة 8: السكن، الفرش، المستندات، ورأي الباحث
+    "📋 القسم السادس: وصف السكن، المستندات الرسمية، ورأي الباحث": "📋 Section 6: Housing Description, Official Documents & Researcher Opinion",
+    "حالة السكن أولاً *": "Housing Tenure First *",
+    "ملك": "Owned",
+    "إيجار": "Rented",
+    "نوع السكن ثانياً *": "Housing Type Second *",
+    "ريفي / بيت ريفي": "Rural / Rural House",
+    "شقة سكنية": "Apartment",
+    "بيت عائلي": "Family House",
+    "انتفاع": "Usufruct",
+    "هبة": "Granted / Gift",
+    "وصف السقف *": "Roof Description *",
+    "خشب": "Wood",
+    "مسلح": "Reinforced Concrete",
+    "جريد": "Palm Fronds",
+    "بوص": "Reeds",
+    "عفش": "Thatch / Debris",
+    "وصف الحوائط *": "Walls Description *",
+    "طوب لبن": "Mud Brick",
+    "طوب أحمر غير محارة": "Unplastered Red Brick",
+    "محارة وتشطيب عادي": "Plastered & Standard Finish",
+    "لوكس / سوبر لوكس": "Deluxe / Super Deluxe",
+    "وصف الأرضية *": "Floor Description *",
+    "ترابية": "Dirt / Earthen",
+    "بلاط عادي": "Standard Tiles",
+    "سيراميك": "Ceramic",
+    "رخام / جرانيت": "Marble / Granite",
+    "وصف الفرش والأثاث *": "Furniture & Furnishings Description *",
+    "تحديد النواقص في الفرش والأثاث *": "Specify Furniture & Furnishings Deficiencies *",
+    "البحث الاجتماعي (مختوم) *": "Social Research Report (Stamped) *",
+    "برنت تأميني للزوج": "Husband Social Insurance Printout",
+    "برنت تأميني للزوجة": "Wife Social Insurance Printout",
+    "عقد الإيجار الرسمي *": "Official Lease Contract *",
+    "إثبات قيد دراسي للأبناء": "Proof of Children School Enrollment",
+    "رأي وتوصية الباحث الميداني *": "Field Researcher Opinion & Recommendation *",
+    "حالة شديدة الاستحقاق وعاجلة": "Severely Eligible & Urgent Case",
+    "حالة مستحقة للدعم العادي": "Eligible for Regular Support",
+    "حالة متوسطة الاستحقاق": "Moderately Eligible Case",
+    "غير مستحق بعد المراجعة": "Not Eligible After Review",
+    "أقر أنا مقدم الطلب بأن كافة البيانات والمستندات المسجلة صحيحة تماماً وتحت مسئوليتي القانونية والمجتمعية، وأوافق على إجراء البحث الميداني.": "I, the applicant, declare that all registered data and documents are completely accurate under my legal and social responsibility, and I agree to conduct field research.",
+
+    // الحالة الصحية والإجراءات الطبية
+    "الحالة الصحية": "Health Status",
+    "سليم وبصحة جيدة": "Healthy & In Good Health",
+    "نوع المرض *": "Illness Type *",
+    "مؤقت": "Temporary",
+    "مزمن": "Chronic",
+    "تشخيص الحالة المرضية *": "Medical Diagnosis *",
+    "الإجراء الطبي المطلوب (بالتفصيل الكامل) *": "Required Medical Procedure (Full Details) *",
+    "رفع التقرير الطبي (مختوم) *": "Upload Medical Report (Stamped) *",
+    "رفع البحث الاجتماعي (مختوم) *": "Upload Social Research Report (Stamped) *",
+    "إجراء عملية جراحية": "Surgical Operation",
+    "دواء وعلاج شهري مزمن": "Monthly Chronic Medication & Treatment",
+    "جلسات غسيل كلوي أو علاج كيماوي": "Kidney Dialysis or Chemotherapy Sessions",
+    "أشعة وتحاليل طبية وفحوصات": "X-Rays, Lab Tests & Medical Checkups",
+    "تركيب طرف صناعي": "Prosthetic Limb Fitting",
+    "أجهزة تعويضية": "Assistive Devices",
+    "جلسات علاج طبيعي أو تخاطب": "Physical or Speech Therapy Sessions",
+    "اختر نوع العملية الجراحية المطلوبة *": "Select Required Surgical Operation Type *",
+    "التكلفة الشهرية التقديرية (جنيه) *": "Estimated Monthly Cost (EGP) *",
+    "أدخل التكلفة الشهرية بالجنيه": "Enter monthly cost in EGP",
+    "اختر نوع الطرف الصناعي المطلوب *": "Select Required Prosthetic Limb Type *",
+    "اختر نوع الجهاز التعويضي المطلوب *": "Select Required Assistive Device Type *",
+
+    // أزرار المعالج ورسائل التحقق
+    "السابق": "Previous",
+    "التالي ➔": "Next ➔",
+    "✅ تأكيد والرفع النهائي للحالة": "✅ Confirm & Submit Case",
+    "يرجى اختيار نوع المساعدة الأساسية المطلوبة.": "Please select the required primary assistance type.",
+    "يرجى استكمال الاسم الثلاثي والعائلة للزوج.": "Please complete the husband's triple name and family name.",
+    "الرقم القومي للزوج غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).": "Husband's National ID is invalid (must be 14 valid digits).",
+    "يرجى إدخال تفاصيل العنوان (الشارع / الحارة / رقم المنزل).": "Please enter address details (street / alley / house number).",
+    "رقم التليفون الأساسي للزوج يجب أن يتكون من 11 رقماً يبدأ بـ 01.": "Husband's primary phone number must be 11 digits starting with 01.",
+    "رقم الواتساب للزوج يجب أن يتكون من 11 رقماً صحيحاً.": "Husband's WhatsApp number must be 11 valid digits.",
+    "يرجى تحديد الإجراء الطبي المطلوب للزوج.": "Please specify the required medical procedure for the husband.",
+    "يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي للزوج.": "Please enter the estimated monthly cost of the husband's medical procedure.",
+    "يرجى رفع التقرير الطبي المختوم للزوج.": "Please upload the husband's stamped medical report.",
+    "يرجى رفع البحث الاجتماعي المختوم لحالة الزوج.": "Please upload the stamped social research report for the husband's case.",
+    "يرجى رفع صورة بطاقة الزوج (وجه وظهر).": "Please upload photos of the husband's National ID (front and back).",
+    "يرجى استكمال الاسم الثلاثي والعائلة للزوجة.": "Please complete the wife's triple name and family name.",
+    "الرقم القومي للزوجة غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).": "Wife's National ID is invalid (must be 14 valid digits).",
+    "رقم هاتف الزوجة يجب أن يتكون من 11 رقماً صحيحاً.": "Wife's phone number must be 11 valid digits.",
+    "يرجى تحديد الإجراء الطبي المطلوب للزوجة.": "Please specify the required medical procedure for the wife.",
+    "يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي للزوجة.": "Please enter the estimated monthly cost of the wife's medical procedure.",
+    "يرجى رفع التقرير الطبي المختوم للزوجة.": "Please upload the wife's stamped medical report.",
+    "يرجى رفع البحث الاجتماعي المختوم للزوجة.": "Please upload the stamped social research report for the wife's case.",
+    "يرجى رفع صورة بطاقة الزوجة (وجه وظهر).": "Please upload photos of the wife's National ID (front and back).",
+    "يرجى استكمال الاسم الثلاثي والعائلة للعروسة.": "Please complete the bride's triple name and family name.",
+    "الرقم القومي للعروسة غير صحيح (14 رقماً).": "Bride's National ID is invalid (14 digits).",
+    "رقم هاتف العروسة أو وليها يجب أن يتكون من 11 رقماً.": "Bride or guardian phone number must be 11 digits.",
+    "يرجى تحديد موعد الزفاف المقترح.": "Please specify the proposed wedding date.",
+    "يرجى إدخال المتوفرات لدى العروسة.": "Please enter items available with the bride.",
+    "يرجى رفع قسيمة الزواج/الخطوبة والشهادة الصحية للعروسين.": "Please upload the marriage/engagement certificate and pre-marriage medical certificates.",
+    "يرجى إدخال قيمة رقمية صحيحة (0 أو أكثر) لجميع بنود المصروفات الشهرية.": "Please enter a valid numeric value (0 or more) for all monthly expense items.",
+    "يرجى إدخال قيمة رقمية صحيحة (0 أو أكثر) لجميع مصادر الدخل.": "Please enter a valid numeric value (0 or more) for all income sources.",
+    "يرجى اختيار بند واحد على الأقل من نواقص الفرش والأثاث.": "Please select at least one item from furniture and furnishings deficiencies.",
+    "يرجى رفع البحث الاجتماعي المختوم ضمن المستندات الرسمية.": "Please upload the stamped social research report among official documents.",
+    "يرجى رفع عقد الإيجار الرسمي لأن حالة السكن إيجار.": "Please upload the official lease contract because housing tenure is rented.",
+    "يجب الموافقة على إقرار صحة البيانات والمسؤولية القانونية قبل الرفع النهائي.": "You must agree to the declaration of data accuracy and legal responsibility before final submission.",
+    "يرجى كتابة اسم القرية أو التابع الجديد.": "Please enter the name of the new village or sub-village.",
+    "تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.": "Unable to connect to the database right now, please refresh the page and try again."
   };
+
+  rebuildSortedEntries();
 
   window.currentSiteLang = 'ar';
 
@@ -170,11 +391,27 @@
     return arText;
   };
 
-  function captureAndTranslateTextNode(node, dict, toEn) {
+  function translateStringToEn(text) {
+    if (!text) return text;
+    const dict = window.FULL_DICTIONARY || {};
+    const trimmed = text.trim();
+    if (dict[trimmed]) {
+      return text.replace(trimmed, dict[trimmed]);
+    }
+    let result = text;
+    for (let i = 0; i < SORTED_ENTRIES.length; i++) {
+      const [arKey, enVal] = SORTED_ENTRIES[i];
+      if (result.includes(arKey)) {
+        result = result.split(arKey).join(enVal);
+      }
+    }
+    return result;
+  }
+
+  function captureAndTranslateTextNode(node, toEn) {
     if (!node || !node.nodeValue) return;
     const raw = node.nodeValue;
-    const trimmed = raw.trim();
-    if (!trimmed) return;
+    if (!raw.trim()) return;
 
     if (!ORIGINAL_TEXT_MAP.has(node)) {
       ORIGINAL_TEXT_MAP.set(node, raw);
@@ -185,12 +422,11 @@
       return;
     }
 
-    if (dict[trimmed]) {
-      node.nodeValue = raw.replace(trimmed, dict[trimmed]);
-    }
+    const baseRaw = ORIGINAL_TEXT_MAP.get(node);
+    node.nodeValue = translateStringToEn(baseRaw);
   }
 
-  function captureAndTranslateAttributes(el, dict, toEn) {
+  function captureAndTranslateAttributes(el, toEn) {
     if (!el || !el.getAttribute) return;
     const attrs = ['placeholder', 'title', 'aria-label', 'alt', 'label'];
     if (!ORIGINAL_ATTR_MAP.has(el)) {
@@ -208,17 +444,17 @@
         if (a in originalAttrs) el.setAttribute(a, originalAttrs[a]);
         return;
       }
-      const currentVal = (originalAttrs[a] ?? el.getAttribute(a) ?? '').trim();
-      if (currentVal && dict[currentVal]) {
-        el.setAttribute(a, dict[currentVal]);
+      const baseVal = originalAttrs[a] ?? el.getAttribute(a) ?? '';
+      if (baseVal.trim()) {
+        el.setAttribute(a, translateStringToEn(baseVal));
       }
     });
   }
 
   window.translateWholePage = function(lang) {
+    rebuildSortedEntries();
     const targetLang = lang === 'en' ? 'en' : 'ar';
     const toEn = targetLang === 'en';
-    const dict = window.FULL_DICTIONARY || {};
 
     document.documentElement.lang = targetLang;
     document.documentElement.dir = toEn ? 'ltr' : 'rtl';
@@ -235,11 +471,11 @@
     while ((node = walker.nextNode())) {
       const parentTag = node.parentElement ? node.parentElement.tagName : '';
       if (parentTag === 'SCRIPT' || parentTag === 'STYLE') continue;
-      captureAndTranslateTextNode(node, dict, toEn);
+      captureAndTranslateTextNode(node, toEn);
     }
 
     document.querySelectorAll('input, textarea, select, button, a, label, span, div, h1, h2, h3, h4, p, small, strong, td, th, option, img').forEach(el => {
-      captureAndTranslateAttributes(el, dict, toEn);
+      captureAndTranslateAttributes(el, toEn);
     });
   };
 
