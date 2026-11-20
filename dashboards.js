@@ -1,20 +1,24 @@
-// dashboards.js - لوحة الإدارة الشاملة ولوحات الأعضاء والكشوف والإقرارات
+// dashboards.js - لوحة الإدارة الشاملة ولوحات الأعضاء والكشوف والإقرارات والمستندات
 (function() {
-    window.triggerInstantWhatsApp = function (rawPhone, messageText) {
-  const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
-  if (!cleanPhone) return;
-  const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0/, ''));
-  const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(messageText || '')}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
-};
+  const LOCAL_DOCS_KEY = 'hf_official_documents_v1';
+
+  window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+    const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
+    if (!cleanPhone) return;
+    const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0/, ''));
+    const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(messageText || '')}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   window.getOfficialHeaderHtml = function(cfg) {
+    const c = cfg || {};
     return `
       <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:14px; font-size:12px;">
         <div style="line-height:1.7;">
           <strong>مديرية التضامن الاجتماعي ببني سويف</strong><br>
           إدارة إهناسيا الاجتماعية<br>
-          <strong>${cfg.org_name || 'مؤسسة الحافظ للتنمية والخدمات'}</strong><br>
-          ${cfg.reg_no || 'مشهرة برقم 2202 لسنة 2025'}
+          <strong>${c.org_name || 'مؤسسة الحافظ للتنمية والخدمات'}</strong><br>
+          ${c.reg_no || 'مشهرة برقم 2202 لسنة 2025'}
         </div>
         <div style="text-align:left;">
           <img src="logo.jpg" alt="شعار المؤسسة" style="height:56px; width:56px; border-radius:50%; border:1px solid #b45309; object-fit:cover;" onerror="this.style.display='none'">
@@ -23,10 +27,11 @@
   };
 
   window.getOfficialFooterHtml = function(cfg) {
+    const c = cfg || {};
     return `
       <div style="border-top:1px solid #94a3b8; margin-top:20px; padding-top:8px; display:flex; justify-content:space-between; font-size:11px; color:#475569;">
-        <span>واتساب رسمي: ${cfg.phone_whatsapp || '01000880156'} | إدارة: ${cfg.phone_admin || '01155540066'}</span>
-        <span>${cfg.admin_email || 'alhafiz52025@gmail.com'} | alhafiz-eg.azurewebsites.net</span>
+        <span>واتساب رسمي: ${c.phone_whatsapp || '01000880156'} | إدارة: ${c.phone_admin || '01155540066'}</span>
+        <span>${c.admin_email || 'alhafiz52025@gmail.com'} | alhafiz-eg.azurewebsites.net</span>
       </div>`;
   };
 
@@ -49,6 +54,7 @@
   window.renderMemberPortal = async function(user) {
     const area = document.getElementById('dashboard-area');
     const roleNames = { researcher: 'باحث ميداني', volunteer: 'متطوع', partner: 'جهة شريكة', donor: 'جهة مانحة' };
+    const displayName = user.name || user.full_name || 'عضو';
     let myCases = [];
 
     if (window.supabaseClient) {
@@ -64,7 +70,7 @@
       <div class="card" style="border-top:4px solid var(--primary);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:12px;">
           <div>
-            <h3 style="margin:0; color:var(--primary-dark);">👤 بوابة العضو: ${window.escapeHtml(user.name)}</h3>
+            <h3 style="margin:0; color:var(--primary-dark);">👤 بوابة العضو: ${window.escapeHtml(displayName)}</h3>
             <small>الصفة: <strong>${roleNames[user.role] || user.role}</strong> | البريد: ${window.escapeHtml(user.email)}</small>
           </div>
           <div style="display:flex; gap:8px;">
@@ -123,35 +129,59 @@
       return alert('❌ الرمز المؤقت أو كلمة المرور الحالية غير صحيحة.');
     }
 
-    await window.supabaseClient.from('users_profiles').update({
+    const { error } = await window.supabaseClient.from('users_profiles').update({
       password_hash: newPass, temp_code: null, must_change_password: false
     }).eq('id', data.id);
+    if (error) return alert('❌ تعذر تحديث كلمة المرور: ' + error.message);
 
     window.currentUser.must_change_password = false;
     sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
     alert('✅ تم تحديث كلمة المرور بنجاح.');
     window.renderMemberPortal(window.currentUser);
   };
+
   window.ALL_ADMIN_CASES = [];
   window.ALL_ADMIN_USERS = [];
+  window.ALL_ADMIN_GRIEVANCES = [];
+  window.ALL_OFFICIAL_DOCS = [];
+
+  window.refreshAdminSummaryCards = function() {
+    const families = window.ALL_ADMIN_CASES || [];
+    const users = window.ALL_ADMIN_USERS || [];
+    const grievances = window.ALL_ADMIN_GRIEVANCES || [];
+
+    const totalEl = document.getElementById('stat-card-total');
+    const appEl = document.getElementById('stat-card-approved');
+    const penEl = document.getElementById('stat-card-pending');
+    const memGrievEl = document.getElementById('stat-card-mem-griev');
+
+    if (totalEl) totalEl.textContent = families.length;
+    if (appEl) appEl.textContent = families.filter(f => f.status === 'approved').length;
+    if (penEl) penEl.textContent = families.filter(f => f.status === 'pending').length;
+    if (memGrievEl) memGrievEl.textContent = `${users.length} عضو / ${grievances.length} تظلم`;
+  };
 
   window.renderAdminFullDashboard = async function(user) {
     const area = document.getElementById('dashboard-area');
+    const displayName = user.name || user.full_name || 'رئيس مجلس الأمناء';
     let families = [], users = [], grievances = [];
+    let dbWarning = '';
 
     if (window.supabaseClient) {
-      const fRes = await window.supabaseClient
-        .from('families').select('*').order('created_at', { ascending: false });
-      const uRes = await window.supabaseClient
-        .from('users_profiles').select('*').order('created_at', { ascending: false });
-      const gRes = await window.supabaseClient
-        .from('grievances').select('*').order('created_at', { ascending: false });
+      const [fRes, uRes, gRes] = await Promise.all([
+        window.supabaseClient.from('families').select('*').order('created_at', { ascending: false }),
+        window.supabaseClient.from('users_profiles').select('*').order('created_at', { ascending: false }),
+        window.supabaseClient.from('grievances').select('*').order('created_at', { ascending: false })
+      ]);
+      if (fRes.error) dbWarning = `⚠️ تعذر قراءة جدول الحالات (families): ${fRes.error.message}`;
       families = fRes.data || [];
       users = uRes.data || [];
       grievances = gRes.data || [];
     }
+
     window.ALL_ADMIN_CASES = families;
     window.ALL_ADMIN_USERS = users;
+    window.ALL_ADMIN_GRIEVANCES = grievances;
 
     const approved = families.filter(f => f.status === 'approved').length;
     const pending = families.filter(f => f.status === 'pending').length;
@@ -161,7 +191,7 @@
         <div class="no-print" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; border-bottom:1px solid var(--border); padding-bottom:10px;">
           <div>
             <h3 style="margin:0; color:var(--primary-dark);">🛡️ لوحة التحكم الإدارية</h3>
-            <small>المسؤول: <strong>${window.escapeHtml(user.name)}</strong></small>
+            <small>المسؤول: <strong>${window.escapeHtml(displayName)}</strong></small>
           </div>
           <div style="display:flex; gap:6px;">
             <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة</button>
@@ -169,18 +199,20 @@
           </div>
         </div>
 
+        ${dbWarning ? `<div style="background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:10px; border-radius:8px; margin-top:10px; font-size:12px;">${window.escapeHtml(dbWarning)}</div>` : ''}
+
         <div class="grid-4" style="margin-top:12px; text-align:center;">
           <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:8px; border-radius:8px; color:#0f172a;">
-            <strong>الإجمالي</strong><div style="font-size:18px; font-weight:800;">${families.length}</div>
+            <strong>الإجمالي</strong><div id="stat-card-total" style="font-size:18px; font-weight:800;">${families.length}</div>
           </div>
           <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:8px; border-radius:8px; color:#065f46;">
-            <strong>مقبولة</strong><div style="font-size:18px; font-weight:800;">${approved}</div>
+            <strong>مقبولة</strong><div id="stat-card-approved" style="font-size:18px; font-weight:800;">${approved}</div>
           </div>
           <div style="background:#fffbeb; border:1px solid #fde68a; padding:8px; border-radius:8px; color:#92400e;">
-            <strong>قيد المراجعة</strong><div style="font-size:18px; font-weight:800;">${pending}</div>
+            <strong>قيد المراجعة</strong><div id="stat-card-pending" style="font-size:18px; font-weight:800;">${pending}</div>
           </div>
           <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:8px; border-radius:8px; color:#1e3a8a;">
-            <strong>الأعضاء والتظلمات</strong><div style="font-size:18px; font-weight:800;">${users.length + grievances.length}</div>
+            <strong>الأعضاء والتظلمات</strong><div id="stat-card-mem-griev" style="font-size:14px; font-weight:800; margin-top:3px;">${users.length} عضو / ${grievances.length} تظلم</div>
           </div>
         </div>
 
@@ -190,7 +222,7 @@
           <button type="button" onclick="switchAdminTab('announcements')" class="nav-btn" id="tab-btn-announcements">📢 المنح</button>
           <button type="button" onclick="switchAdminTab('achievements')" class="nav-btn" id="tab-btn-achievements">🏆 الإنجازات</button>
           <button type="button" onclick="switchAdminTab('grievances')" class="nav-btn" id="tab-btn-grievances">⚖️ التظلمات</button>
-          <button type="button" onclick="switchAdminTab('official')" class="nav-btn btn-gold" id="tab-btn-official">📜 المحاضر</button>
+          <button type="button" onclick="switchAdminTab('official')" class="nav-btn btn-gold" id="tab-btn-official">📜 المحاضر والمستندات</button>
         </div>
 
         <div id="admin-tab-cases" style="margin-top:12px;"></div>
@@ -203,6 +235,7 @@
 
     window.renderAdminCasesSection();
   };
+
   window.switchAdminTab = function(tab) {
     const tabs = ['cases', 'members', 'announcements', 'achievements', 'grievances', 'official'];
     tabs.forEach(t => {
@@ -272,6 +305,12 @@
     return limit > 0 ? list.slice(0, limit) : list;
   };
 
+  window.getDisbursementCases = function() {
+    const st = document.getElementById('flt-status')?.value || '';
+    const list = window.getFilteredAdminCases();
+    return st ? list : list.filter(f => f.status === 'approved');
+  };
+
   window.filterAndRenderCasesTable = function() {
     const wrap = document.getElementById('admin-cases-table-wrap');
     if (!wrap) return;
@@ -316,35 +355,46 @@
         </tbody>
       </table>`;
   };
+
   window.adminAssignCase = async function(id, selEl) {
     const email = selEl.value;
     const name = selEl.options[selEl.selectedIndex]?.text || 'غير مسند';
     if (!window.supabaseClient) return;
-    await window.supabaseClient.from('families')
+    const { error } = await window.supabaseClient.from('families')
       .update({ assigned_to_email: email || null, assigned_to_name: email ? name : 'غير مسند' })
       .eq('id', id);
+    if (error) return alert('❌ تعذر إسناد الحالة: ' + error.message);
+    const item = (window.ALL_ADMIN_CASES || []).find(x => x.id === id);
+    if (item) {
+      item.assigned_to_email = email || null;
+      item.assigned_to_name = email ? name : 'غير مسند';
+    }
     alert('✅ تم إسناد الحالة بنجاح.');
   };
 
   window.adminUpdateCaseStatus = async function(id, status) {
     if (!window.supabaseClient) return;
-    await window.supabaseClient.from('families').update({ status }).eq('id', id);
+    const { error } = await window.supabaseClient.from('families').update({ status }).eq('id', id);
+    if (error) return alert('❌ تعذر تحديث قرار الحالة: ' + error.message);
     const item = (window.ALL_ADMIN_CASES || []).find(x => x.id === id);
     if (item) item.status = status;
+    window.refreshAdminSummaryCards();
     alert('✅ تم تحديث قرار الحالة.');
   };
 
   window.adminDeleteCase = async function(id) {
     if (!confirm('هل أنت متأكد من حذف هذه الحالة نهائياً؟')) return;
     if (!window.supabaseClient) return;
-    await window.supabaseClient.from('families').delete().eq('id', id);
+    const { error } = await window.supabaseClient.from('families').delete().eq('id', id);
+    if (error) return alert('❌ تعذر حذف الحالة: ' + error.message);
     window.ALL_ADMIN_CASES = (window.ALL_ADMIN_CASES || []).filter(x => x.id !== id);
+    window.refreshAdminSummaryCards();
     window.filterAndRenderCasesTable();
   };
 
   window.printOfficialDisbursementSheet = async function() {
-    const list = window.getFilteredAdminCases();
-    if (list.length === 0) return alert('⚠️ لا توجد حالات في الكشف للطباعة.');
+    const list = window.getDisbursementCases();
+    if (list.length === 0) return alert('⚠️ لا توجد حالات مقبولة أو مطابقة في الكشف للطباعة.');
     const withSig = document.getElementById('chk-include-signature')?.checked;
     const cfg = await window.getFoundationSettings();
 
@@ -364,6 +414,7 @@
 
     const w = window.open('', '_blank', 'width=950,height=1000');
     if (!w) return alert('يرجى السماح بالنوافذ المنبثقة.');
+    w.document.open();
     w.document.write(`
       <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
       <title>كشف صرف رسمي - مؤسسة الحافظ</title>
@@ -396,7 +447,8 @@
   };
 
   window.exportFilteredCasesCsv = function() {
-    const list = window.getFilteredAdminCases();
+    const list = window.getDisbursementCases();
+    if (list.length === 0) return alert('⚠️ لا توجد حالات مقبولة أو مطابقة لتصديرها.');
     const withSig = document.getElementById('chk-include-signature')?.checked;
     const headers = ['الكود', 'الاسم', 'الرقم القومي', 'الهاتف', 'القرية', 'نوع المساعدة', 'الحالة'];
     if (withSig) headers.push('توقيع المستلم');
@@ -416,7 +468,8 @@
     a.download = 'alhafiz-disbursement.csv';
     a.click();
   };
-  // --- إقرارات الاستلام (البند 13) بالترويسة والتذييل الرسمي والتعهد القانوني ---
+
+  // --- إقرارات الاستلام بالترويسة والتذييل الرسمي والتعهد القانوني ---
   window.openReceiptDeclarationModal = function(caseId) {
     const f = (window.ALL_ADMIN_CASES || []).find(x => x.id === caseId);
     if (!f) return;
@@ -467,6 +520,7 @@
     const w = window.open('', '_blank', 'width=900,height=1000');
     if (!w) return alert('يرجى السماح بالنوافذ المنبثقة.');
 
+    w.document.open();
     w.document.write(`
       <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
       <title>إقرار استلام - مؤسسة الحافظ</title>
@@ -502,7 +556,8 @@
       </body></html>`);
     w.document.close();
   };
-  // --- إدارة الأعضاء وطلبات الانضمام والصلاحيات والرمز المؤقت (البند 4 و 5 و 10) ---
+
+  // --- إدارة الأعضاء وطلبات الانضمام والصلاحيات والرمز المؤقت ---
   window.renderAdminMembersSection = async function() {
     const box = document.getElementById('admin-tab-members');
     if (!box) return;
@@ -512,6 +567,7 @@
         .from('users_profiles').select('*').order('created_at', { ascending: false });
       users = data || [];
       window.ALL_ADMIN_USERS = users;
+      window.refreshAdminSummaryCards();
     }
 
     box.innerHTML = `
@@ -519,7 +575,7 @@
         <h4 style="margin:0 0 8px; color:var(--primary-dark);">+ إضافة عضو جديد مباشرة (باحث / متطوع / شريك / مانح)</h4>
         <div class="grid-3">
           <input id="new-mem-name" placeholder="الاسم الكامل *" style="margin:0;">
-          <input id="new-mem-phone" placeholder="رقم الهاتف (11 رقم) *" style="margin:0;">
+          <input id="new-mem-phone" maxlength="11" placeholder="رقم الهاتف (11 رقم) *" style="margin:0;">
           <input id="new-mem-email" type="email" placeholder="البريد الإلكتروني *" style="margin:0;">
           <select id="new-mem-role" style="margin:0;">
             <option value="researcher">باحث ميداني</option>
@@ -579,6 +635,10 @@
     const role = document.getElementById('new-mem-role')?.value || 'researcher';
     const password_hash = (document.getElementById('new-mem-pass')?.value || '').trim();
     if (!full_name || !phone || !email || !password_hash) return alert('⚠️ استكمل جميع بيانات العضو.');
+    if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ رقم الهاتف يجب أن يكون 11 رقماً يبدأ بـ 01.');
+
+    const dup = (window.ALL_ADMIN_USERS || []).some(u => (u.email || '').toLowerCase() === email || (u.phone || '') === phone);
+    if (dup) return alert('⚠️ البريد الإلكتروني أو رقم الهاتف مسجل مسبقاً.');
 
     const member_code = 'MBR-' + Math.floor(1000 + Math.random() * 9000);
     const { error } = await window.supabaseClient.from('users_profiles').insert([{
@@ -591,16 +651,18 @@
 
   window.adminUpdateMemberField = async function(id, patch) {
     if (!window.supabaseClient) return;
-    await window.supabaseClient.from('users_profiles').update(patch).eq('id', id);
+    const { error } = await window.supabaseClient.from('users_profiles').update(patch).eq('id', id);
+    if (error) return alert('❌ تعذر حفظ التعديل: ' + error.message);
     alert('✅ تم حفظ التعديل في قاعدة البيانات بنجاح.');
   };
 
   window.adminSendTempCodeWhatsApp = async function(id, name, phone) {
     const tempCode = String(Math.floor(100000 + Math.random() * 900000));
     if (!window.supabaseClient) return;
-    await window.supabaseClient.from('users_profiles')
+    const { error } = await window.supabaseClient.from('users_profiles')
       .update({ temp_code: tempCode, must_change_password: true })
       .eq('id', id);
+    if (error) return alert('❌ تعذر حفظ الرمز المؤقت: ' + error.message);
 
     const msg = `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\nمرحباً أ/ ${name}\nالرمز المؤقت للدخول وتعيين كلمة مرور جديدة هو: ${tempCode}\nيرجى الدخول وتغييره فوراً من صفحتك.`;
     window.triggerInstantWhatsApp(phone, msg);
@@ -609,9 +671,11 @@
 
   window.adminDeleteMember = async function(id) {
     if (!confirm('هل أنت متأكد من حذف هذا العضو نهائياً؟')) return;
-    await window.supabaseClient.from('users_profiles').delete().eq('id', id);
+    const { error } = await window.supabaseClient.from('users_profiles').delete().eq('id', id);
+    if (error) return alert('❌ تعذر حذف العضو: ' + error.message);
     window.renderAdminMembersSection();
   };
+
   // --- 1. إدارة المنح والمبادرات المفتوحة ---
   window.renderAdminAnnouncementsSection = async function() {
     const box = document.getElementById('admin-tab-announcements');
@@ -657,22 +721,26 @@
     const image_url = (document.getElementById('ann-img')?.value || 'logo.jpg').trim();
     if (!title || !description) return alert('⚠️ اكتب عنوان وتفاصيل المبادرة.');
 
-    await window.supabaseClient
+    const { error } = await window.supabaseClient
       .from('announcements')
       .insert([{ title, description, category, deadline, image_url, is_active: true }]);
+    if (error) return alert('❌ تعذر نشر المبادرة: ' + error.message);
+
     alert('✅ تم نشر المبادرة بنجاح.');
     window.renderAdminAnnouncementsSection();
     if (typeof window.renderPublicAnnouncements === 'function') window.renderPublicAnnouncements();
   };
 
   window.adminToggleAnnouncement = async function(id, state) {
-    await window.supabaseClient.from('announcements').update({ is_active: state }).eq('id', id);
+    const { error } = await window.supabaseClient.from('announcements').update({ is_active: state }).eq('id', id);
+    if (error) return alert('❌ تعذر تحديث حالة المبادرة: ' + error.message);
     window.renderAdminAnnouncementsSection();
   };
 
   window.adminDeleteAnnouncement = async function(id) {
     if (!confirm('حذف هذه المبادرة؟')) return;
-    await window.supabaseClient.from('announcements').delete().eq('id', id);
+    const { error } = await window.supabaseClient.from('announcements').delete().eq('id', id);
+    if (error) return alert('❌ تعذر حذف المبادرة: ' + error.message);
     window.renderAdminAnnouncementsSection();
   };
 
@@ -715,6 +783,7 @@
           </div>`).join('')}
       </div>`;
   };
+
   window.adminSaveSiteStats = async function() {
     const patch = {
       stat_food_bags: document.getElementById('st-food')?.value || '+450',
@@ -722,7 +791,8 @@
       stat_blankets: document.getElementById('st-blankets')?.value || '+100',
       stat_villages: document.getElementById('st-villages')?.value || '14'
     };
-    await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
+    const { error } = await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
+    if (error) return alert('❌ تعذر حفظ الأرقام: ' + error.message);
     alert('✅ تم تحديث أرقام الأثر الميداني في الصفحة الرئيسية.');
   };
 
@@ -731,25 +801,31 @@
     const description = (document.getElementById('ach-desc')?.value || '').trim();
     const image_url = (document.getElementById('ach-img')?.value || 'logo.jpg').trim();
     if (!title) return alert('⚠️ اكتب عنوان الإنجاز.');
-    await window.supabaseClient.from('achievements').insert([{ title, description, image_url }]);
+    const { error } = await window.supabaseClient.from('achievements').insert([{ title, description, image_url }]);
+    if (error) return alert('❌ تعذر نشر الإنجاز: ' + error.message);
     alert('✅ تم نشر الإنجاز في قاعدة البيانات بنجاح.');
     window.renderAdminAchievementsSection();
   };
 
   window.adminDeleteAchievement = async function(id) {
     if (!confirm('حذف هذا الإنجاز؟')) return;
-    await window.supabaseClient.from('achievements').delete().eq('id', id);
+    const { error } = await window.supabaseClient.from('achievements').delete().eq('id', id);
+    if (error) return alert('❌ تعذر حذف الإنجاز: ' + error.message);
     window.renderAdminAchievementsSection();
   };
 
-  // --- 3. التظلمات والمحاضر وطلب الانضمام ---
+  // --- 3. التظلمات والمستندات الرسمية والصادر والوارد وإيصالات المخازن ---
   window.renderAdminGrievancesSection = async function() {
     const box = document.getElementById('admin-tab-grievances');
+    if (!box) return;
     const { data } = await window.supabaseClient
       .from('grievances')
       .select('*')
       .order('created_at', { ascending: false });
     const list = data || [];
+    window.ALL_ADMIN_GRIEVANCES = list;
+    window.refreshAdminSummaryCards();
+
     box.innerHTML = list.length === 0 ? '<p>لا توجد تظلمات مسجلة.</p>' : `
       <table>
         <thead><tr><th>الكود</th><th>الاسم والهاتف</th><th>النوع والتفاصيل</th></tr></thead>
@@ -763,67 +839,483 @@
       </table>`;
   };
 
-   window.addDocDynamicLine = function(containerId, placeholderText, numbered = true) {
+  function readLocalOfficialDocs() {
+    try {
+      const raw = localStorage.getItem(LOCAL_DOCS_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function writeLocalOfficialDocs(list) {
+    try {
+      localStorage.setItem(LOCAL_DOCS_KEY, JSON.stringify(list || []));
+    } catch (_) {}
+  }
+
+  window.loadOfficialDocumentsList = async function() {
+    let dbDocs = [];
+    if (window.supabaseClient) {
+      const { data, error } = await window.supabaseClient
+        .from('official_documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && Array.isArray(data)) {
+        dbDocs = data;
+      }
+    }
+    const localDocs = readLocalOfficialDocs();
+    const map = new Map();
+    [...dbDocs, ...localDocs].forEach(d => {
+      if (d && d.doc_number) map.set(d.doc_number, d);
+    });
+    const merged = Array.from(map.values()).sort((a, b) =>
+      String(b.created_at || b.doc_number || '').localeCompare(String(a.created_at || a.doc_number || ''))
+    );
+    window.ALL_OFFICIAL_DOCS = merged;
+    return merged;
+  };
+
+  window.generateNextOfficialDocNumber = function(docType) {
+    const prefixMap = {
+      outgoing: 'OUT',
+      incoming: 'IN',
+      warehouse_issue: 'ISS',
+      warehouse_deposit: 'DEP',
+      board: 'BRD',
+      delegation: 'DLG',
+      letter: 'LTR'
+    };
+    const prefix = prefixMap[docType] || 'DOC';
+    const year = new Date().getFullYear();
+    const fullPrefix = `${prefix}-${year}-`;
+
+    let maxSeq = 0;
+    (window.ALL_OFFICIAL_DOCS || []).forEach(d => {
+      const num = String(d.doc_number || '');
+      if (num.startsWith(fullPrefix)) {
+        const tail = parseInt(num.slice(fullPrefix.length), 10);
+        if (!Number.isNaN(tail) && tail > maxSeq) maxSeq = tail;
+      }
+    });
+
+    const nextSeq = String(maxSeq + 1).padStart(4, '0');
+    return `${fullPrefix}${nextSeq}`;
+  };
+
+  window.saveOfficialDocumentRecord = async function(docType, docNumber, docDate, titleOrParty, payload) {
+    const record = {
+      doc_type: docType,
+      doc_number: docNumber,
+      doc_date: docDate || new Date().toISOString().slice(0, 10),
+      title_or_party: titleOrParty || '',
+      payload: payload || {},
+      created_by: (window.currentUser && (window.currentUser.name || window.currentUser.full_name || window.currentUser.email)) || 'admin',
+      created_at: new Date().toISOString()
+    };
+
+    const localList = readLocalOfficialDocs();
+    const idx = localList.findIndex(x => x.doc_number === docNumber);
+    if (idx >= 0) localList[idx] = record;
+    else localList.unshift(record);
+    writeLocalOfficialDocs(localList);
+
+    if (window.supabaseClient) {
+      const { error } = await window.supabaseClient
+        .from('official_documents')
+        .upsert([record], { onConflict: 'doc_number' });
+      if (error && !String(error.message || '').includes('does not exist')) {
+        console.warn('official_documents upsert warning:', error.message);
+      }
+    }
+
+    await window.loadOfficialDocumentsList();
+    window.renderOfficialDocsArchiveTable();
+    return record;
+  };
+
+  window.deleteOfficialDocumentRecord = async function(docNumber) {
+    if (!confirm(`هل أنت متأكد من حذف المستند رقم (${docNumber}) من السجل؟`)) return;
+    const filteredLocal = readLocalOfficialDocs().filter(x => x.doc_number !== docNumber);
+    writeLocalOfficialDocs(filteredLocal);
+
+    if (window.supabaseClient) {
+      await window.supabaseClient.from('official_documents').delete().eq('doc_number', docNumber);
+    }
+    await window.loadOfficialDocumentsList();
+    window.renderOfficialDocsArchiveTable();
+  };
+
+  function getDocTypeLabel(type) {
+    const labels = {
+      outgoing: '📤 صادر',
+      incoming: '📥 وارد',
+      warehouse_issue: '📦 إيصال صرف مخزني',
+      warehouse_deposit: '📥 إيصال إيداع مخزني',
+      board: '📋 محضر مجلس الأمناء',
+      delegation: '📄 تفويض رسمي',
+      letter: '✉️ خطاب رسمي'
+    };
+    return labels[type] || type;
+  }
+
+  window.renderOfficialDocsArchiveTable = function() {
+    const wrap = document.getElementById('official-docs-archive-wrap');
+    if (!wrap) return;
+    const filterType = document.getElementById('doc-archive-filter')?.value || '';
+    const q = (document.getElementById('doc-archive-search')?.value || '').trim().toLowerCase();
+
+    const list = (window.ALL_OFFICIAL_DOCS || []).filter(d => {
+      if (filterType && d.doc_type !== filterType) return false;
+      if (q) {
+        const hay = `${d.doc_number || ''} ${d.title_or_party || ''} ${d.doc_date || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (list.length === 0) {
+      wrap.innerHTML = '<p style="text-align:center; padding:10px; color:#64748b; font-size:12px;">لا توجد مستندات محفوظة مطابقة للبحث.</p>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr><th>الرقم التسلسلي</th><th>النوع</th><th>التاريخ</th><th>الجهة / الموضوع</th><th class="no-print">إجراءات</th></tr>
+        </thead>
+        <tbody>
+          ${list.map(d => `
+            <tr>
+              <td><strong>${window.escapeHtml(d.doc_number)}</strong></td>
+              <td>${window.escapeHtml(getDocTypeLabel(d.doc_type))}</td>
+              <td>${window.escapeHtml(d.doc_date || '-')}</td>
+              <td>${window.escapeHtml(d.title_or_party || '-')}</td>
+              <td class="no-print" style="display:flex; gap:4px; flex-wrap:wrap;">
+                <button type="button" onclick="reprintSavedOfficialDoc('${window.escapeHtml(d.doc_number)}')" class="nav-btn btn-gold" style="padding:3px 7px; font-size:11px;">🖨️ طباعة</button>
+                <button type="button" onclick="deleteOfficialDocumentRecord('${window.escapeHtml(d.doc_number)}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 7px; font-size:11px;">🗑️</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  };
+
+  function buildPrintableSheetHtml(cfg, bodyContent, docTitle) {
+    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+      <title>${window.escapeHtml(docTitle || 'مستند رسمي - مؤسسة الحافظ')}</title>
+      <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #0f172a; }
+        .box { border: 1px solid #cbd5e1; padding: 22px; min-height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+        th, td { border: 1px solid #334155; padding: 6px 8px; text-align: right; }
+        th { background: #064e3b; color: #fff; }
+      </style></head><body>
+      <div class="box">
+        <div>
+          ${window.getOfficialHeaderHtml(cfg)}
+          ${bodyContent}
+        </div>
+        ${window.getOfficialFooterHtml(cfg)}
+      </div>
+      <script>window.onload=function(){window.print();};<\/script>
+      </body></html>`;
+  }
+
+  function openPrintWindowWithHtml(html) {
+    const w = window.open('', '_blank', 'width=920,height=1000');
+    if (!w) {
+      alert('يرجى السماح بالنوافذ المنبثقة للطباعة.');
+      return;
+    }
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
+  window.reprintSavedOfficialDoc = async function(docNumber) {
+    const doc = (window.ALL_OFFICIAL_DOCS || []).find(x => x.doc_number === docNumber);
+    if (!doc) return alert('⚠️ لم يتم العثور على المستند.');
+    const cfg = await window.getFoundationSettings();
+    const p = doc.payload || {};
+
+    let bodyHtml = '';
+    if (doc.doc_type === 'outgoing') {
+      bodyHtml = `
+        <h3 style="text-align:center; text-decoration:underline; margin:8px 0 14px;">خطاب صادر رسمي</h3>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px;">
+          <div><strong>رقم الصادر:</strong> ${window.escapeHtml(doc.doc_number)}</div>
+          <div><strong>التاريخ:</strong> ${window.escapeHtml(doc.doc_date || '')}</div>
+        </div>
+        <p style="font-size:13px; line-height:2;">
+          <strong>الجهة المرسل إليها:</strong> ${window.escapeHtml(p.to_party || '')}<br>
+          <strong>الموضوع:</strong> ${window.escapeHtml(p.subject || '')}<br>
+          <strong>المرفقات:</strong> ${window.escapeHtml(p.attachments || 'لا يوجد')}
+        </p>
+        <p style="text-align:center; font-weight:700;">تحية طيبة وبعد،،،</p>
+        <div style="font-size:14px; line-height:2.1; white-space:pre-line; border:1px dashed #cbd5e1; padding:12px; border-radius:6px;">${window.escapeHtml(p.body || '')}</div>
+        <p style="text-align:center; font-weight:700; margin-top:18px;">وتفضلوا بقبول فائق الاحترام والتقدير،،،</p>
+        <div style="text-align:left; font-weight:700; margin-top:20px; padding-left:24px;">رئيس مجلس الأمناء</div>`;
+    } else if (doc.doc_type === 'incoming') {
+      bodyHtml = `
+        <h3 style="text-align:center; text-decoration:underline; margin:8px 0 14px;">إفادة قيد مستند وارد</h3>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px;">
+          <div><strong>رقم قيد الوارد:</strong> ${window.escapeHtml(doc.doc_number)}</div>
+          <div><strong>تاريخ الورود:</strong> ${window.escapeHtml(doc.doc_date || '')}</div>
+        </div>
+        <p style="font-size:13px; line-height:2.1;">
+          <strong>الجهة الوارد منها:</strong> ${window.escapeHtml(p.from_party || '')}<br>
+          <strong>رقم وتاريخ خطاب الجهة:</strong> ${window.escapeHtml(p.ref_no_date || '-')}<br>
+          <strong>الموضوع:</strong> ${window.escapeHtml(p.subject || '')}<br>
+          <strong>المرفقات:</strong> ${window.escapeHtml(p.attachments || '-')}<br>
+          <strong>التوجيه الإداري:</strong> ${window.escapeHtml(p.directive || '-')}
+        </p>
+        <div style="display:flex; justify-content:space-between; margin-top:30px; font-weight:700; font-size:13px;">
+          <span>موظف القيد والأرشيف</span><span>اعتماد رئيس مجلس الأمناء</span>
+        </div>`;
+    } else if (doc.doc_type === 'warehouse_issue' || doc.doc_type === 'warehouse_deposit') {
+      const isIssue = doc.doc_type === 'warehouse_issue';
+      const items = Array.isArray(p.items) ? p.items : [];
+      const rowsHtml = items.map((it, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${window.escapeHtml(it.name || '')}</td>
+          <td>${window.escapeHtml(it.unit || 'وحدة')}</td>
+          <td>${window.escapeHtml(it.qty || '')}</td>
+          <td>${window.escapeHtml(it.notes || '')}</td>
+        </tr>`).join('');
+      bodyHtml = `
+        <h3 style="text-align:center; text-decoration:underline; margin:8px 0 14px;">${isIssue ? 'إيصال / إذن صرف مخزني' : 'إيصال / إذن إيداع واستلام مخزني'}</h3>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px;">
+          <div><strong>رقم الإيصال:</strong> ${window.escapeHtml(doc.doc_number)}</div>
+          <div><strong>التاريخ:</strong> ${window.escapeHtml(doc.doc_date || '')}</div>
+        </div>
+        <p style="font-size:13px; line-height:2;">
+          <strong>${isIssue ? 'المستلم / الجهة المستفيدة:' : 'المودِع / مصدر الإيداع:'}</strong> ${window.escapeHtml(p.party_name || '')}<br>
+          <strong>البيان / الغرض:</strong> ${window.escapeHtml(p.purpose || '-')}
+        </p>
+        <table>
+          <thead><tr><th>م</th><th>الصنف / البيان</th><th>الوحدة</th><th>الكمية</th><th>ملاحظات</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <div style="display:flex; justify-content:space-between; margin-top:28px; font-weight:700; font-size:13px;">
+          <div>${isIssue ? 'توقيع المستلم:' : 'توقيع المودِع / المورِّد:'}<br><br>......................</div>
+          <div>أمين المخزن:<br><br>......................</div>
+          <div>يعتمد / رئيس مجلس الأمناء:<br><br>......................</div>
+        </div>`;
+    } else if (p.printableHtml) {
+      bodyHtml = p.printableHtml;
+    }
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, bodyHtml, `${getDocTypeLabel(doc.doc_type)} - ${doc.doc_number}`));
+  };
+
+  window.reindexDocDynamicLines = function(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    let numCounter = 2;
+    container.querySelectorAll('.dyn-line-row').forEach((row) => {
+      const numEl = row.querySelector('.line-num');
+      if (row.dataset.numbered === '1' && numEl) {
+        numEl.textContent = numCounter + '-';
+        numCounter++;
+      }
+    });
+  };
+
+  window.addDocDynamicLine = function(containerId, placeholderText, numbered = true) {
     const container = document.getElementById(containerId);
     if (!container) return;
     const count = container.querySelectorAll('.dyn-line-row').length;
     const lineNum = numbered ? (count + 2) : (count + 1);
+    const numHtml = numbered ? `<span class="line-num" style="font-weight:700; min-width:22px;">${lineNum}-</span>` : '';
     const row = document.createElement('div');
     row.className = 'dyn-line-row';
+    row.dataset.numbered = numbered ? '1' : '0';
     row.style.cssText = 'display:flex; align-items:center; gap:6px; margin:4px 0;';
     row.innerHTML = `
-      <span class="line-num" style="font-weight:700; min-width:22px;">${lineNum}-</span>
+      ${numHtml}
       <input type="text" placeholder="${placeholderText}" style="flex:1; margin:0; padding:4px 8px;">
-      <button type="button" onclick="this.parentElement.remove()" class="no-print" style="background:#fee2e2; color:#991b1b; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">✕</button>
+      <button type="button" onclick="const p=this.parentElement.parentElement; this.parentElement.remove(); reindexDocDynamicLines(p.id);" class="no-print" style="background:#fee2e2; color:#991b1b; border:none; border-radius:4px; padding:4px 8px; cursor:pointer;">✕</button>
     `;
     container.appendChild(row);
   };
 
-  window.printOfficialDocSheetOnly = function() {
+  window.addWarehouseItemRow = function(tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    const idx = tbody.querySelectorAll('tr').length + 1;
+    const tr = document.createElement('tr');
+    tr.className = 'wh-item-row';
+    tr.innerHTML = `
+      <td class="wh-row-idx" style="text-align:center; font-weight:700;">${idx}</td>
+      <td><input type="text" class="wh-name" placeholder="اسم الصنف (مثال: كرتونة مواد غذائية / بطانية)" style="margin:0; padding:4px 6px;"></td>
+      <td><input type="text" class="wh-unit" value="وحدة" style="margin:0; padding:4px 6px; width:80px;"></td>
+      <td><input type="number" min="0" step="any" class="wh-qty" placeholder="الكمية" style="margin:0; padding:4px 6px; width:90px;"></td>
+      <td><input type="text" class="wh-notes" placeholder="ملاحظات / حالة الصنف" style="margin:0; padding:4px 6px;"></td>
+      <td class="no-print"><button type="button" onclick="const tb=this.closest('tbody'); this.closest('tr').remove(); reindexWarehouseRows(tb.id);" style="background:#fee2e2; color:#991b1b; border:none; border-radius:4px; padding:4px 7px; cursor:pointer;">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  };
+
+  window.reindexWarehouseRows = function(tbodyId) {
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    tbody.querySelectorAll('.wh-item-row').forEach((tr, i) => {
+      const cell = tr.querySelector('.wh-row-idx');
+      if (cell) cell.textContent = i + 1;
+    });
+  };
+
+  window.printOfficialDocSheetOnly = async function(saveType = '', docNumInputId = '', docDateInputId = '', titleInputId = '') {
     const sheet = document.getElementById('printable-official-sheet');
     if (!sheet) return;
     const clone = sheet.cloneNode(true);
     clone.querySelectorAll('.no-print').forEach(el => el.remove());
-    clone.querySelectorAll('input, textarea').forEach(el => {
+    clone.querySelectorAll('input, textarea, select').forEach(el => {
       const span = document.createElement('span');
       span.style.cssText = 'font-weight:700; border-bottom:1px dotted #64748b; padding:0 4px; display:inline-block; min-width:50px;';
       span.textContent = (el.value || '').trim() || (el.placeholder || '................');
       el.replaceWith(span);
     });
-    const w = window.open('', '_blank', 'width=900,height=1000');
-    if (!w) return alert('يرجى السماح بالنوافذ المنبثقة.');
-    w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>مستند رسمي - مؤسسة الحافظ</title>
-      <style>@page{size:A4;margin:15mm;}body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;direction:rtl;color:#0f172a;}.box{border:1px solid #cbd5e1;padding:22px;min-height:255mm;display:flex;flex-direction:column;justify-content:space-between;}</style>
-      </head><body><div class="box">${clone.innerHTML}</div><script>window.onload=function(){window.print();};<\/script></body></html>`);
-    w.document.close();
+
+    const cfg = await window.getFoundationSettings();
+    const docNum = (document.getElementById(docNumInputId)?.value || '').trim() || window.generateNextOfficialDocNumber(saveType || 'letter');
+    const docDate = (document.getElementById(docDateInputId)?.value || '').trim() || new Date().toISOString().slice(0, 10);
+    const titleParty = (document.getElementById(titleInputId)?.value || '').trim() || getDocTypeLabel(saveType || 'letter');
+
+    if (saveType) {
+      await window.saveOfficialDocumentRecord(saveType, docNum, docDate, titleParty, {
+        printableHtml: clone.innerHTML
+      });
+    }
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, clone.innerHTML, `${getDocTypeLabel(saveType || 'letter')} - ${docNum}`));
+  };
+
+  window.saveAndPrintOutgoingDoc = async function() {
+    const docNumber = (document.getElementById('out-doc-num')?.value || '').trim() || window.generateNextOfficialDocNumber('outgoing');
+    const docDate = (document.getElementById('out-doc-date')?.value || '').trim() || new Date().toISOString().slice(0, 10);
+    const toParty = (document.getElementById('out-to-party')?.value || '').trim();
+    const subject = (document.getElementById('out-subject')?.value || '').trim();
+    const attachments = (document.getElementById('out-attachments')?.value || '').trim();
+    const body = (document.getElementById('out-body')?.value || '').trim();
+
+    if (!toParty || !subject || !body) {
+      return alert('⚠️ يرجى إدخال الجهة المرسل إليها، والموضوع، ونص الخطاب الصادر.');
+    }
+
+    await window.saveOfficialDocumentRecord('outgoing', docNumber, docDate, `${toParty} — ${subject}`, {
+      to_party: toParty, subject, attachments, body
+    });
+    await window.reprintSavedOfficialDoc(docNumber);
+  };
+
+  window.saveAndPrintIncomingDoc = async function() {
+    const docNumber = (document.getElementById('in-doc-num')?.value || '').trim() || window.generateNextOfficialDocNumber('incoming');
+    const docDate = (document.getElementById('in-doc-date')?.value || '').trim() || new Date().toISOString().slice(0, 10);
+    const fromParty = (document.getElementById('in-from-party')?.value || '').trim();
+    const refNoDate = (document.getElementById('in-ref-no-date')?.value || '').trim();
+    const subject = (document.getElementById('in-subject')?.value || '').trim();
+    const attachments = (document.getElementById('in-attachments')?.value || '').trim();
+    const directive = (document.getElementById('in-directive')?.value || '').trim();
+
+    if (!fromParty || !subject) {
+      return alert('⚠️ يرجى إدخال الجهة الوارد منها وموضوع الوارد.');
+    }
+
+    await window.saveOfficialDocumentRecord('incoming', docNumber, docDate, `${fromParty} — ${subject}`, {
+      from_party: fromParty, ref_no_date: refNoDate, subject, attachments, directive
+    });
+    await window.reprintSavedOfficialDoc(docNumber);
+  };
+
+  window.saveAndPrintWarehouseReceipt = async function(kind) {
+    const isIssue = kind === 'warehouse_issue';
+    const docNumber = (document.getElementById('wh-doc-num')?.value || '').trim() || window.generateNextOfficialDocNumber(kind);
+    const docDate = (document.getElementById('wh-doc-date')?.value || '').trim() || new Date().toISOString().slice(0, 10);
+    const partyName = (document.getElementById('wh-party-name')?.value || '').trim();
+    const purpose = (document.getElementById('wh-purpose')?.value || '').trim();
+
+    const items = [];
+    document.querySelectorAll('#wh-items-tbody .wh-item-row').forEach(tr => {
+      const name = (tr.querySelector('.wh-name')?.value || '').trim();
+      const unit = (tr.querySelector('.wh-unit')?.value || 'وحدة').trim();
+      const qty = (tr.querySelector('.wh-qty')?.value || '').trim();
+      const notes = (tr.querySelector('.wh-notes')?.value || '').trim();
+      if (name || qty) items.push({ name, unit, qty, notes });
+    });
+
+    if (!partyName || items.length === 0) {
+      return alert(`⚠️ يرجى إدخال ${isIssue ? 'اسم المستلم/الجهة' : 'اسم المودِع/مصدر الإيداع'} وإضافة صنف واحد على الأقل.`);
+    }
+
+    await window.saveOfficialDocumentRecord(kind, docNumber, docDate, `${partyName} (${items.length} أصناف)`, {
+      party_name: partyName, purpose, items
+    });
+    await window.reprintSavedOfficialDoc(docNumber);
   };
 
   window.renderAdminOfficialSection = async function() {
     const box = document.getElementById('admin-tab-official');
     if (!box) return;
+    await window.loadOfficialDocumentsList();
+
     box.innerHTML = `
-      <div class="no-print" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-        <button type="button" onclick="renderOfficialDocTemplate('board')" class="action-btn">📋 محضر مجلس الأمناء</button>
-        <button type="button" onclick="renderOfficialDocTemplate('delegation')" class="action-btn" style="background:#b45309;">📄 التفويض الرسمي</button>
-        <button type="button" onclick="renderOfficialDocTemplate('letter')" class="nav-btn btn-gold">✉️ مستند / خطاب رسمي</button>
+      <div class="no-print" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+        <button type="button" onclick="renderOfficialDocTemplate('board')" class="action-btn" style="padding:7px 11px; font-size:12px;">📋 محضر مجلس الأمناء</button>
+        <button type="button" onclick="renderOfficialDocTemplate('delegation')" class="action-btn" style="background:#b45309; padding:7px 11px; font-size:12px;">📄 التفويض الرسمي</button>
+        <button type="button" onclick="renderOfficialDocTemplate('letter')" class="nav-btn btn-gold" style="padding:7px 11px; font-size:12px;">✉️ خطاب رسمي</button>
+        <button type="button" onclick="renderOfficialDocTemplate('outgoing')" class="nav-btn" style="background:#0f766e; color:#fff; padding:7px 11px; font-size:12px;">📤 الصادر</button>
+        <button type="button" onclick="renderOfficialDocTemplate('incoming')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:7px 11px; font-size:12px;">📥 الوارد</button>
+        <button type="button" onclick="renderOfficialDocTemplate('warehouse_issue')" class="nav-btn" style="background:#9a3412; color:#fff; padding:7px 11px; font-size:12px;">📦 إيصال صرف مخزني</button>
+        <button type="button" onclick="renderOfficialDocTemplate('warehouse_deposit')" class="nav-btn" style="background:#166534; color:#fff; padding:7px 11px; font-size:12px;">📥 إيصال إيداع مخزني</button>
       </div>
-      <div id="official-doc-editor-box"></div>`;
+
+      <div id="official-doc-editor-box"></div>
+
+      <div class="card no-print" style="margin-top:16px; border-top:3px solid #064e3b;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
+          <h4 style="margin:0; color:#064e3b;">🗂️ سجل المستندات والإيصالات المحفوظة إلكترونياً</h4>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <select id="doc-archive-filter" onchange="renderOfficialDocsArchiveTable()" style="margin:0; padding:4px 8px; font-size:12px;">
+              <option value="">-- كل المستندات --</option>
+              <option value="outgoing">الصادر</option>
+              <option value="incoming">الوارد</option>
+              <option value="warehouse_issue">إيصالات الصرف المخزني</option>
+              <option value="warehouse_deposit">إيصالات الإيداع المخزني</option>
+              <option value="board">محاضر مجلس الأمناء</option>
+              <option value="delegation">التفويضات الرسمية</option>
+              <option value="letter">الخطابات الرسمية</option>
+            </select>
+            <input id="doc-archive-search" oninput="renderOfficialDocsArchiveTable()" placeholder="بحث بالرقم أو الجهة أو الموضوع..." style="margin:0; padding:4px 8px; font-size:12px;">
+          </div>
+        </div>
+        <div id="official-docs-archive-wrap" style="overflow-x:auto;"></div>
+      </div>`;
+
+    window.renderOfficialDocsArchiveTable();
     window.renderOfficialDocTemplate('board');
   };
+
   window.renderOfficialDocTemplate = async function(type) {
     const editor = document.getElementById('official-doc-editor-box');
     if (!editor) return;
     const cfg = await window.getFoundationSettings();
     const header = window.getOfficialHeaderHtml(cfg);
     const footer = window.getOfficialFooterHtml(cfg);
+    const today = new Date().toISOString().slice(0, 10);
 
     if (type === 'board') {
+      const nextBoardNum = window.generateNextOfficialDocNumber('board');
       editor.innerHTML = `
         <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
           <div>
             ${header}
             <h4 style="text-align:center; text-decoration:underline; margin:6px 0 14px;">
-              محضر مجلس الأمناء رقم ( <input placeholder="...." style="width:70px; display:inline; padding:3px; margin:0; text-align:center;"> )
+              محضر مجلس الأمناء رقم ( <input id="brd-doc-num" value="${window.escapeHtml(nextBoardNum)}" style="width:145px; display:inline; padding:3px; margin:0; text-align:center; font-weight:700;"> )
             </h4>
             <strong style="text-decoration:underline;">جدول الأعمال</strong>
             <div style="margin:6px 0 12px; font-size:13px;">
@@ -834,9 +1326,9 @@
             <div style="text-align:center; font-weight:700; text-decoration:underline; margin-bottom:6px;">محضر الجلسة</div>
             <p style="font-size:13px; line-height:2.1;">
               إنه في يوم <input placeholder="الأربعاء" style="width:90px; display:inline; padding:3px; margin:0;">
-              الموافق <input placeholder="يوم/شهر/سنة" style="width:110px; display:inline; padding:3px; margin:0;">
+              الموافق <input id="brd-doc-date" type="date" value="${today}" style="width:140px; display:inline; padding:3px; margin:0;">
               وفي تمام الساعة <input placeholder=".... ص" style="width:80px; display:inline; padding:3px; margin:0;">
-              بمقر المؤسسة اجتمع أعضاء مجلس الأمناء برئاسة السيد / <input placeholder="..............." style="width:160px; display:inline; padding:3px; margin:0;"> رئيس مجلس الأمناء
+              بمقر المؤسسة اجتمع أعضاء مجلس الأمناء برئاسة السيد / <input id="brd-chairman" placeholder="..............." style="width:160px; display:inline; padding:3px; margin:0;"> رئيس مجلس الأمناء
               و السيد <input placeholder="...................." style="width:160px; display:inline; padding:3px; margin:0;">
               بصفته <input placeholder="............." style="width:110px; display:inline; padding:3px; margin:0;">
               قائم بأعمال <input placeholder="..................." style="width:140px; display:inline; padding:3px; margin:0;">
@@ -861,21 +1353,26 @@
           </div>
           ${footer}
         </div>
-        <button type="button" onclick="printOfficialDocSheetOnly()" class="action-btn no-print">🖨️ طباعة المحضر فقط</button>`;
+        <button type="button" onclick="printOfficialDocSheetOnly('board', 'brd-doc-num', 'brd-doc-date', 'brd-chairman')" class="action-btn no-print">💾 حفظ وطباعة المحضر</button>`;
       window.addDocDynamicLine('bm-agenda', '........................................', true);
       window.addDocDynamicLine('bm-att', '....................................', false);
       window.addDocDynamicLine('bm-dec', '........................................', true);
     } else if (type === 'delegation') {
+      const nextDlgNum = window.generateNextOfficialDocNumber('delegation');
       editor.innerHTML = `
         <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
           <div>
             ${header}
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;">
+              <span><strong>رقم التفويض:</strong> <input id="dlg-doc-num" value="${window.escapeHtml(nextDlgNum)}" style="width:140px; display:inline; padding:2px 6px; margin:0; font-weight:700;"></span>
+              <span><strong>التاريخ:</strong> <input id="dlg-doc-date" type="date" value="${today}" style="width:135px; display:inline; padding:2px 6px; margin:0;"></span>
+            </div>
             <p style="font-weight:700;">السادة الأفاضل / <input placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:0;"></p>
             <p style="text-align:center; font-weight:700;">تحية طيبة وبعد،،،</p>
             <p style="font-size:13px; line-height:2;">
               تتشرف مؤسسة الحافظ، المشهرة برقم (2202) لسنة 2025 ونطاق عملها جمهورية مصر العربية، بأن تتقدم لسيادتكم بوافر التقدير على دوركم الرائد في العمل الأهلي.<br>
               وفي إطار سعي المؤسسة لتوسيع دائرة التعاون مع مؤسستكم الموقرة لخدمة الفئات الأولى بالرعاية، فقد تقرر:<br>
-              <strong>تفويض السيد/ه</strong> <input placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
+              <strong>تفويض السيد/ه</strong> <input id="dlg-person" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
               <strong>بطاقة رقم قومي</strong> <input maxlength="14" placeholder="............................................." style="width:60%; display:inline; padding:4px; margin:2px 0;"><br>
               <strong>بصفته /</strong> <input placeholder="............................................." style="width:65%; display:inline; padding:4px; margin:2px 0;"><br>
               وذلك للتمثيل والتنسيق والتعامل في كافة الأنشطة والخدمات والتي تشمل: مشروعات البنية التحتية، المساعدات الموسمية، الجانب الطبي، التمكين الاقتصادي، والجانب الاجتماعي، وللمفوض الحق في تقديم طلبات التعاون وتوقيع محاضر التنسيق الميداني واستلام وتسليم الكشوف والبحوث الاجتماعية الخاصة بالمستفيدين وتمثيل المؤسسة في الاجتماعات التنسيقية والمتابعة الميدانية.<br>
@@ -890,24 +1387,107 @@
           </div>
           ${footer}
         </div>
-        <button type="button" onclick="printOfficialDocSheetOnly()" class="action-btn no-print">🖨️ طباعة التفويض فقط</button>`;
-    } else {
+        <button type="button" onclick="printOfficialDocSheetOnly('delegation', 'dlg-doc-num', 'dlg-doc-date', 'dlg-person')" class="action-btn no-print">💾 حفظ وطباعة التفويض</button>`;
+    } else if (type === 'letter') {
+      const nextLtrNum = window.generateNextOfficialDocNumber('letter');
       editor.innerHTML = `
         <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
           <div>
             ${header}
-            <div style="font-weight:800; margin-top:8px;">السيد / <input placeholder="................................................" style="width:70%; display:inline; padding:4px; margin:0;"></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px;">
+              <span><strong>رقم الخطاب:</strong> <input id="ltr-doc-num" value="${window.escapeHtml(nextLtrNum)}" style="width:140px; display:inline; padding:2px 6px; margin:0; font-weight:700;"></span>
+              <span><strong>التاريخ:</strong> <input id="ltr-doc-date" type="date" value="${today}" style="width:135px; display:inline; padding:2px 6px; margin:0;"></span>
+            </div>
+            <div style="font-weight:800; margin-top:8px;">السيد / <input id="ltr-to" placeholder="................................................" style="width:70%; display:inline; padding:4px; margin:0;"></div>
             <p style="text-align:center; font-weight:700;">تحية طيبة وبعد،</p>
             <div style="font-weight:700; margin-bottom:8px;">الموضوع: <input placeholder="................................................" style="width:72%; display:inline; padding:4px; margin:0;"></div>
             <div id="let-lines"></div>
-            <button type="button" onclick="addDocDynamicLine('let-lines', '....................................................................', false)" class="nav-btn no-print" style="margin-top:4px; font-size:11px;">+ إضافة سطر</button>
+            <div class="no-print" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+              <button type="button" onclick="addDocDynamicLine('let-lines', '....................................................................', false)" class="nav-btn" style="font-size:11px;">+ إضافة سطر</button>
+              <button type="button" onclick="addDocDynamicLine('let-lines', '....................................................................', true)" class="nav-btn btn-gold" style="font-size:11px;">+ إضافة بند مرقم</button>
+            </div>
             <p style="text-align:center; font-weight:700; margin-top:24px;">وتفضلوا بقبول وافر التحية والتقدير،</p>
             <div style="text-align:left; font-weight:700; margin-top:20px; padding-left:24px;">رئيس مجلس الأمناء</div>
           </div>
           ${footer}
         </div>
-        <button type="button" onclick="printOfficialDocSheetOnly()" class="action-btn no-print">🖨️ طباعة المستند فقط</button>`;
+        <button type="button" onclick="printOfficialDocSheetOnly('letter', 'ltr-doc-num', 'ltr-doc-date', 'ltr-to')" class="action-btn no-print">💾 حفظ وطباعة الخطاب</button>`;
       window.addDocDynamicLine('let-lines', '....................................................................', false);
+    } else if (type === 'outgoing') {
+      const nextOutNum = window.generateNextOfficialDocNumber('outgoing');
+      editor.innerHTML = `
+        <div class="card" style="background:#fff; color:#0f172a;">
+          <h4 style="margin:0 0 10px; color:#0f766e;">📤 تحرير وحفظ خطاب صادر جديد</h4>
+          <div class="grid-3">
+            <div><label style="font-size:11px; font-weight:700;">رقم الصادر (تلقائي):</label><input id="out-doc-num" value="${window.escapeHtml(nextOutNum)}" style="margin:0; font-weight:700;"></div>
+            <div><label style="font-size:11px; font-weight:700;">تاريخ الصادر:</label><input id="out-doc-date" type="date" value="${today}" style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">المرفقات (اختياري):</label><input id="out-attachments" placeholder="مثال: كشف أسماء / صورة مستند" style="margin:0;"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label style="font-size:11px; font-weight:700;">الجهة المرسل إليها *:</label><input id="out-to-party" placeholder="مثال: إدارة إهناسيا الاجتماعية / بنك الطعام..." style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">الموضوع *:</label><input id="out-subject" placeholder="موضوع الخطاب الصادر" style="margin:0;"></div>
+          </div>
+          <div style="margin-top:8px;">
+            <label style="font-size:11px; font-weight:700;">نص الخطاب الصادر *:</label>
+            <textarea id="out-body" rows="5" placeholder="اكتب نص الخطاب الصادر بوضوح..." style="margin:0;"></textarea>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px;">
+            <button type="button" onclick="saveAndPrintOutgoingDoc()" class="action-btn" style="background:#0f766e;">💾 حفظ في السجل وطباعة الصادر</button>
+          </div>
+        </div>`;
+    } else if (type === 'incoming') {
+      const nextInNum = window.generateNextOfficialDocNumber('incoming');
+      editor.innerHTML = `
+        <div class="card" style="background:#fff; color:#0f172a;">
+          <h4 style="margin:0 0 10px; color:#1d4ed8;">📥 قيد وحفظ مستند وارد جديد</h4>
+          <div class="grid-3">
+            <div><label style="font-size:11px; font-weight:700;">رقم قيد الوارد (تلقائي):</label><input id="in-doc-num" value="${window.escapeHtml(nextInNum)}" style="margin:0; font-weight:700;"></div>
+            <div><label style="font-size:11px; font-weight:700;">تاريخ الورود:</label><input id="in-doc-date" type="date" value="${today}" style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">رقم وتاريخ خطاب الجهة:</label><input id="in-ref-no-date" placeholder="مثال: 412 بتاريخ 15/11/2026" style="margin:0;"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label style="font-size:11px; font-weight:700;">الجهة الوارد منها *:</label><input id="in-from-party" placeholder="اسم الجهة أو المؤسسة أو الشخص" style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">الموضوع *:</label><input id="in-subject" placeholder="موضوع الوارد" style="margin:0;"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label style="font-size:11px; font-weight:700;">المرفقات:</label><input id="in-attachments" placeholder="عدد الأوراق أو المرفقات" style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">التوجيه الإداري:</label><input id="in-directive" placeholder="مثال: يُحال للبحث الميداني / يُحفظ بالملف" style="margin:0;"></div>
+          </div>
+          <div style="margin-top:10px;">
+            <button type="button" onclick="saveAndPrintIncomingDoc()" class="action-btn" style="background:#1d4ed8;">💾 حفظ في سجل الوارد وطباعة الإفادة</button>
+          </div>
+        </div>`;
+    } else if (type === 'warehouse_issue' || type === 'warehouse_deposit') {
+      const isIssue = type === 'warehouse_issue';
+      const nextWhNum = window.generateNextOfficialDocNumber(type);
+      editor.innerHTML = `
+        <div class="card" style="background:#fff; color:#0f172a;">
+          <h4 style="margin:0 0 10px; color:${isIssue ? '#9a3412' : '#166534'};">
+            ${isIssue ? '📦 تحرير إيصال / إذن صرف مخزني' : '📥 تحرير إيصال / إذن إيداع واستلام مخزني'}
+          </h4>
+          <div class="grid-3">
+            <div><label style="font-size:11px; font-weight:700;">رقم الإيصال (تلقائي):</label><input id="wh-doc-num" value="${window.escapeHtml(nextWhNum)}" style="margin:0; font-weight:700;"></div>
+            <div><label style="font-size:11px; font-weight:700;">التاريخ:</label><input id="wh-doc-date" type="date" value="${today}" style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">${isIssue ? 'اسم المستلم / الجهة *:' : 'المودِع / مصدر الإيداع *:'}</label><input id="wh-party-name" placeholder="${isIssue ? 'اسم المستلم أو القرية/المبادرة' : 'اسم المتبرع / المورِّد / الجهة'}" style="margin:0;"></div>
+          </div>
+          <div style="margin-top:8px;">
+            <label style="font-size:11px; font-weight:700;">البيان / الغرض:</label>
+            <input id="wh-purpose" placeholder="${isIssue ? 'صرف مساعدات موسمية / قافلة طبية...' : 'إيداع تبرعات عينية / مشتريات مخزنية...'}" style="margin:0;">
+          </div>
+          <div style="overflow-x:auto; margin-top:10px;">
+            <table>
+              <thead>
+                <tr><th style="width:45px;">م</th><th>الصنف / البيان</th><th style="width:95px;">الوحدة</th><th style="width:105px;">الكمية</th><th>ملاحظات</th><th style="width:45px;">حذف</th></tr>
+              </thead>
+              <tbody id="wh-items-tbody"></tbody>
+            </table>
+          </div>
+          <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:10px;">
+            <button type="button" onclick="addWarehouseItemRow('wh-items-tbody')" class="nav-btn btn-gold" style="font-size:12px;">+ إضافة صنف</button>
+            <button type="button" onclick="saveAndPrintWarehouseReceipt('${type}')" class="action-btn" style="background:${isIssue ? '#9a3412' : '#166534'};">💾 حفظ الإيصال وطباعته</button>
+          </div>
+        </div>`;
+      window.addWarehouseItemRow('wh-items-tbody');
     }
   };
 
@@ -939,6 +1519,7 @@
     const email = (document.getElementById('req-email')?.value || '').trim().toLowerCase();
     const password_hash = (document.getElementById('req-pass')?.value || '').trim();
     if (!full_name || !phone || !email || !password_hash) return alert('⚠️ استكمل جميع الحقول.');
+    if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ رقم الهاتف يجب أن يتكون من 11 رقماً يبدأ بـ 01.');
 
     const member_code = 'MEM-' + Math.floor(1000 + Math.random() * 9000);
     const { error } = await window.supabaseClient.from('users_profiles').insert([{
