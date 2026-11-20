@@ -1298,17 +1298,18 @@
     const targetPhone = window.formData.husband.whatsapp || window.formData.husband.phone;
     const waMsg = `مؤسسة الحافظ للتنمية والخدمات\nتم تسجيل طلب المساعدة بنجاح.\nالاسم: ${applicantName}\nرقم الطلب: ${trackingCode}\nالحالة: قيد المراجعة\nيمكنكم متابعة حالة الطلب برقم المتابعة.`;
 
-    if (window.supabaseClient) {
+        if (window.supabaseClient) {
       const res = await window.supabaseClient.from('families').insert([payload]);
       if (res.error) {
         return showStepError('حدث خطأ أثناء حفظ البيانات في قاعدة البيانات: ' + res.error.message);
       }
       window.triggerInstantWhatsApp(targetPhone, waMsg);
-      alert(`✅ تم تسجيل الحالة وحفظها بنجاح!\n\nرقم الطلب: ${trackingCode}\nيرجى الاحتفاظ به للمتابعة.`);
-      location.reload();
+      alert(`✅ تم تسجيل الحالة وحفظها بنجاح في قاعدة البيانات!\n\nرقم الطلب: ${trackingCode}\nيرجى الاحتفاظ به للمتابعة.`);
+      window.currentStep = 1;
+      if (typeof window.showSection === 'function') window.showSection('home');
+      else location.reload();
     } else {
-      window.triggerInstantWhatsApp(targetPhone, waMsg);
-      alert(`✅ تم تجهيز الطلب بنجاح!\nرقم الطلب: ${trackingCode}`);
+      showStepError('تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.');
     }
   };
 })();
