@@ -4,12 +4,11 @@
   let currentLang = 'ar';
   let currentFontScale = 100;
 
-  const sbUrl = window.SB_URL || window.SUPABASE_URL;
-  const sbKey = window.SB_KEY || window.SUPABASE_ANON_KEY;
-  if (!window.supabaseClient && sbUrl && sbKey && window.supabase) {
+  const sbUrl = window.SB_URL || window.SUPABASE_URL || 'https://supabase.co';
+  const sbKey = window.SB_KEY || window.SUPABASE_ANON_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
+  if (!window.supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
     window.supabaseClient = window.supabase.createClient(sbUrl, sbKey);
   }
-
   window.escapeHtml = function(str) {
     return String(str ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
