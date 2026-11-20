@@ -265,7 +265,7 @@
     </section>
 
     <section id="section-login" class="hidden">
-      <div id="login-box" class="card" style="max-width: 440px; margin: 20px auto; text-align: center;">
+         <div id="login-box" class="card" style="max-width: 440px; margin: 20px auto; text-align: center;">
         <h3 style="color: var(--primary-dark); margin-top: 0;" data-i18n="loginTitle">🔐 بوابة الدخول الموحدة</h3>
         <form autocomplete="off" onsubmit="event.preventDefault(); loginUser();">
           <input type="email" id="login-email" autocomplete="off" placeholder="البريد الإلكتروني المسجل">
@@ -274,7 +274,10 @@
         </form>
         <button type="button" onclick="openPartnerRegister()" class="nav-btn" style="width: 100%;" data-i18n="partnerReqBtn">+ طلب انضمام جديد</button>
       </div>
+      <div id="partner-register-box" class="card hidden" style="max-width: 540px; margin: 20px auto;"></div>
+      <div id="dashboard-area" class="hidden"></div>
     </section>
+
   </div>
 
   <footer>
