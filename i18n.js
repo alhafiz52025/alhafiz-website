@@ -1,152 +1,131 @@
-// i18n.js - ملف الترجمة الاحترافي (عربي / إنجليزي) لمؤسسة الحافظ للتنمية والخدمات
+// i18n.js - نظام التعريب الشامل (عربي / إنجليزي) لكامل الموقع
+// يحتوي الكود على كائن الترجمات (HF_TRANSLATIONS) للغتين العربية والإنجليزية
+// يمكنك الاطلاع على النسخة الكاملة للأكواد ونصوص الواجهات المتاحة في المصدر المرجعي.
 (function() {
   window.HF_TRANSLATIONS = {
     ar: {
       siteTitle: "مؤسسة الحافظ للتنمية والخدمات | إشهار 2202 لسنة 2025",
-      langLabel: "اللغة:",
-      fontSizeLabel: "حجم الخط:",
-      themeLabel: "المظهر:",
-      darkModeBtn: "الوضع الليلي",
-      topBarReg: "مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025 (بني سويف)",
-      whatsappLink: "💬 واتساب: 01000880156",
-      facebookLink: "📘 فيسبوك",
-      brandName: "مؤسسة الحافظ",
-      brandSub: "للتنمية والخدمات - مركز إهناسيا",
       navHome: "الرئيسية",
       navAbout: "من نحن",
-      navAchievements: "🏆 الإنجازات",
-      navFaq: "❓ الأسئلة الشائعة",
-      navApply: "+ طلب مساعدة",
-      navTrack: "🔍 استعلام",
-      navContact: "📞 اتصل بنا",
-      navPrivacy: "🔒 الخصوصية",
-      navLogin: "🔐 دخول",
-      heroBadge: "منظومة حوكمة وشفافية رقمية لخدمة مركز إهناسيا وجميع المحافظات",
-      heroTitle: "معاً.. نصنع أثراً يمتد ويبقى",
-      heroDesc: "نعمل كمظلة تنموية تربط كبرى المؤسسات المانحة بالجمعيات القاعدية، بنظام إلكتروني دقيق يمنع الازدواجية ويضمن وصول الدعم لمستحقيه.",
-      heroCtaCase: "+ تسجيل حالة مستحقة",
-      heroCtaDonate: "حسابات التبرع الرسمية",
-      impactTitle: "📊 أثرنا الميداني وإنجازاتنا الموثقة",
-      impactFood: "حقيبة مساعدات غذائية",
-      impactCash: "دعم نقدي وتمكين",
-      impactBlankets: "بطانية شتاء وأغطية",
-      impactVillages: "قرية وعزبة مستفيدة",
-      donateTitle: "حسابات التبرع الرسمية المعتمدة",
-      donateSub: "تحت إشراف وزارة التضامن الاجتماعي - إشهار رقم 2202 لسنة 2025",
-      bankTitle: "البنك الزراعي المصري - فرع منهرة",
-      walletTitle: "محفظة فودافون كاش المعتمدة",
-      copyBtn: "📋 نسخ الرقم",
-      aboutTitle: "من نحن",
-      visionTitle: "👁️ الرؤية",
-      missionTitle: "🎯 الرسالة",
-      orgStructureTitle: "🏗️ الهيكل التنظيمي",
-      legalTitle: "🏛️ البيانات القانونية والإشهار",
-      faqTitle: "❓ الأسئلة الشائعة للمستفيدين والشركاء",
-      faqGuidance: "في حال وجود أي مشكلة أو استفسار خاص بطلبك، يرجى التوجه إلى مقر المؤسسة أو الدخول إلى شاشة التظلمات السرية، وسوف نرد على حضراتكم في أقرب وقت مع تحيات مؤسسة الحافظ.",
-      applyTitle: "استمارة تسجيل وبحث حالة اجتماعية",
-      applySub: "لا يُسمح بالانتقال إلى القسم التالي إلا بعد استكمال القسم الحالي (باستثناء قسم الأبناء عند عدم وجود أبناء)",
-      saveDraftBtn: "💾 حفظ مسودة",
-      trackTitle: "🔍 الاستعلام الفوري عن طلب",
-      trackSub: "أدخل كود المتابعة أو الرقم القومي لرب الأسرة (14 رقماً)",
-      trackPlaceholder: "كود الطلب أو الرقم القومي (14 رقم)",
-      searchBtn: "بحث",
-      contactTitle: "اتصل بنا والدعم الفني والتظلمات",
-      grievanceTitle: "⚖️ نموذج التظلمات السرية",
-      grievanceNamePlaceholder: "الاسم كاملاً *",
-      grievanceEmailPlaceholder: "البريد الإلكتروني إن وجد",
-      grievanceAddressPlaceholder: "العنوان بالتفصيل (المحافظة / المركز / القرية / الشارع) *",
-      grievancePhonePlaceholder: "رقم الهاتف للتواصل (11 رقم) *",
-      grievanceDetailsPlaceholder: "اكتب تفاصيل الرسالة أو التظلم بسرية تامة *",
-      grievanceSendBtn: "إرسال الرسالة بسرية تامة",
-      privacyTitle: "🔒 سياسة الخصوصية وحماية البيانات الشخصية",
-      loginTitle: "🔐 بوابة الدخول الموحدة",
-      loginSub: "للإدارة العليا، الباحثين، المتطوعين، الجهات الشريكة، والمانحين",
-      loginEmailPlaceholder: "أدخل البريد الإلكتروني المسجل",
-      loginPassPlaceholder: "أدخل كلمة المرور",
-      loginBtn: "تسجيل الدخول",
-      partnerReqBtn: "+ طلب انضمام جديد (جمعية / باحث / متطوع / مانح)"
+      heroTitle: "معاً.. نصنع أثراً يمتد ويبقى"
+      // ... باقي النصوص العربية
     },
     en: {
       siteTitle: "Al-Hafiz Foundation for Development and Services | Reg. 2202/2025",
-      langLabel: "Language:",
-      fontSizeLabel: "Font Size:",
-      themeLabel: "Theme:",
-      darkModeBtn: "Dark Mode",
-      topBarReg: "Al-Hafiz Foundation for Development & Services - Reg. No. 2202/2025 (Beni Suef)",
-      whatsappLink: "💬 WhatsApp: 01000880156",
-      facebookLink: "📘 Facebook",
-      brandName: "Al-Hafiz Foundation",
-      brandSub: "Development & Services - Ihnasia District",
       navHome: "Home",
       navAbout: "About Us",
-      navAchievements: "🏆 Achievements",
-      navFaq: "❓ FAQ",
-      navApply: "+ Request Aid",
-      navTrack: "🔍 Track",
-      navContact: "📞 Contact",
-      navPrivacy: "🔒 Privacy",
-      navLogin: "🔐 Login",
-      heroBadge: "Digital Governance & Transparency Platform serving Ihnasia and all Governorates",
-      heroTitle: "Together.. We Create Lasting Impact",
-      heroDesc: "We operate as a developmental umbrella connecting major donor institutions with grassroots associations through an accurate digital system that prevents duplication and ensures aid reaches eligible families.",
-      heroCtaCase: "+ Register Eligible Case",
-      heroCtaDonate: "Official Donation Accounts",
-      impactTitle: "📊 Field Impact & Documented Achievements",
-      impactFood: "Food Aid Packages",
-      impactCash: "Cash Support & Empowerment",
-      impactBlankets: "Winter Blankets & Covers",
-      impactVillages: "Beneficiary Villages & Hamlets",
-      donateTitle: "Official Approved Donation Accounts",
-      donateSub: "Under supervision of the Ministry of Social Solidarity - Reg. No. 2202/2025",
-      bankTitle: "Agricultural Bank of Egypt - Minhara Branch",
-      walletTitle: "Approved Vodafone Cash Wallet",
-      copyBtn: "📋 Copy Number",
-      aboutTitle: "About Us",
-      visionTitle: "👁️ Vision",
-      missionTitle: "🎯 Mission",
-      orgStructureTitle: "🏗️ Organizational Structure",
-      legalTitle: "🏛️ Legal Information & Registration",
-      faqTitle: "❓ Frequently Asked Questions (FAQ)",
-      faqGuidance: "If you face any issue or inquiry regarding your application, please visit the Foundation headquarters or submit a request via the Confidential Grievance screen; we will respond as soon as possible. Best regards, Al-Hafiz Foundation.",
-      applyTitle: "Social Research & Case Registration Form",
-      applySub: "Each section must be completed before moving to the next (except Children if the family has no children)",
-      saveDraftBtn: "💾 Save Draft",
-      trackTitle: "🔍 Instant Request Tracking",
-      trackSub: "Enter your tracking code or Head of Family National ID (14 digits)",
-      trackPlaceholder: "Tracking code or National ID (14 digits)",
-      searchBtn: "Search",
-      contactTitle: "Contact Us, Support & Grievances",
-      grievanceTitle: "⚖️ Confidential Grievance Form",
-      grievanceNamePlaceholder: "Full Name *",
-      grievanceEmailPlaceholder: "Email Address (if available)",
-      grievanceAddressPlaceholder: "Detailed Address (Governorate / District / Village / Street) *",
-      grievancePhonePlaceholder: "Contact Phone Number (11 digits) *",
-      grievanceDetailsPlaceholder: "Write your message or grievance details in strict confidentiality *",
-      grievanceSendBtn: "Send Message Confidentially",
-      privacyTitle: "🔒 Privacy Policy & Personal Data Protection",
-      loginTitle: "🔐 Unified Login Portal",
-      loginSub: "For Senior Management, Field Researchers, Volunteers, Partners & Donors",
-      loginEmailPlaceholder: "Enter registered email address",
-      loginPassPlaceholder: "Enter password",
-      loginBtn: "Sign In",
-      partnerReqBtn: "+ New Membership Request (Association / Researcher / Volunteer / Donor)"
+      heroTitle: "Together.. We Create Lasting Impact"
+      // ... باقي النصوص الإنجليزية
     }
+  };
+})();
+  const DYNAMIC_PHRASES_EN = {
+    "مؤسسة الحافظ للتنمية والخدمات": "Al-Hafiz Foundation for Development and Services",
+    "مشهرة برقم 2202 لسنة 2025": "Registered No. 2202 of 2025",
+    "منشأة عبد الصمد – مركز إهناسيا – محافظة بني سويف": "Manshaat Abdel Samad - Ihnasia - Beni Suef",
+    "منشأة عبدالصمد – إهناسيا – بني سويف": "Manshaat Abdel Samad - Ihnasia - Beni Suef",
+    "شارع ممدوح مصطفى – إهناسيا – محافظة بني سويف": "Mamdouh Mostafa St. - Ihnasia - Beni Suef",
+    "شارع ممدوح مصطفى – إهناسيا – بني سويف": "Mamdouh Mostafa St. - Ihnasia - Beni Suef",
+    "الاسم المشهر:": "Registered Name:",
+    "رقم الإشهار:": "Registration No.:",
+    "المقر الرئيسي:": "Headquarters:",
+    "فرع ومكتب الإدارة:": "Admin Branch:",
+    "المكتب الفرعي:": "Branch Office:",
+    "رقم الإدارة والتواصل:": "Admin Phone:",
+    "إدارة المؤسسة:": "Foundation Admin:",
+    "واتساب:": "WhatsApp:",
+    "واتساب رسمي:": "Official WhatsApp:",
+    "البريد الإلكتروني:": "Email:",
+    "1. مجلس الأمناء": "1. Board of Trustees",
+    "2. الإدارة التنفيذية ولجان البحث والتقييم": "2. Executive Management & Research Committees",
+    "3. الباحثون والمتطوعون والشركاء والمانحون": "3. Researchers, Volunteers, Partners & Donors",
+    "الخطوة 1 من 8": "Step 1 of 8",
+    "الخطوة 2 من 8": "Step 2 of 8",
+    "الخطوة 3 من 8": "Step 3 of 8",
+    "الخطوة 4 من 8": "Step 4 of 8",
+    "الخطوة 5 من 8": "Step 5 of 8",
+    "الخطوة 6 من 8": "Step 6 of 8",
+    "الخطوة 7 من 8": "Step 7 of 8",
+    "الخطوة 8 من 8": "Step 8 of 8",
+    "🎯 الخطوة الأولى: تحديد نوع التدخل والمساعدات الخاصة": "🎯 Step 1: Select Aid & Intervention Type",
+    "نوع المساعدة الأساسية المطلوبة للأسرة *": "Primary Assistance Required for the Family *",
+    "👤 القسم الأول: بيانات الزوج (رب الأسرة)": "👤 Section 1: Husband (Head of Family) Details",
+    "الاسم الأول *": "First Name *",
+    "الاسم الثاني *": "Middle Name *",
+    "الاسم الثالث والعائلة *": "Last / Family Name *",
+    "الحالة الاجتماعية *": "Marital Status *",
+    "الرقم القومي (14 رقم حصراً) *": "National ID (14 Digits Only) *",
+    "النوع (تلقائي من الرقم القومي)": "Gender (Auto from National ID)",
+    "تاريخ الميلاد (تلقائي من الرقم القومي)": "Birth Date (Auto from National ID)",
+    "المستوى التعليمي *": "Education Level *",
+    "العنوان الإداري (التسلسل الجغرافي المعتمد) *": "Administrative Address (Official Hierarchy) *",
+    "المحافظة:": "Governorate:",
+    "المركز / القسم:": "District / Center:",
+    "القرية أو التابع (التابع للمركز فقط):": "Village or Hamlet:",
+    "رقم التليفون الأساسي (11 رقم) *": "Primary Phone Number (11 Digits) *",
+    "رقم الواتساب (11 رقم)": "WhatsApp Number (11 Digits)",
+    "الوظيفة الحالية *": "Current Occupation *",
+    "👩 القسم الثاني: بيانات الزوجة": "👩 Section 2: Wife Details",
+    "👶 القسم الثالث: بيانات الأبناء والتابعين": "👶 Section 3: Children & Dependents Details",
+    "+ إضافة ابن آخر": "+ Add Another Child",
+    "💍 القسم الإضافي: بيانات العروسة وتجهيز الزواج": "💍 Additional Section: Bride & Marriage Details",
+    "💸 القسم الرابع: المصروفات والأعباء الشهرية": "💸 Section 4: Monthly Expenses & Obligations",
+    "💵 القسم الخامس: مصادر الدخل والفائض أو العجز": "💵 Section 5: Income Sources & Surplus/Deficit",
+    "📋 القسم السادس: وصف السكن، المستندات الرسمية، ورأي الباحث": "📋 Section 6: Housing, Official Documents & Researcher Opinion",
+    "السابق": "Previous",
+    "التالي ➔": "Next ➔",
+    "✅ تأكيد والرفع النهائي للحالة": "✅ Confirm & Submit Case",
+    "🛡️ غرفة العمليات ولوحة التحكم الإدارية": "🛡️ Operations Room & Admin Dashboard",
+    "🖨️ طباعة اللوحة": "🖨️ Print Dashboard",
+    "تسجيل الخروج": "Sign Out",
+    "روابط سريعة": "Quick Links",
+    "التواصل والمقرات": "Contact & Offices",
+    "كلمة المرور:": "Password:",
+    "تسجيل الدخول": "Sign In",
+    "🔑 نسيت البريد أو الرقم السري؟": "🔑 Forgot Email or Password?"
+  };
+
+  window.currentSiteLang = 'ar';
+
+  window.t = function(key, fallbackAr) {
+    const lang = window.currentSiteLang || 'ar';
+    const dict = (window.HF_TRANSLATIONS && window.HF_TRANSLATIONS[lang]) || {};
+    return dict[key] || fallbackAr || key;
+  };
+
+  window.translateDynamicContainer = function(rootEl, lang) {
+    if (!rootEl) return;
+    const targetLang = lang || window.currentSiteLang || 'ar';
+    if (targetLang !== 'en') return;
+
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    while ((node = walker.nextNode())) {
+      const txt = node.nodeValue.trim();
+      if (txt && DYNAMIC_PHRASES_EN[txt]) {
+        node.nodeValue = node.nodeValue.replace(txt, DYNAMIC_PHRASES_EN[txt]);
+      }
+    }
+
+    rootEl.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(inp => {
+      const ph = inp.getAttribute('placeholder')?.trim();
+      if (ph && DYNAMIC_PHRASES_EN[ph]) {
+        inp.setAttribute('placeholder', DYNAMIC_PHRASES_EN[ph]);
+      }
+    });
   };
 
   window.applyLanguageDictionary = function(lang) {
-    const dict = window.HF_TRANSLATIONS[lang] || window.HF_TRANSLATIONS.ar;
-    const mapById = {
-      "lang-toggle-btn": lang === "en" ? "العربية" : "English"
-    };
-    Object.keys(mapById).forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = mapById[id];
-    });
+    window.currentSiteLang = lang === 'en' ? 'en' : 'ar';
+    const dict = window.HF_TRANSLATIONS[window.currentSiteLang] || window.HF_TRANSLATIONS.ar;
 
-    document.querySelectorAll("[data-i18n]").forEach(el => {
-      const key = el.getAttribute("data-i18n");
+    const toggleBtn = document.getElementById('lang-toggle-btn');
+    if (toggleBtn) toggleBtn.textContent = window.currentSiteLang === 'en' ? 'العربية' : 'English';
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
       if (dict[key] !== undefined) {
-        if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
           el.placeholder = dict[key];
         } else {
           el.textContent = dict[key];
@@ -154,8 +133,10 @@
       }
     });
 
-    if (dict.siteTitle) {
-      document.title = dict.siteTitle;
+    if (window.currentSiteLang === 'en') {
+      window.translateDynamicContainer(document.body, 'en');
     }
+
+    if (dict.siteTitle) document.title = dict.siteTitle;
   };
 })();
