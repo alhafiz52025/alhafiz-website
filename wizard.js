@@ -174,8 +174,9 @@
         <p style="font-size:13px; color:#64748b;">يرجى استكمال كل قسم بالكامل قبل الانتقال إلى القسم التالي.</p>
       `;
     }
-    // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
-          const locs = window.EGYPT_LOCATIONS || {};
+       // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
+    else if (window.currentStep === 2) {
+      const locs = window.EGYPT_LOCATIONS || {};
       const govKeys = Object.keys(locs);
       const selectedGov = window.formData.husband?.gov || '';
       const govOptions = `<option value="">-- اختر المحافظة أولاً --</option>` +
