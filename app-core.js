@@ -14,6 +14,19 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
+  window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+    const clean = String(rawPhone || '').replace(/\D/g, '');
+    if (!clean) return;
+    const intl = clean.startsWith('20') ? clean : ('20' + clean.replace(/^0/, ''));
+    const waUrl = 'https://whatsapp.com' + intl + '&text=' + encodeURIComponent(messageText);
+    const a = document.createElement('a');
+    a.href = waUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   window.getFoundationSettings = async function() {
     const defaults = {
