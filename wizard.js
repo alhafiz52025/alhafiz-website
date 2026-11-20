@@ -175,19 +175,25 @@
       `;
     }
     // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
-    else if (window.currentStep === 2) {
-      const locs = window.EGYPT_LOCATIONS || {};
+          const locs = window.EGYPT_LOCATIONS || {};
       const govKeys = Object.keys(locs);
-      const selectedGov = locs[window.formData.husband?.gov] ? window.formData.husband.gov : (govKeys[0] || '');
-      const govOptions = govKeys.map(g => `<option value="${g}" ${g===selectedGov?'selected':''}>${g}</option>`).join('');
+      const selectedGov = window.formData.husband?.gov || '';
+      const govOptions = `<option value="">-- اختر المحافظة أولاً --</option>` +
+        govKeys.map(g => `<option value="${g}" ${g===selectedGov?'selected':''}>${g}</option>`).join('');
 
-      const centers = locs[selectedGov] ? Object.keys(locs[selectedGov]) : [];
-      const selectedCenter = (locs[selectedGov] && locs[selectedGov][window.formData.husband?.center]) ? window.formData.husband.center : (centers[0] || '');
-      const centerOptions = centers.map(c => `<option value="${c}" ${c===selectedCenter?'selected':''}>${c}</option>`).join('');
+      const centers = (selectedGov && locs[selectedGov]) ? Object.keys(locs[selectedGov]) : [];
+      const selectedCenter = (selectedGov && locs[selectedGov]?.[window.formData.husband?.center]) ? window.formData.husband.center : '';
+      const centerOptions = `<option value="">-- اختر المركز / القسم --</option>` +
+        centers.map(c => `<option value="${c}" ${c===selectedCenter?'selected':''}>${c}</option>`).join('');
 
-      const villages = (locs[selectedGov] && locs[selectedGov][selectedCenter]) ? locs[selectedGov][selectedCenter] : [];
-      const selectedVillage = villages.includes(window.formData.husband?.village) ? window.formData.husband.village : (villages[0] || '');
-      const villageOptions = villages.map(v => `<option value="${v}" ${v===selectedVillage?'selected':''}>${v}</option>`).join('');
+      const baseVillages = (selectedGov && selectedCenter && locs[selectedGov]?.[selectedCenter]) ? locs[selectedGov][selectedCenter] : [];
+      const customVills = (window.CUSTOM_LOCATIONS_CACHE?.[selectedGov]?.[selectedCenter]) || [];
+      const allVillages = Array.from(new Set([...baseVillages, ...customVills]));
+      const selectedVillage = window.formData.husband?.village || '';
+      const villageOptions = `<option value="">-- اختر القرية أو التابع --</option>` +
+        allVillages.map(v => `<option value="${v}" ${v===selectedVillage?'selected':''}>${v}</option>`).join('') +
+        (selectedCenter ? `<option value="__NEW__" ${selectedVillage==='__NEW__'?'selected':''}>+ إضافة قرية / عزبة / تابع جديد غير مدرج</option>` : '');
+
 
       const statusOptions = (window.HUSBAND_MARITAL_STATUSES || []).map(s => `<option value="${s}" ${window.formData.husband.status===s?'selected':''}>${s}</option>`).join('');
       const jobOptions = (window.EGYPT_JOBS || []).map(j => `<option value="${j}" ${window.formData.husband.job===j?'selected':''}>${j}</option>`).join('');
@@ -227,24 +233,28 @@
           </div>
         </div>
 
-        <div style="background:#f8fafc; padding:12px; border-radius:8px; margin:10px 0; border:1px solid #cbd5e1;">
+                <div style="background:#f8fafc; padding:12px; border-radius:8px; margin:10px 0; border:1px solid #cbd5e1;">
           <label style="font-weight:700; color:var(--primary-dark);">العنوان الإداري (التسلسل الجغرافي المعتمد) *</label>
           <div class="grid-3" style="margin-top:6px;">
             <div>
-              <label style="font-size:11px;">المحافظة:</label>
+              <label style="font-size:11px;">1. المحافظة:</label>
               <select id="h-gov" onchange="updateGeoCenters()">${govOptions}</select>
             </div>
             <div>
-              <label style="font-size:11px;">المركز / القسم:</label>
-              <select id="h-center" onchange="updateGeoVillages()">${centerOptions}</select>
+              <label style="font-size:11px;">2. المركز / القسم:</label>
+              <select id="h-center" onchange="updateGeoVillages()" ${!selectedGov ? 'disabled' : ''}>${centerOptions}</select>
             </div>
             <div>
-              <label style="font-size:11px;">القرية أو التابع (التابع للمركز فقط):</label>
-              <select id="h-village">${villageOptions}</select>
+              <label style="font-size:11px;">3. القرية أو التابع:</label>
+              <select id="h-village" onchange="handleVillageSelectChange()" ${!selectedCenter ? 'disabled' : ''}>${villageOptions}</select>
             </div>
+          </div>
+          <div id="new-village-box" class="${selectedVillage==='__NEW__'?'':'hidden'}" style="margin-top:8px;">
+            <input id="h-new-village-name" placeholder="اكتب اسم القرية / العزبة / التابع الجديد بدقة ليُحفظ في النظام *" value="${window.formData.husband.newVillageName || ''}">
           </div>
           <div style="margin-top:8px;"><input id="h-street" placeholder="شارع / رقم الحارة / التفاصيل كما مدون بالبطاقة *" value="${window.formData.husband.street || ''}"></div>
         </div>
+
 
         <div class="grid-3">
           <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" value="${window.formData.husband.phone || ''}"></div>
@@ -704,26 +714,69 @@
     container.innerHTML = html;
   };
 
+   window.loadCustomLocationsFromDB = async function() {
+    if (!window.supabaseClient) return;
+    const { data } = await window.supabaseClient.from('custom_locations').select('*');
+    window.CUSTOM_LOCATIONS_CACHE = {};
+    (data || []).forEach(row => {
+      if (!window.CUSTOM_LOCATIONS_CACHE[row.governorate]) window.CUSTOM_LOCATIONS_CACHE[row.governorate] = {};
+      if (!window.CUSTOM_LOCATIONS_CACHE[row.governorate][row.center_city]) window.CUSTOM_LOCATIONS_CACHE[row.governorate][row.center_city] = [];
+      window.CUSTOM_LOCATIONS_CACHE[row.governorate][row.center_city].push(row.village_name);
+    });
+  };
+  window.loadCustomLocationsFromDB();
+
   window.updateGeoCenters = function() {
-    const gov = document.getElementById('h-gov')?.value;
+    const gov = document.getElementById('h-gov')?.value || '';
     const centerSelect = document.getElementById('h-center');
+    const villageSelect = document.getElementById('h-village');
     const locs = window.EGYPT_LOCATIONS || {};
-    if (centerSelect && locs[gov]) {
-      const centers = Object.keys(locs[gov]);
-      centerSelect.innerHTML = centers.map(c => `<option value="${c}">${c}</option>`).join('');
-      window.updateGeoVillages();
+
+    if (centerSelect) {
+      if (!gov || !locs[gov]) {
+        centerSelect.innerHTML = '<option value="">-- اختر المحافظة أولاً --</option>';
+        centerSelect.disabled = true;
+      } else {
+        const centers = Object.keys(locs[gov]);
+        centerSelect.innerHTML = '<option value="">-- اختر المركز / القسم --</option>' +
+          centers.map(c => `<option value="${c}">${c}</option>`).join('');
+        centerSelect.disabled = false;
+      }
     }
+    if (villageSelect) {
+      villageSelect.innerHTML = '<option value="">-- اختر المركز أولاً --</option>';
+      villageSelect.disabled = true;
+    }
+    document.getElementById('new-village-box')?.classList.add('hidden');
   };
 
   window.updateGeoVillages = function() {
-    const gov = document.getElementById('h-gov')?.value;
-    const center = document.getElementById('h-center')?.value;
+    const gov = document.getElementById('h-gov')?.value || '';
+    const center = document.getElementById('h-center')?.value || '';
     const villageSelect = document.getElementById('h-village');
     const locs = window.EGYPT_LOCATIONS || {};
-    if (villageSelect && locs[gov] && locs[gov][center]) {
-      const vills = locs[gov][center];
-      villageSelect.innerHTML = vills.map(v => `<option value="${v}">${v}</option>`).join('');
+
+    if (villageSelect) {
+      if (!gov || !center || !locs[gov]?.[center]) {
+        villageSelect.innerHTML = '<option value="">-- اختر المركز أولاً --</option>';
+        villageSelect.disabled = true;
+      } else {
+        const baseVills = locs[gov][center] || [];
+        const customVills = window.CUSTOM_LOCATIONS_CACHE?.[gov]?.[center] || [];
+        const allVills = Array.from(new Set([...baseVills, ...customVills]));
+        villageSelect.innerHTML = '<option value="">-- اختر القرية أو التابع --</option>' +
+          allVills.map(v => `<option value="${v}">${v}</option>`).join('') +
+          '<option value="__NEW__">+ إضافة قرية / عزبة / تابع جديد غير مدرج</option>';
+        villageSelect.disabled = false;
+      }
     }
+    document.getElementById('new-village-box')?.classList.add('hidden');
+  };
+
+  window.handleVillageSelectChange = function() {
+    const val = document.getElementById('h-village')?.value || '';
+    const box = document.getElementById('new-village-box');
+    if (box) box.classList.toggle('hidden', val !== '__NEW__');
   };
 
   function showStepError(msg) {
@@ -1171,6 +1224,20 @@
     clearStepError();
     const err = validateStepCompletion(8);
     if (err) return showStepError(err);
+    let finalVillage = window.formData.husband.village;
+    if (finalVillage === '__NEW__') {
+      finalVillage = (document.getElementById('h-new-village-name')?.value || window.formData.husband.newVillageName || '').trim();
+      if (!finalVillage) return showStepError('يرجى كتابة اسم القرية أو التابع الجديد.');
+      if (window.supabaseClient) {
+        await window.supabaseClient.from('custom_locations').upsert([{
+          governorate: window.formData.husband.gov,
+          center_city: window.formData.husband.center,
+          village_name: finalVillage,
+          added_by: window.currentUser?.email || 'مواطن'
+        }], { onConflict: 'governorate,center_city,village_name' });
+        await window.loadCustomLocationsFromDB();
+      }
+    }
 
     const check = document.getElementById('declaration-check');
     if (check && !check.checked) {
@@ -1220,6 +1287,9 @@
       total_income: totalInc,
       total_expenses: totalExp,
       status: 'pending',
+            source_type: window.currentUser ? `${window.currentUser.name} (${window.currentUser.role})` : 'مواطن (تسجيل مباشر)',
+      created_by_email: window.currentUser ? window.currentUser.email : null,
+
       eligibility_verdict: window.formData.housing.opinion || 'قيد المراجعة'
     };
 
