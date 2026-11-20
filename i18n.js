@@ -45,3 +45,44 @@ window.applyLanguageDictionary = function(lang) {
 
   if (dict.siteTitle) document.title = dict.siteTitle;
 };
+  window.currentSiteLang = 'ar';
+
+  window.translateWholePage = function(lang) {
+    if (lang !== 'en') return;
+    const dict = window.FULL_DICTIONARY || {};
+
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    while ((node = walker.nextNode())) {
+      const raw = node.nodeValue;
+      const trimmed = raw.trim();
+      if (trimmed && dict[trimmed]) {
+        node.nodeValue = raw.replace(trimmed, dict[trimmed]);
+      }
+    }
+
+    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(el => {
+      const ph = (el.getAttribute('placeholder') || '').trim();
+      if (ph && dict[ph]) el.setAttribute('placeholder', dict[ph]);
+    });
+
+    document.querySelectorAll('option').forEach(opt => {
+      const txt = opt.textContent.trim();
+      if (txt && dict[txt]) opt.textContent = dict[txt];
+    });
+  };
+
+  window.applyLanguageDictionary = function(lang) {
+    window.currentSiteLang = lang === 'en' ? 'en' : 'ar';
+    const dict = window.FULL_DICTIONARY || {};
+    const btn = document.getElementById('lang-toggle-btn');
+    if (btn) btn.textContent = window.currentSiteLang === 'en' ? 'العربية' : 'English';
+
+    if (window.currentSiteLang === 'en') {
+      document.title = dict["مؤسسة الحافظ للتنمية والخدمات | إشهار 2202 لسنة 2025"] || document.title;
+      window.translateWholePage('en');
+    } else {
+      location.reload();
+    }
+  };
+})();
