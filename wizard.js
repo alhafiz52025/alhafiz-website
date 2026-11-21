@@ -1355,7 +1355,12 @@
       }
 
       if (res && res.error) {
-        return showStepError('حدث خطأ أثناء حفظ البيانات في قاعدة البيانات: ' + res.error.message);
+        console.error('families insert failed:', res.error, attemptPayload);
+        return showStepError(
+          `حدث خطأ أثناء حفظ البيانات في قاعدة البيانات: ${res.error.message}` +
+          (res.error.details ? ` | التفاصيل: ${res.error.details}` : '') +
+          (res.error.hint ? ` | تلميح: ${res.error.hint}` : '')
+        );
       }
 
       const localCases = JSON.parse(localStorage.getItem('hf_local_families') || '[]');
