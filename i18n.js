@@ -464,10 +464,11 @@
 
     try {
       rebuildPairLists();
-      const toEn = targetLang === 'en';
-      window.currentSiteLang = targetLang;
+      const normalizedLang = targetLang === 'en' ? 'en' : 'ar';
+      const toEn = normalizedLang === 'en';
+      window.currentSiteLang = normalizedLang;
 
-      document.documentElement.lang = targetLang;
+      document.documentElement.lang = normalizedLang;
       document.documentElement.dir = toEn ? 'ltr' : 'rtl';
       document.body.dir = toEn ? 'ltr' : 'rtl';
       document.body.classList.toggle('lang-en', toEn);
@@ -478,57 +479,65 @@
           TEXT_ORIGINALS.set(document, document.title);
         }
         const baseTitle = TEXT_ORIGINALS.get(document);
-        document.title = toEn ? convertString(baseTitle, 'en') : baseTitle;
+        const nextTitle = toEn ? convertString(baseTitle, 'en') : baseTitle;
+        if (document.title !== nextTitle) {
+          document.title = nextTitle;
+        }
       }
 
-      updateButtonText(targetLang);
+      updateButtonText(normalizedLang);
 
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
       let node = walker.nextNode();
       while (node) {
-        try {
-          const parent = node.parentElement;
-          const tag = parent ? parent.tagName : '';
-          if (tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'NOSCRIPT') {
-            if (!TEXT_ORIGINALS.has(node)) {
-              TEXT_ORIGINALS.set(node, node.nodeValue);
-            }
-            const originalText = TEXT_ORIGINALS.get(node);
-            const nextText = toEn ? convertString(originalText, 'en') : convertString(originalText, 'ar');
-            if (node.nodeValue !== nextText) {
-              node.nodeValue = nextText;
-            }
+        const parent = node.parentElement;
+        const tag = parent ? parent.tagName : '';
+        if (tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'NOSCRIPT') {
+          if (!TEXT_ORIGINALS.has(node)) {
+            TEXT_ORIGINALS.set(node, node.nodeValue);
           }
-        } catch (_) {}
+          const originalText = TEXT_ORIGINALS.get(node);
+          const nextText = toEn ? convertString(originalText, 'en') : originalText;
+          if (node.nodeValue !== nextText) {
+            node.nodeValue = nextText;
+          }
+        }
         node = walker.nextNode();
       }
 
       const attrs = ['placeholder', 'title', 'aria-label', 'alt'];
       const els = document.body.getElementsByTagName('*');
       for (let i = 0; i < els.length; i++) {
-        try {
-          const el = els[i];
-          const tag = el.tagName;
-          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') continue;
+        const el = els[i];
+        const tag = el.tagName;
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') continue;
 
-          if (!ATTR_ORIGINALS.has(el)) {
-            const saved = {};
-            for (let a = 0; a < attrs.length; a++) {
-            const name = attrs[a];
-            if (!Object.prototype.hasOwnProperty.call(saved, name)) continue;
-            const origAttr = saved[name];
-            const nextAttr = toEn ? convertString(origAttr, 'en') : origAttr;
-            if (el.getAttribute(name) !== nextAttr) {
-              el.setAttribute(name, nextAttr);
-           }
-        } catch (_) {}
+        if (!ATTR_ORIGINALS.has(el)) {
+          const saved = {};
+          for (let a = 0; a < attrs.length; a++) {
+            const attrName = attrs[a];
+            if (el.hasAttribute(attrName)) {
+              saved[attrName] = el.getAttribute(attrName);
+            }
+          }
+          ATTR_ORIGINALS.set(el, saved);
+        }
+
+        const saved = ATTR_ORIGINALS.get(el);
+        for (let a = 0; a < attrs.length; a++) {
+          const attrName = attrs[a];
+          if (!Object.prototype.hasOwnProperty.call(saved, attrName)) continue;
+          const origAttr = saved[attrName];
+          const nextAttr = toEn ? convertString(origAttr, 'en') : origAttr;
+          if (el.getAttribute(name) !== nextAttr) {
+            el.setAttribute(attrName, nextAttr);
+          }
+        }
       }
-    } catch (_) {
     } finally {
       isTranslatingNow = false;
     }
-  }
-  window.t = function (arText, enText) {
+  }  window.t = function (arText, enText) {
     if (window.currentSiteLang === 'en') {
       if (typeof enText === 'string' && enText.length > 0) return enText;
       const dict = window.FULL_DICTIONARY || {};
