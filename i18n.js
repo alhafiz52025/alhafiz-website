@@ -520,8 +520,7 @@
             const nextAttr = toEn ? convertString(origAttr, 'en') : origAttr;
             if (el.getAttribute(name) !== nextAttr) {
               el.setAttribute(name, nextAttr);
-            }
-          }
+           }
         } catch (_) {}
       }
     } catch (_) {
@@ -529,7 +528,6 @@
       isTranslatingNow = false;
     }
   }
-
   window.t = function (arText, enText) {
     if (window.currentSiteLang === 'en') {
       if (typeof enText === 'string' && enText.length > 0) return enText;
