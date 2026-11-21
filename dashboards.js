@@ -11,6 +11,127 @@
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  function getCaseApplicantPhone(caseObj) {
+    if (!caseObj) return '';
+    const h = caseObj.husband_data || {};
+    const w = caseObj.wife_data || {};
+    return String(caseObj.phone || h.phone || w.phone || '').trim();
+  }
+
+  function getCaseApplicantName(caseObj) {
+    if (!caseObj) return 'صاحب الطلب';
+    const h = caseObj.husband_data || {};
+    const full = [h.name1, h.name2, h.name3].filter(Boolean).join(' ').trim();
+    return full || caseObj.applicant_name || 'صاحب الطلب';
+  }
+
+  function formatCaseStatusArabic(status) {
+    if (status === 'approved') return 'مقبول للصرف';
+    if (status === 'rejected') return 'مرفوض';
+    return 'قيد المراجعة';
+  }
+
+  async function buildStatusChangeNotificationMessage({ recipientName, code, entityLabel, statusLabel, replyNote = '', dayText = '', timeText = '', placeText = '' }) {
+    const cfg = typeof window.getFoundationSettings === 'function' ? await window.getFoundationSettings() : {};
+    const orgName = cfg.org_name || 'مؤسسة الحافظ للتنمية والخدمات';
+    const waPhone = cfg.phone_whatsapp || '01000880156';
+    const admPhone = cfg.phone_admin || '01155540066';
+
+    const lines = [
+      `${orgName}`,
+      `مرحباً أ/ ${recipientName || 'صاحب الطلب'}`,
+      `نفيدكم بأنه تم تحديث حالة (${entityLabel}) رقم (${code || '-'}) إلى: ${statusLabel}.`
+    ];
+    if (replyNote) {
+      lines.push(`الرد / الإفادة: ${replyNote}`);
+    }
+    if (dayText || timeText || placeText) {
+      lines.push(`--- تفاصيل الموعد والمكان ---`);
+      if (dayText) lines.push(`اليوم: ${dayText}`);
+      if (timeText) lines.push(`الميعاد: ${timeText}`);
+      if (placeText) lines.push(`المكان: ${placeText}`);
+    }
+    lines.push(`للتواصل والاستفسار: واتساب ${waPhone} | إدارة ${admPhone}`);
+    return lines.join('\n');
+  }
+
+  async function buildDisbursementPickupMessage(caseObj, scheduleInfo) {
+    const cfg = typeof window.getFoundationSettings === 'function' ? await window.getFoundationSettings() : {};
+    const orgName = cfg.org_name || 'مؤسسة الحافظ للتنمية والخدمات';
+    const waPhone = cfg.phone_whatsapp || '01000880156';
+    const admPhone = cfg.phone_admin || '01155540066';
+
+    const name = getCaseApplicantName(caseObj);
+    const code = caseObj.tracking_code || '-';
+    const aid = caseObj.intervention_type || 'المساعدة المقررة';
+    const mode = scheduleInfo.mode || 'hq';
+    const dayText = scheduleInfo.dayText || 'حسب الموعد المحدد';
+    const timeText = scheduleInfo.timeText || 'من 10:00 ص إلى 2:00 م';
+    const placeText = mode === 'call_for_location'
+      ? (scheduleInfo.placeText || 'يرجى التواصل معنا لمعرفة مكان الاستلام المحدد')
+      : (scheduleInfo.placeText || 'مقر مؤسسة الحافظ - عبد الصمد، مركز إهناسيا');
+
+    const lines = [
+      `${orgName}`,
+      `مرحباً أ/ ${name}`,
+      `تم اعتماد صرف (${aid}) لطلبكم رقم (${code}).`,
+      `اليوم: ${dayText}`,
+      `الميعاد: ${timeText}`,
+      `المكان: ${placeText}`
+    ];
+    if (scheduleInfo.extraNote) {
+      lines.push(`ملاحظات: ${scheduleInfo.extraNote}`);
+    }
+    lines.push(`نرجو الالتزام بالموعد المحدد لعدم الازدحام. للاستفسار: ${waPhone} / ${admPhone}`);
+    return lines.join('\n');
+  }
+
+  function showQuickMessageSendModal({ title, phone, defaultMessage }) {
+    let modal = document.getElementById('hf-quick-msg-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'hf-quick-msg-modal';
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center; padding:14px;';
+      document.body.appendChild(modal);
+    }
+    modal.classList.remove('hidden');
+    const cleanPhone = String(phone || '').trim();
+
+    modal.innerHTML = `
+      <div style="background:#fff; color:#0f172a; max-width:540px; width:100%; border-radius:14px; padding:20px;">
+        <h4 style="margin:0 0 10px; color:#064e3b;">${window.escapeHtml(title || 'إرسال رسالة إشعار')}</h4>
+        <label style="font-size:12px; font-weight:700;">رقم الهاتف:</label>
+        <input id="qmsg-phone" value="${window.escapeHtml(cleanPhone)}" placeholder="01xxxxxxxxx">
+        <label style="font-size:12px; font-weight:700;">نص الرسالة (يتضمن اليوم والميعاد والمكان):</label>
+        <textarea id="qmsg-body" rows="7" style="margin:0;">${window.escapeHtml(defaultMessage || '')}</textarea>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button type="button" id="qmsg-wa-btn" class="action-btn">💬 إرسال عبر واتساب</button>
+          <button type="button" id="qmsg-copy-btn" class="nav-btn btn-gold">📋 نسخ النص</button>
+          <button type="button" onclick="document.getElementById('hf-quick-msg-modal').classList.add('hidden')" class="nav-btn">إغلاق</button>
+        </div>
+      </div>`;
+
+    document.getElementById('qmsg-wa-btn').onclick = function() {
+      const targetPhone = (document.getElementById('qmsg-phone')?.value || '').trim();
+      const body = (document.getElementById('qmsg-body')?.value || '').trim();
+      if (!targetPhone) return alert('⚠️ لا يوجد رقم هاتف مسجل لهذا السجل.');
+      window.triggerInstantWhatsApp(targetPhone, body);
+    };
+
+    document.getElementById('qmsg-copy-btn').onclick = async function() {
+      const body = document.getElementById('qmsg-body')?.value || '';
+      try {
+        await navigator.clipboard.writeText(body);
+        alert('✅ تم نسخ نص الرسالة.');
+      } catch (_) {
+        const ta = document.getElementById('qmsg-body');
+        ta?.select();
+        document.execCommand('copy');
+        alert('✅ تم نسخ نص الرسالة.');
+      }
+    };
+  }
+
   window.getOfficialHeaderHtml = function(cfg) {
     const c = cfg || {};
     return `
@@ -126,7 +247,6 @@
     };
   }
 
-  // التوجيه الذكي حسب الصلاحية (أدمن أم عضو)
   window.routeLoggedInUser = async function(user) {
     document.getElementById('login-box')?.classList.add('hidden');
     document.getElementById('partner-register-box')?.classList.add('hidden');
@@ -141,7 +261,6 @@
     }
   };
 
-  // --- لوحة العضو المستقلة (باحث / متطوع / شريك / مانح) ---
   window.renderMemberPortal = async function(user) {
     const area = document.getElementById('dashboard-area');
     const roleNames = { researcher: 'باحث ميداني', volunteer: 'متطوع', partner: 'جهة شريكة', donor: 'جهة مانحة' };
@@ -379,7 +498,6 @@
       combined.map(label => `<option value="${window.escapeHtml(label)}">${window.escapeHtml(label)}</option>`).join('');
   }
 
-  // --- قسم الحالات مع الحفاظ على كشف الصرف والفلاتر كما هي + الاختيارات المتعددة والإسنادات والطباعة الكاملة ---
   window.renderAdminCasesSection = function() {
     const box = document.getElementById('admin-tab-cases');
     if (!box) return;
@@ -413,11 +531,15 @@
           <input id="flt-village" oninput="filterAndRenderCasesTable()" placeholder="القرية أو الاسم..." style="margin:0;">
           <input id="flt-limit" type="number" min="1" oninput="filterAndRenderCasesTable()" placeholder="العدد (50)" style="margin:0;">
         </div>
-        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center;">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin:0;">
             <input type="checkbox" id="chk-include-signature" checked style="width:auto; margin:0;"> خانة توقيع المستلم
           </label>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+            <select id="disbursement-print-mode" style="margin:0; padding:4px 8px; font-size:12px; font-weight:700;">
+              <option value="print_only">الطباعة فقط</option>
+              <option value="print_and_notify">طباعة وإرسال رسائل للاستلام</option>
+            </select>
             <button type="button" onclick="printOfficialDisbursementSheet()" class="action-btn" style="background:#b45309; padding:5px 10px; font-size:12px;">🖨️ كشف صرف</button>
             <button type="button" onclick="exportFilteredCasesCsv()" class="nav-btn btn-gold" style="padding:5px 10px; font-size:12px;">📥 CSV</button>
           </div>
@@ -722,7 +844,6 @@
     }
   }
 
-  // إسناد الجهات المانحة أو الشريكة (مستقل تماماً ولا يتعارض مع إسناد الأعضاء، ويسمح بتعدد الجهات)
   window.assignSelectedCasesToDonor = async function() {
     const selEl = document.getElementById('bulk-donor-select');
     const donorLabel = (selEl?.value || '').trim();
@@ -855,7 +976,7 @@
       const wifeName = [w.name1, w.name2, w.name3].filter(Boolean).join(' ') || '-';
       const memberAssigned = getCaseAssignedMemberDisplay(f) || 'غير مسند';
       const donorsAssigned = getCaseAssignedDonorsList(f).join('، ') || 'غير مسند';
-      const statusLabel = f.status === 'approved' ? 'مقبول' : (f.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة');
+      const statusLabel = formatCaseStatusArabic(f.status);
       const audit = getCaseAttachmentsAudit(f);
 
       return `
@@ -895,10 +1016,27 @@
     if (!window.supabaseClient) return;
     const { error } = await window.supabaseClient.from('families').update({ status }).eq('id', id);
     if (error) return alert('❌ تعذر تحديث قرار الحالة: ' + error.message);
-    const item = (window.ALL_ADMIN_CASES || []).find(x => x.id === id);
+
+    const item = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === String(id));
     if (item) item.status = status;
     window.refreshAdminSummaryCards();
-    alert('✅ تم تحديث قرار الحالة.');
+
+    const phone = getCaseApplicantPhone(item);
+    const name = getCaseApplicantName(item);
+    const code = item?.tracking_code || '';
+    const statusAr = formatCaseStatusArabic(status);
+    const msg = await buildStatusChangeNotificationMessage({
+      recipientName: name,
+      code,
+      entityLabel: 'الطلب',
+      statusLabel: statusAr
+    });
+
+    showQuickMessageSendModal({
+      title: `تم تحديث حالة الطلب (${code}) إلى: ${statusAr}`,
+      phone,
+      defaultMessage: msg
+    });
   };
 
   window.adminDeleteCase = async function(id) {
@@ -912,12 +1050,8 @@
     window.filterAndRenderCasesTable();
   };
 
-  window.printOfficialDisbursementSheet = async function() {
-    const list = window.getDisbursementCases();
-    if (list.length === 0) return alert('⚠️ لا توجد حالات مقبولة أو مطابقة في الكشف للطباعة.');
-    const withSig = document.getElementById('chk-include-signature')?.checked;
+  async function executePrintDisbursementSheet(list, withSig) {
     const cfg = await window.getFoundationSettings();
-
     const rowsHtml = list.map((f, idx) => {
       const h = f.husband_data || {};
       const name = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
@@ -964,6 +1098,122 @@
       <script>window.onload=function(){window.print();};<\/script>
       </body></html>`);
     w.document.close();
+  }
+
+  function openDisbursementScheduleAndNotifyModal(list, withSig) {
+    let modal = document.getElementById('hf-disbursement-notify-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'hf-disbursement-notify-modal';
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center; padding:14px;';
+      document.body.appendChild(modal);
+    }
+    modal.classList.remove('hidden');
+
+    modal.innerHTML = `
+      <div style="background:#fff; color:#0f172a; max-width:620px; width:100%; border-radius:14px; padding:20px; max-height:90vh; overflow-y:auto;">
+        <h4 style="margin:0 0 10px; color:#064e3b;">🖨️ طباعة الكشف وإرسال رسائل الاستلام (${list.length} حالة)</h4>
+        <div class="grid-2">
+          <div>
+            <label style="font-size:12px; font-weight:700;">اليوم:</label>
+            <input id="dsb-day" placeholder="مثال: الاثنين 23/11/2026" style="margin:0;">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700;">الميعاد:</label>
+            <input id="dsb-time" placeholder="مثال: من 10:00 ص إلى 2:00 م" style="margin:0;">
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <label style="font-size:12px; font-weight:700;">آلية تحديد مكان الاستلام:</label>
+          <select id="dsb-place-mode" onchange="toggleDisbursementPlaceInput()" style="margin:0;">
+            <option value="hq">الاستلام من مقر المؤسسة (عبد الصمد - مركز إهناسيا)</option>
+            <option value="call_for_location">الاتصال بنا لمعرفة مكان الاستلام المحدد</option>
+            <option value="custom">تحديد مكان مخصص</option>
+          </select>
+        </div>
+        <div style="margin-top:8px;">
+          <label style="font-size:12px; font-weight:700;">تفاصيل المكان / التنسيق:</label>
+          <input id="dsb-place-custom" value="مقر مؤسسة الحافظ - عبد الصمد، مركز إهناسيا" style="margin:0;">
+        </div>
+        <div style="margin-top:8px;">
+          <label style="font-size:12px; font-weight:700;">ملاحظة إضافية (اختياري):</label>
+          <input id="dsb-extra-note" placeholder="مثال: إحضار بطاقة الرقم القومي" style="margin:0;">
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button type="button" id="dsb-print-now-btn" class="action-btn">🖨️ طباعة كشف الصرف الآن</button>
+          <button type="button" id="dsb-build-msgs-btn" class="nav-btn btn-gold">✉️ تجهيز قائمة رسائل الاستلام</button>
+          <button type="button" onclick="document.getElementById('hf-disbursement-notify-modal').classList.add('hidden')" class="nav-btn">إغلاق</button>
+        </div>
+
+        <div id="dsb-recipients-list" style="margin-top:14px;"></div>
+      </div>`;
+
+    window.toggleDisbursementPlaceInput = function() {
+      const mode = document.getElementById('dsb-place-mode')?.value;
+      const inp = document.getElementById('dsb-place-custom');
+      if (!inp) return;
+      if (mode === 'hq') inp.value = 'مقر مؤسسة الحافظ - عبد الصمد، مركز إهناسيا';
+      else if (mode === 'call_for_location') inp.value = 'يرجى التواصل معنا لمعرفة مكان الاستلام المحدد';
+      else inp.value = '';
+    };
+
+    document.getElementById('dsb-print-now-btn').onclick = function() {
+      executePrintDisbursementSheet(list, withSig);
+    };
+
+    document.getElementById('dsb-build-msgs-btn').onclick = async function() {
+      const scheduleInfo = {
+        mode: document.getElementById('dsb-place-mode')?.value || 'hq',
+        dayText: (document.getElementById('dsb-day')?.value || '').trim(),
+        timeText: (document.getElementById('dsb-time')?.value || '').trim(),
+        placeText: (document.getElementById('dsb-place-custom')?.value || '').trim(),
+        extraNote: (document.getElementById('dsb-extra-note')?.value || '').trim()
+      };
+
+      const container = document.getElementById('dsb-recipients-list');
+      if (!container) return;
+
+      const cards = await Promise.all(list.map(async (c, idx) => {
+        const name = getCaseApplicantName(c);
+        const phone = getCaseApplicantPhone(c);
+        const msgText = await buildDisbursementPickupMessage(c, scheduleInfo);
+        return `
+          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-bottom:8px; background:#f8fafc;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div>
+                <strong>${idx + 1}- ${window.escapeHtml(name)}</strong>
+                <small>(كود: ${window.escapeHtml(c.tracking_code || '-')} | هاتف: ${window.escapeHtml(phone || 'غير مسجل')})</small>
+              </div>
+              <button type="button" class="nav-btn btn-gold dsb-send-item-btn" data-phone="${window.escapeHtml(phone)}" style="padding:4px 8px; font-size:11px;">💬 إرسال واتساب</button>
+            </div>
+            <textarea class="dsb-item-msg-text" rows="5" style="margin:6px 0 0; font-size:11px;">${window.escapeHtml(msgText)}</textarea>
+          </div>`;
+      }));
+
+      container.innerHTML = cards.join('');
+      container.querySelectorAll('.dsb-send-item-btn').forEach((btn, idx) => {
+        btn.onclick = function() {
+          const p = btn.getAttribute('data-phone') || '';
+          const txt = container.querySelectorAll('.dsb-item-msg-text')[idx]?.value || '';
+          if (!p) return alert('⚠️ لا يوجد رقم هاتف مسجل لهذه الحالة.');
+          window.triggerInstantWhatsApp(p, txt);
+        };
+      });
+    };
+  }
+
+  window.printOfficialDisbursementSheet = async function() {
+    const list = window.getDisbursementCases();
+    if (list.length === 0) return alert('⚠️ لا توجد حالات مقبولة أو مطابقة في الكشف للطباعة.');
+    const withSig = Boolean(document.getElementById('chk-include-signature')?.checked);
+    const mode = document.getElementById('disbursement-print-mode')?.value || 'print_only';
+
+    if (mode === 'print_and_notify') {
+      openDisbursementScheduleAndNotifyModal(list, withSig);
+      return;
+    }
+    await executePrintDisbursementSheet(list, withSig);
   };
 
   window.exportFilteredCasesCsv = function() {
@@ -989,7 +1239,6 @@
     a.click();
   };
 
-  // --- إقرارات الاستلام بالترويسة والتذييل الرسمي والتعهد القانوني ---
   window.openReceiptDeclarationModal = function(caseId) {
     const f = (window.ALL_ADMIN_CASES || []).find(x => x.id === caseId);
     if (!f) return;
@@ -1077,7 +1326,6 @@
     w.document.close();
   };
 
-  // --- إدارة الأعضاء وطلبات الانضمام والصلاحيات والرمز المؤقت ---
   window.renderAdminMembersSection = async function() {
     const box = document.getElementById('admin-tab-members');
     if (!box) return;
@@ -1196,7 +1444,6 @@
     window.renderAdminMembersSection();
   };
 
-  // --- 1. إدارة المنح والمبادرات المفتوحة ---
   window.renderAdminAnnouncementsSection = async function() {
     const box = document.getElementById('admin-tab-announcements');
     if (!box) return;
@@ -1264,7 +1511,6 @@
     window.renderAdminAnnouncementsSection();
   };
 
-  // --- 2. إدارة الإنجازات وأرقام الأثر الميداني ---
   window.renderAdminAchievementsSection = async function() {
     const box = document.getElementById('admin-tab-achievements');
     if (!box) return;
@@ -1334,7 +1580,6 @@
     window.renderAdminAchievementsSection();
   };
 
-  // --- 3. التظلمات (جار المراجعة - تم الرد - إسناد لباحث أو عضو - حذف) ---
   window.renderAdminGrievancesSection = async function() {
     const box = document.getElementById('admin-tab-grievances');
     if (!box) return;
@@ -1409,6 +1654,7 @@
   };
 
   window.adminSetGrievanceStatus = async function(id, newStatus) {
+    const gItem = (window.ALL_ADMIN_GRIEVANCES || []).find(x => String(x.id) === String(id));
     let replyNote = '';
     if (newStatus === 'تم الرد') {
       const entered = prompt('اكتب نص الرد على التظلم (اختياري):', '');
@@ -1424,10 +1670,26 @@
       const fallback = await window.supabaseClient.from('grievances').update({ status: newStatus }).eq('id', id);
       if (fallback.error) return alert('❌ تعذر تحديث حالة التظلم: ' + fallback.error.message);
     }
-    window.renderAdminGrievancesSection();
+
+    await window.renderAdminGrievancesSection();
+
+    const msg = await buildStatusChangeNotificationMessage({
+      recipientName: gItem?.full_name || 'صاحب التظلم',
+      code: gItem?.tracking_code || '',
+      entityLabel: 'التظلم',
+      statusLabel: newStatus,
+      replyNote
+    });
+
+    showQuickMessageSendModal({
+      title: `تم تحديث حالة التظلم (${gItem?.tracking_code || ''}) إلى: ${newStatus}`,
+      phone: gItem?.phone || '',
+      defaultMessage: msg
+    });
   };
 
   window.adminAssignGrievance = async function(id) {
+    const gItem = (window.ALL_ADMIN_GRIEVANCES || []).find(x => String(x.id) === String(id));
     const sel = document.getElementById(`grv-assignee-sel-${id}`);
     const email = (sel?.value || '').trim();
     const name = sel?.options[sel.selectedIndex]?.text || '';
@@ -1439,8 +1701,21 @@
       const fallback = await window.supabaseClient.from('grievances').update({ status: 'جار المراجعة' }).eq('id', id);
       if (fallback.error) return alert('❌ تعذر إسناد التظلم: ' + fallback.error.message);
     }
-    window.renderAdminGrievancesSection();
-    alert('✅ تم إسناد التظلم بنجاح.');
+
+    await window.renderAdminGrievancesSection();
+
+    const msg = await buildStatusChangeNotificationMessage({
+      recipientName: gItem?.full_name || 'صاحب التظلم',
+      code: gItem?.tracking_code || '',
+      entityLabel: 'التظلم',
+      statusLabel: `جار المراجعة (مسند إلى: ${name})`
+    });
+
+    showQuickMessageSendModal({
+      title: `تم إسناد التظلم (${gItem?.tracking_code || ''}) وتحديث حالته`,
+      phone: gItem?.phone || '',
+      defaultMessage: msg
+    });
   };
 
   window.adminDeleteGrievance = async function(id) {
