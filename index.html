@@ -25,14 +25,14 @@
     .brand h1 { margin: 0; font-size: 19px; color: var(--primary-dark); }
     .brand p { margin: 0; font-size: 11px; color: var(--accent); font-weight: 700; }
     .nav-links { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .nav-btn { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 7px 11px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; }
+    .nav-btn { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 7px 11px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
     .nav-btn:hover { background: #e2e8f0; }
     .btn-primary { background: var(--primary); color: #fff; border: none; }
     .btn-gold { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
     .btn-dark { background: #0f172a; color: #fff; border: none; }
     .container { max-width: 1160px; margin: 20px auto; padding: 0 14px; }
     .card { background: var(--card-bg); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid var(--border); margin-bottom: 18px; }
-    .action-btn { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; }
+    .action-btn { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     input, select, textarea { width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; font-size: 13px; background: var(--card-bg); color: var(--text-color); }
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
@@ -41,9 +41,17 @@
     th, td { border: 1px solid #cbd5e1; padding: 7px 10px; text-align: right; font-size: 12px; }
     th { background: var(--primary-dark); color: #fff; }
     .guidance-banner { background: #ecfdf5; border: 1px solid #a7f3d0; border-right: 5px solid var(--primary); color: #064e3b; padding: 12px 14px; border-radius: 10px; margin-top: 14px; font-size: 13px; font-weight: 700; }
+    .faq-item { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-color); }
+    .faq-item summary { font-weight: 700; cursor: pointer; color: var(--primary-dark); font-size: 14px; }
+    .faq-answer { margin-top: 8px; font-size: 13px; line-height: 1.85; }
+    .faq-answer ul { margin: 6px 0 8px; padding-right: 20px; }
+    .policy-modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 14px; }
+    .policy-modal-card { background: var(--card-bg); color: var(--text-color); max-width: 780px; width: 100%; max-height: 88vh; overflow-y: auto; border-radius: 14px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 20px 45px rgba(0,0,0,0.25); }
+    .policy-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
     footer { background: var(--primary-dark); color: #ecfdf5; padding: 28px 18px; margin-top: 36px; font-size: 13px; }
-    footer a { color: #fde68a; display: block; margin-bottom: 6px; text-decoration: none; }
-    @media print { .top-bar, .accessibility-bar, nav, footer, .no-print { display: none !important; } body { background: #fff !important; color: #000 !important; } }
+    footer a { color: #fde68a; display: inline-block; margin-bottom: 6px; text-decoration: none; cursor: pointer; }
+    footer a:hover { text-decoration: underline; }
+    @media print { .top-bar, .accessibility-bar, nav, footer, .no-print, .policy-modal-backdrop { display: none !important; } body { background: #fff !important; color: #000 !important; } }
   </style>
 </head>
 <body id="body-font-size">
@@ -55,8 +63,8 @@
   <div class="top-bar">
     <span data-i18n="topBarReg">🏛️ مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025 (بني سويف)</span>
     <div>
-      <a href="https://wa.me" target="_blank" rel="noopener" data-i18n="whatsappLink">💬 واتساب: 01000880156</a>
-      <a href="https://facebook.com" target="_blank" rel="noopener" data-i18n="facebookLink">📘 فيسبوك</a>
+      <a id="top-wa-link" href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%83%D9%85." target="_blank" rel="noopener noreferrer" data-i18n="whatsappLink">💬 واتساب: 01000880156</a>
+      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" data-i18n="facebookLink">📘 فيسبوك</a>
     </div>
   </div>
   <nav>
@@ -77,7 +85,7 @@
         <button type="button" onclick="showSection('apply')" class="nav-btn btn-primary" data-i18n="navApply">+ طلب مساعدة</button>
         <button type="button" onclick="showSection('track')" class="nav-btn btn-gold" data-i18n="navTrack">🔍 استعلام</button>
         <button type="button" onclick="showSection('contact')" class="nav-btn" data-i18n="navContact">📞 اتصل بنا</button>
-        <button type="button" onclick="showSection('privacy')" class="nav-btn" data-i18n="navPrivacy">🔒 الخصوصية</button>
+        <button type="button" onclick="openPolicyModal('privacy')" class="nav-btn" data-i18n="navPrivacy">🔒 الخصوصية</button>
         <button type="button" onclick="showSection('login')" class="nav-btn btn-dark" data-i18n="navLogin">🔐 دخول</button>
       </div>
     </div>
@@ -97,6 +105,7 @@
           <button type="button" onclick="showSection('apply')" class="action-btn" style="background: #d97706; color: #0f172a;" data-i18n="heroCtaCase">+ تسجيل حالة مستحقة</button>
           <button type="button" onclick="showSection('announcements')" class="action-btn" style="background: #fef3c7; color: #92400e;" data-i18n="navAnnouncements">📢 المنح والمبادرات المفتوحة</button>
           <a href="#donate-box" class="action-btn" style="background: #fff; color: #064e3b; text-decoration: none;" data-i18n="heroCtaDonate">حسابات التبرع الرسمية</a>
+          <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%D9%83%D9%85." target="_blank" rel="noopener noreferrer" class="action-btn" style="background: #15803d; color: #fff; text-decoration: none;">💬 تواصل واتساب مباشر</a>
         </div>
       </div>
 
@@ -135,13 +144,16 @@
           <div style="background: #fffbeb; padding: 14px; border-radius: 12px; border: 1px solid #fde68a;">
             <p style="font-weight: 800; color: #92400e; margin: 0 0 6px;" data-i18n="walletTitle">محفظة فودافون كاش المعتمدة</p>
             <p style="font-size: 17px; font-weight: 800; margin: 0 0 10px; color:#0f172a;">01000880156</p>
-            <button type="button" onclick="copyText('01000880156')" class="nav-btn" data-i18n="copyBtn">📋 نسخ رقم المحفظة</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" onclick="copyText('01000880156')" class="nav-btn" data-i18n="copyBtn">📋 نسخ رقم المحفظة</button>
+              <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A5%D8%B1%D8%B3%D8%A7%D9%84%20%D8%A5%D9%8A%D8%B5%D8%A7%D9%84%20%D8%AA%D8%A8%D8%B1%D8%B9%20%D9%88%D8%A7%D8%B3%D8%AA%D9%84%D8%A7%D9%85%20%D8%A7%D9%84%D8%A5%D9%8A%D8%B5%D8%A7%D9%84%20%D8%A7%D9%84%D8%B1%D8%B3%D9%85%D9%8A." target="_blank" rel="noopener noreferrer" class="nav-btn btn-gold">💬 إرسال إيصال التحويل</a>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
-   <!-- 2. من نحن والهيكل التنظيمي والحوكمة والسياسات -->
+    <!-- 2. من نحن والهيكل التنظيمي (بدون تكديس السياسات الطويلة في الصفحة الرئيسية) -->
     <section id="section-about" class="hidden">
       <div class="card">
         <h3 style="color: var(--primary-dark); margin-top: 0;">1. من نحن</h3>
@@ -222,33 +234,13 @@
       </div>
 
       <div class="card">
-        <h3 style="color: var(--primary-dark); margin-top: 0;">إطار الحوكمة المؤسسية وتطبيقها</h3>
-        <p style="font-size: 14px;">تلتزم مؤسسة الحافظ للتنمية والخدمات بتطبيق مبادئ الحوكمة الرشيدة كركيزة أساسية لضمان استدامة العمل الخيري وبناء الثقة مع المجتمع والجهات الرقابية، وذلك من خلال:</p>
-        <ul style="font-size: 14px; line-height: 1.9; padding-right: 18px; margin: 0;">
-          <li><strong>1. الفصل الواضح بين السلطات:</strong> تحديد دقيق للصلاحيات والمسؤوليات بين مجلس الأمناء (الجهة التشريعية والرقابية) والإدارة التنفيذية واللجان الميدانية (جهة التنفيذ).</li>
-          <li><strong>2. الرقابة المالية والإدارية:</strong> اعتماد نظم محاسبية دقيقة، ومراجعة مالية دورية من قِبل مراقب حسابات قانوني معتمد، والالتزام التام بقوانين ولوائح وزارة التضامن الاجتماعي.</li>
-          <li><strong>3. معايير الاستحقاق والبحث الميداني:</strong> تطبيق قواعد صارمة وموثقة لبحث الحالات اجتماعيًا وميدانيًا لضمان وصول الدعم لمستحقيه دون أي تمييز.</li>
-          <li><strong>4. المساءلة وتقييم الأثر:</strong> قياس نتائج المشروعات والمساعدات بشكل دوري للتأكد من تحقيق الأهداف التنموية المرجوة وتطوير الأداء باستمرار.</li>
-        </ul>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <h3 style="color: var(--primary-dark); margin-top: 0;">سياسة قبول التبرعات والشفافية المالية</h3>
-          <ul style="font-size: 14px; line-height: 1.9; padding-right: 18px; margin: 0;">
-            <li><strong>1. مشروعية مصادر التمويل:</strong> تقبل المؤسسة التبرعات النقدية والعينية والزكوات والصدقات من الأفراد والمؤسسات والجهات المانحة داخل جمهورية مصر العربية (ومن الخارج بعد الحصول على الموافقات الرسمية من وزارة التضامن الاجتماعي)، بشرط أن تكون من مصادر مشروعة وقانونية.</li>
-            <li><strong>2. رفض التبرعات المشروطة بما يخالف الأهداف:</strong> ترفض المؤسسة أي تبرع يمس استقلاليتها، أو يتعارض مع قيمها وأهدافها التنموية، أو يفرض شروطًا تمييزية بين المستفيدين.</li>
-            <li><strong>3. التوثيق وإيصالات الاستلام:</strong> تُصدر المؤسسة إيصالات رسمية مختومة ومعتمدة لكافة التبرعات النقدية والعينية، وتُودع كافة الأموال في الحسابات البنكية الرسمية للمؤسسة.</li>
-            <li><strong>4. توجيه التبرعات المخصصة:</strong> تلتزم المؤسسة بتوجيه التبرعات المخصصة لبند معين (مثل: وصلات المياه، الأسقف، الكفالات، أو الزكاة) إلى مصرفها المحدد بدقة وأمانة تامة.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3 style="color: var(--primary-dark); margin-top: 0;">سياسة منع تضارب المصالح</h3>
-          <ul style="font-size: 14px; line-height: 1.9; padding-right: 18px; margin: 0;">
-            <li><strong>1. النزاهة والحياد:</strong> يلتزم أعضاء مجلس الأمناء، والعاملون، والمتطوعون بتغليب مصلحة المؤسسة والمستفيدين على أي مصلحة شخصية، أو عائلية، أو تجارية.</li>
-            <li><strong>2. الإفصاح المسبق:</strong> يجب على أي عضو أو موظف الإفصاح الكتابي الفوري لمجلس الأمناء عن أي صلة قرابة أو مصلحة مالية مباشرة أو غير مباشرة قد تنشأ عند التعاقد مع موردين أو عند بحث حالات مستفيدين، والامتناع عن التصويت أو المشاركة في اتخاذ القرار بشأنها.</li>
-            <li><strong>3. حظر استغلال المنصب:</strong> يُحظر استغلال الصفة الوظيفية أو التطوعية في المؤسسة لتحقيق أي مكاسب مادية أو معنوية شخصية.</li>
-          </ul>
+        <h3 style="color: var(--primary-dark); margin-top: 0;">📜 الوثائق المؤسسية والسياسات</h3>
+        <p style="font-size: 13px; color: #64748b; margin-top: 0;">يمكنك الاطلاع على السياسات واللوائح التفصيلية في نافذة مستقلة لسهولة التصفح:</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" onclick="openPolicyModal('governance')" class="nav-btn btn-gold">إطار الحوكمة المؤسسية</button>
+          <button type="button" onclick="openPolicyModal('donations')" class="nav-btn btn-gold">سياسة قبول التبرعات</button>
+          <button type="button" onclick="openPolicyModal('conflict')" class="nav-btn btn-gold">سياسة منع تضارب المصالح</button>
+          <button type="button" onclick="openPolicyModal('privacy')" class="nav-btn btn-gold">سياسة الخصوصية</button>
         </div>
       </div>
 
@@ -258,7 +250,7 @@
           <li><strong>اسم المؤسسة:</strong> مؤسسة الحافظ للتنمية والخدمات</li>
           <li><strong>رقم الإشهار:</strong> 2202 لسنة 2025 (وزارة التضامن الاجتماعي)</li>
           <li><strong>المقر الرئيسي:</strong> مركز إهناسيا – محافظة بني سويف</li>
-          <li><strong>أرقام التواصل والواتساب:</strong> 01155540066 / 01000880156</li>
+          <li><strong>أرقام التواصل والواتساب:</strong> <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA." target="_blank" rel="noopener noreferrer">01000880156 (واتساب مباشر)</a> / 01155540066</li>
         </ul>
       </div>
     </section>
@@ -280,13 +272,14 @@
         <div id="public-achievements-container" class="grid-3" style="margin-top: 16px;"></div>
       </div>
     </section>
+
     <!-- 5. الأسئلة الشائعة -->
     <section id="section-faq" class="hidden">
       <div class="card">
         <h3 style="color: var(--primary-dark); margin-top: 0;" data-i18n="faqTitle">❓ الأسئلة الشائعة للمستفيدين والشركاء</h3>
         <div id="faq-dynamic-list" style="display: flex; flex-direction: column; gap: 12px; margin-top: 14px;"></div>
         <div class="guidance-banner" data-i18n="faqGuidance">
-          في حال وجود أي مشكلة أو استفسار خاص بطلبك، يرجى التوجه إلى مقر المؤسسة أو الدخول إلى شاشة التظلمات السرية، وسوف نرد على حضراتكم في أقرب وقت مع تحيات مؤسسة الحافظ.
+          في حال وجود أي مشكلة أو استفسار خاص بطلبك، يرجى التوجه إلى مقر المؤسسة أو الدخول إلى شاشة التظلمات السرية أو التواصل عبر الواتساب (01000880156)، وسوف نرد على حضراتكم في أقرب وقت مع تحيات مؤسسة الحافظ.
         </div>
       </div>
     </section>
@@ -317,6 +310,7 @@
         <div id="track-result"></div>
       </div>
     </section>
+
     <!-- 8. اتصل بنا والتظلمات السرية -->
     <section id="section-contact" class="hidden">
       <div class="card">
@@ -325,7 +319,12 @@
           <div>
             <h4>📍 بيانات المقرات والتواصل المباشر</h4>
             <p style="font-size: 13px;"><strong>المقر الرئيسي:</strong> منشأة عبد الصمد – مركز إهناسيا – بني سويف</p>
-            <p style="font-size: 13px;"><strong>واتساب الرسمي:</strong> 01000880156 | <strong>البريد:</strong> alhafiz52025@gmail.com</p>
+            <p style="font-size: 13px;">
+              <strong>واتساب الرسمي:</strong>
+              <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%D9%83%D9%85." target="_blank" rel="noopener noreferrer">01000880156 (تواصل مباشر)</a>
+              | <strong>البريد:</strong> alhafiz52025@gmail.com
+            </p>
+            <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%D9%83%D9%85." target="_blank" rel="noopener noreferrer" class="action-btn" style="text-decoration:none; margin-top:6px;">💬 فتح محادثة واتساب فورية</a>
           </div>
           <div>
             <h4 data-i18n="grievanceTitle">⚖️ نموذج التظلمات السرية</h4>
@@ -343,20 +342,7 @@
       </div>
     </section>
 
-    <!-- 9. سياسة الخصوصية و 10. بوابة الدخول -->
-      <section id="section-privacy" class="hidden">
-      <div class="card">
-        <h3 style="color: var(--primary-dark); margin-top: 0;">🔒 سياسة الخصوصية وحماية البيانات</h3>
-        <p style="font-size: 14px;">تلتزم المؤسسة بأعلى معايير الخصوصية والسرية في جمع ومعالجة وحماية البيانات الشخصية لكافة المتعاملين معها (متبرعين، مستفيدين، متطوعين، وشركاء)، وفقًا لأحكام القانون المصري رقم 151 لسنة 2020:</p>
-        <ul style="font-size: 14px; line-height: 1.9; padding-right: 18px; margin: 0;">
-          <li><strong>1. البيانات التي نجمعها وأغراضها:</strong> تُجمع البيانات الشخصية والاجتماعية والمالية بالقدر اللازم فقط لدراسة استحقاق الأسر، وتنفيذ المشروعات، وتوثيق التبرعات وإصدار الإيصالات الرسمية، والامتثال لمتطلبات وزارة التضامن الاجتماعي.</li>
-          <li><strong>2. حماية كرامة المستفيدين وضوابط التصوير:</strong> يُحظر تمامًا نشر أي بيانات شخصية أو مستندات رسمية للمستفيدين. ولا يتم التقاط أو نشر أي صور للمستفيدين إلا بموافقتهم الصريحة المسبقة وبما يصون كرامتهم الإنسانية.</li>
-          <li><strong>3. سرية البيانات وعدم مشاركتها:</strong> تتعهد المؤسسة بعدم بيع أو مشاركة البيانات مع أي طرف ثالث لأغراض تجارية. وتنحصر المشاركة في الجهات الرقابية الرسمية، والبنوك المعتمدة لإتمام المعاملات، والجمعيات الشريكة في المشروعات المشتركة تحت التزام كامل بالسرية.</li>
-          <li><strong>4. أمن المعلومات وحقوق أصحاب البيانات:</strong> تُحفظ السجلات الورقية والإلكترونية في بيئة آمنة يقتصر الاطلاع عليها على المخولين فقط، ويحق لأي متعامل طلب تحديث بياناته أو إيقاف الرسائل الإخبارية في أي وقت.</li>
-        </ul>
-      </div>
-    </section>
-
+    <!-- 9. بوابة الدخول -->
     <section id="section-login" class="hidden">
       <div id="login-box" class="card" style="max-width: 440px; margin: 20px auto; text-align: center;">
         <h3 style="color: var(--primary-dark); margin-top: 0;" data-i18n="loginTitle">🔐 بوابة الدخول الموحدة</h3>
@@ -373,17 +359,183 @@
 
   </div>
 
+  <!-- نافذة منبثقة للسياسات والحوكمة -->
+  <div id="policy-modal" class="policy-modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="policy-modal-title">
+    <div class="policy-modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px;">
+        <h3 id="policy-modal-title" style="margin:0; color:var(--primary-dark);">السياسات والحوكمة</h3>
+        <button type="button" onclick="closePolicyModal()" class="nav-btn">✕ إغلاق</button>
+      </div>
+      <div class="policy-tabs">
+        <button type="button" id="ptab-governance" onclick="switchPolicyTab('governance')" class="nav-btn btn-gold">إطار الحوكمة</button>
+        <button type="button" id="ptab-donations" onclick="switchPolicyTab('donations')" class="nav-btn btn-gold">سياسة قبول التبرعات</button>
+        <button type="button" id="ptab-conflict" onclick="switchPolicyTab('conflict')" class="nav-btn btn-gold">منع تضارب المصالح</button>
+        <button type="button" id="ptab-privacy" onclick="switchPolicyTab('privacy')" class="nav-btn btn-gold">سياسة الخصوصية</button>
+      </div>
+      <div id="policy-modal-body" style="font-size:14px; line-height:1.9;"></div>
+    </div>
+  </div>
+
   <footer>
     <div style="max-width: 1100px; margin: auto;" class="grid-3">
       <div>
         <h4 style="color: #fde68a; margin-top: 0;">مؤسسة الحافظ للتنمية والخدمات</h4>
         <p>مؤسسة أهلية تنموية مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي.</p>
+        <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA." target="_blank" rel="noopener noreferrer">💬 واتساب رسمي: 01000880156</a>
+      </div>
+      <div>
+        <h4 style="color: #fde68a; margin-top: 0;">الشفافية والسياسات</h4>
+        <a onclick="openPolicyModal('governance')">• إطار الحوكمة المؤسسية</a><br>
+        <a onclick="openPolicyModal('donations')">• سياسة قبول التبرعات والشفافية المالية</a><br>
+        <a onclick="openPolicyModal('conflict')">• سياسة منع تضارب المصالح</a><br>
+        <a onclick="openPolicyModal('privacy')">• سياسة الخصوصية وحماية البيانات</a>
+      </div>
+      <div>
+        <h4 style="color: #fde68a; margin-top: 0;">روابط سريعة</h4>
+        <a onclick="showSection('faq')">• الأسئلة الشائعة والأوراق المطلوبة</a><br>
+        <a onclick="showSection('apply')">• تقديم طلب مساعدة</a><br>
+        <a onclick="showSection('track')">• الاستعلام عن حالة طلب</a><br>
+        <a onclick="showSection('contact')">• اتصل بنا والتظلمات</a>
       </div>
     </div>
     <p style="text-align: center; border-top: 1px solid var(--primary); padding-top: 14px; margin-top: 16px;">
       © 2026 جميع الحقوق محفوظة لمؤسسة الحافظ للتنمية والخدمات
     </p>
   </footer>
+
+  <script>
+    (function() {
+      const FAQ_ITEMS = [
+        {
+          q: '1. ما هي الأوراق المطلوبة للتقديم على طلب مساعدة؟',
+          aHtml: `
+            <p style="margin:0 0 6px;">يُرجى تجهيز المستندات التالية بحسب حالة الأسرة وطبيعة الطلب:</p>
+            <ul>
+              <li>صور بطاقات الرقم القومي السارية للزوج والزوجة والأبناء لمن هم فوق 18 عاماً.</li>
+              <li>شهادات الميلاد للأبناء أقل من 18 عاماً.</li>
+              <li>إثبات قيد مدرسي أو إثبات قيد جامعي أو صورة كارنيه الجامعة.</li>
+              <li>برنت تأميني للزوج والزوجة، أو بيان معاش بالنسبة لمن يتقاضى معاشاً.</li>
+              <li>بحث اجتماعي معتمد من الشؤون الاجتماعية.</li>
+              <li>جواب عدم وجود حيازة زراعية.</li>
+              <li>التقارير الطبية بالنسبة للمريض، وكارت الخدمات المتكاملة إن وُجد، وروشتة علاجية لمن يصرف علاجاً شهرياً.</li>
+              <li>قسيمة الزواج أو الشهادة الصحية بالنسبة لأبحاث الزواج.</li>
+              <li>عقد إيجار لمن يسكن بالإيجار.</li>
+              <li>رقم تليفون ورقم واتساب للتواصل (إن وُجد).</li>
+            </ul>
+            <small style="color:#065f46; font-weight:700;">ملاحظة: يتم استيفاء المستندات التخصصية بحسب نوع المساعدة وحالة الأسرة، ويوضح الباحث الميداني أي تفاصيل إضافية أثناء الفحص.</small>
+          `
+        },
+        {
+          q: '2. كيف أعرف نتيجة طلبي بعد التسجيل؟',
+          aHtml: 'بمجرد إرسال الاستمارة، سيصلك رقم طلب مكون من حروف وأرقام (مثل: HF-2026-10001) عبر الواتساب. يمكنك إدخال هذا الكود في خانة "الاستعلام الفوري عن طلب" بالموقع لمتابعة حالة طلبك لحظة بلحظة.'
+        },
+        {
+          q: '3. كم يستغرق فحص الطلب والرد عليه؟',
+          aHtml: 'يتم مراجعة البيانات مبدئيًا خلال 48 ساعة، ثم يتواصل معك الباحث الميداني لتحديد موعد زيارة منزلية للتأكد من الاستحقاق، وتظهر النتيجة النهائية على الموقع خلال 7 إلى 14 يوم عمل.'
+        },
+        {
+          q: '4. هل خدمات المؤسسة مقتصرة على مركز إهناسيا فقط؟',
+          aHtml: 'تركز المؤسسة بشكل أساسي على مركز إهناسيا وقرى محافظة بني سويف كأولوية أولى، مع امتداد بعض المبادرات والخدمات لتشمل باقي محافظات الجمهورية وفقًا للإمكانيات المتاحة.'
+        },
+        {
+          q: '5. كيف أضمن وصول تبرعي لمستحقيه وأحصل على إيصال؟',
+          aHtml: 'تخضع المؤسسة لإشراف وزارة التضامن الاجتماعي برقم إشهار (2202 لسنة 2025). بعد التحويل عبر الحساب البنكي أو فودافون كاش، أرسل صورة إيصال التحويل على واتساب المؤسسة (01000880156) ليتم إصدار إيصال استلام رسمي مختوم وإرساله لك فورًا.'
+        }
+      ];
+
+      const POLICIES_CONTENT = {
+        governance: {
+          title: 'إطار الحوكمة المؤسسية وتطبيقها',
+          html: `
+            <p>تلتزم مؤسسة الحافظ للتنمية والخدمات بتطبيق مبادئ الحوكمة الرشيدة كركيزة أساسية لضمان استدامة العمل الخيري وبناء الثقة مع المجتمع والجهات الرقابية، وذلك من خلال:</p>
+            <ul style="line-height:1.9; padding-right:18px; margin:0;">
+              <li><strong>1. الفصل الواضح بين السلطات:</strong> تحديد دقيق للصلاحيات والمسؤوليات بين مجلس الأمناء (الجهة التشريعية والرقابية) والإدارة التنفيذية واللجان الميدانية (جهة التنفيذ).</li>
+              <li><strong>2. الرقابة المالية والإدارية:</strong> اعتماد نظم محاسبية دقيقة، ومراجعة مالية دورية من قِبل مراقب حسابات قانوني معتمد، والالتزام التام بقوانين ولوائح وزارة التضامن الاجتماعي.</li>
+              <li><strong>3. معايير الاستحقاق والبحث الميداني:</strong> تطبيق قواعد صارمة وموثقة لبحث الحالات اجتماعيًا وميدانيًا لضمان وصول الدعم لمستحقيه دون أي تمييز.</li>
+              <li><strong>4. المساءلة وتقييم الأثر:</strong> قياس نتائج المشروعات والمساعدات بشكل دوري للتأكد من تحقيق الأهداف التنموية المرجوة وتطوير الأداء باستمرار.</li>
+            </ul>`
+        },
+        donations: {
+          title: 'سياسة قبول التبرعات والشفافية المالية',
+          html: `
+            <ul style="line-height:1.9; padding-right:18px; margin:0;">
+              <li><strong>1. مشروعية مصادر التمويل:</strong> تقبل المؤسسة التبرعات النقدية والعينية والزكوات والصدقات من الأفراد والمؤسسات والجهات المانحة داخل جمهورية مصر العربية (ومن الخارج بعد الحصول على الموافقات الرسمية من وزارة التضامن الاجتماعي)، بشرط أن تكون من مصادر مشروعة وقانونية.</li>
+              <li><strong>2. رفض التبرعات المشروطة بما يخالف الأهداف:</strong> ترفض المؤسسة أي تبرع يمس استقلاليتها، أو يتعارض مع قيمها وأهدافها التنموية، أو يفرض شروطًا تمييزية بين المستفيدين.</li>
+              <li><strong>3. التوثيق وإيصالات الاستلام:</strong> تُصدر المؤسسة إيصالات رسمية مختومة ومعتمدة لكافة التبرعات النقدية والعينية، وتُودع كافة الأموال في الحسابات البنكية الرسمية للمؤسسة.</li>
+              <li><strong>4. توجيه التبرعات المخصصة:</strong> تلتزم المؤسسة بتوجيه التبرعات المخصصة لبند معين (مثل: وصلات المياه، الأسقف، الكفالات، أو الزكاة) إلى مصرفها المحدد بدقة وأمانة تامة.</li>
+            </ul>`
+        },
+        conflict: {
+          title: 'سياسة منع تضارب المصالح',
+          html: `
+            <ul style="line-height:1.9; padding-right:18px; margin:0;">
+              <li><strong>1. النزاهة والحياد:</strong> يلتزم أعضاء مجلس الأمناء، والعاملون، والمتطوعون بتغليب مصلحة المؤسسة والمستفيدين على أي مصلحة شخصية، أو عائلية، أو تجارية.</li>
+              <li><strong>2. الإفصاح المسبق:</strong> يجب على أي عضو أو موظف الإفصاح الكتابي الفوري لمجلس الأمناء عن أي صلة قرابة أو مصلحة مالية مباشرة أو غير مباشرة قد تنشأ عند التعاقد مع موردين أو عند بحث حالات مستفيدين، والامتناع عن التصويت أو المشاركة في اتخاذ القرار بشأنها.</li>
+              <li><strong>3. حظر استغلال المنصب:</strong> يُحظر استغلال الصفة الوظيفية أو التطوعية في المؤسسة لتحقيق أي مكاسب مادية أو معنوية شخصية.</li>
+            </ul>`
+        },
+        privacy: {
+          title: 'سياسة الخصوصية وحماية البيانات',
+          html: `
+            <p>تلتزم المؤسسة بأعلى معايير الخصوصية والسرية في جمع ومعالجة وحماية البيانات الشخصية لكافة المتعاملين معها (متبرعين، مستفيدين، متطوعين، وشركاء)، وفقًا لأحكام القانون المصري رقم 151 لسنة 2020:</p>
+            <ul style="line-height:1.9; padding-right:18px; margin:0;">
+              <li><strong>1. البيانات التي نجمعها وأغراضها:</strong> تُجمع البيانات الشخصية والاجتماعية والمالية بالقدر اللازم فقط لدراسة استحقاق الأسر، وتنفيذ المشروعات، وتوثيق التبرعات وإصدار الإيصالات الرسمية، والامتثال لمتطلبات وزارة التضامن الاجتماعي.</li>
+              <li><strong>2. حماية كرامة المستفيدين وضوابط التصوير:</strong> يُحظر تمامًا نشر أي بيانات شخصية أو مستندات رسمية للمستفيدين. ولا يتم التقاط أو نشر أي صور للمستفيدين إلا بموافقتهم الصريحة المسبقة وبما يصون كرامتهم الإنسانية.</li>
+              <li><strong>3. سرية البيانات وعدم مشاركتها:</strong> تتعهد المؤسسة بعدم بيع أو مشاركة البيانات مع أي طرف ثالث لأغراض تجارية. وتنحصر المشاركة في الجهات الرقابية الرسمية، والبنوك المعتمدة لإتمام المعاملات، والجمعيات الشريكة في المشروعات المشتركة تحت التزام كامل بالسرية.</li>
+              <li><strong>4. أمن المعلومات وحقوق أصحاب البيانات:</strong> تُحفظ السجلات الورقية والإلكترونية في بيئة آمنة يقتصر الاطلاع عليها على المخولين فقط، ويحق لأي متعامل طلب تحديث بياناته أو إيقاف الرسائل الإخبارية في أي وقت.</li>
+            </ul>`
+        }
+      };
+
+      window.renderFaqSection = function() {
+        const box = document.getElementById('faq-dynamic-list');
+        if (!box) return;
+        box.innerHTML = FAQ_ITEMS.map((item, idx) => `
+          <details class="faq-item" ${idx === 0 ? 'open' : ''}>
+            <summary>${item.q}</summary>
+            <div class="faq-answer">${item.aHtml}</div>
+          </details>
+        `).join('');
+      };
+
+      window.switchPolicyTab = function(key) {
+        const entry = POLICIES_CONTENT[key] || POLICIES_CONTENT.governance;
+        const titleEl = document.getElementById('policy-modal-title');
+        const bodyEl = document.getElementById('policy-modal-body');
+        if (titleEl) titleEl.textContent = entry.title;
+        if (bodyEl) bodyEl.innerHTML = entry.html;
+        ['governance', 'donations', 'conflict', 'privacy'].forEach(k => {
+          const btn = document.getElementById('ptab-' + k);
+          if (btn) {
+            btn.classList.toggle('btn-primary', k === key);
+            btn.classList.toggle('btn-gold', k !== key);
+          }
+        });
+      };
+
+      window.openPolicyModal = function(key = 'governance') {
+        const modal = document.getElementById('policy-modal');
+        if (!modal) return;
+        window.switchPolicyTab(key);
+        modal.classList.remove('hidden');
+      };
+
+      window.closePolicyModal = function() {
+        const modal = document.getElementById('policy-modal');
+        if (modal) modal.classList.add('hidden');
+      };
+
+      document.addEventListener('DOMContentLoaded', function() {
+        window.renderFaqSection();
+        const modal = document.getElementById('policy-modal');
+        if (modal) {
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) window.closePolicyModal();
+          });
+        }
+      });
+    })();
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=7"></script>
