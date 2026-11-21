@@ -1326,13 +1326,40 @@
       `يمكنكم متابعة حالة الطلب برقم المتابعة.`;
 
     if (window.supabaseClient) {
-      const res = await window.supabaseClient.from('families').insert([payload]);
-      if (res.error) {
+      const cleanPayload = { ...payload };
+      if (!cleanPayload.intervention_type && cleanPayload.aid_type) {
+        cleanPayload.intervention_type = cleanPayload.aid_type;
+      }
+      delete cleanPayload.aid_type;
+
+      if (!cleanPayload.created_by_email && typeof cleanPayload.created_by === 'string' && cleanPayload.created_by.includes('@')) {
+        cleanPayload.created_by_email = cleanPayload.created_by;
+      }
+      if (!cleanPayload.created_by_name && typeof cleanPayload.created_by === 'string' && !cleanPayload.created_by.includes('@')) {
+        cleanPayload.created_by_name = cleanPayload.created_by;
+      }
+      delete cleanPayload.created_by;
+
+      let attemptPayload = { ...cleanPayload };
+      let res = null;
+      for (let i = 0; i < 6; i++) {
+        res = await window.supabaseClient.from('families').insert([attemptPayload]);
+        if (!res.error) break;
+
+        const match = String(res.error.message || '').match(/Could not find the '([^']+)' column/i);
+        if (match && match[1] && Object.prototype.hasOwnProperty.call(attemptPayload, match[1])) {
+          delete attemptPayload[match[1]];
+          continue;
+        }
+        break;
+      }
+
+      if (res && res.error) {
         return showStepError('حدث خطأ أثناء حفظ البيانات في قاعدة البيانات: ' + res.error.message);
       }
 
       const localCases = JSON.parse(localStorage.getItem('hf_local_families') || '[]');
-      localCases.unshift({ ...payload, id: 'LOCAL-' + Date.now(), created_at: new Date().toISOString() });
+      localCases.unshift({ ...attemptPayload, id: 'LOCAL-' + Date.now(), created_at: new Date().toISOString() });
       localStorage.setItem('hf_local_families', JSON.stringify(localCases));
 
       window.triggerInstantWhatsApp(targetPhone, waMsg);
