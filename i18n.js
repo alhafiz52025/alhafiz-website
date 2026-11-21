@@ -1,4 +1,4 @@
-// i18n.js - محرك التعريب والترجمة الكامل والآمن لمؤسسة الحافظ للتنمية والخدمات
+// i18n.js - تبديل فوري ومتبادل بين العربية والإنجليزية (AR <-> EN)
 (function () {
   'use strict';
 
@@ -9,9 +9,10 @@
 
   let isTranslatingNow = false;
   let observerTimer = null;
-  let sortedEntries = [];
+  let arToEnPairs = [];
+  let enToArPairs = [];
 
-  window.currentSiteLang = window.currentSiteLang === 'en' ? 'en' : 'ar';
+  window.currentSiteLang = 'ar';
 
   window.FULL_DICTIONARY = Object.assign({}, window.FULL_DICTIONARY || {}, {
     // 1. الهوية، شريط الوصول، والتنقل العلوي
@@ -390,19 +391,17 @@
     "تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.": "Unable to connect to the database right now, please refresh the page and try again."
   });
 
-  function rebuildSortedEntries() {
-    try {
-      const dict = window.FULL_DICTIONARY || {};
-      sortedEntries = Object.keys(dict)
-        .filter((k) => typeof k === 'string' && typeof dict[k] === 'string' && k.trim().length > 0)
-        .sort((a, b) => b.length - a.length)
-        .map((k) => [k, dict[k]]);
-    } catch (_) {
-      sortedEntries = [];
-    }
+  function rebuildPairLists() {
+    const dict = window.FULL_DICTIONARY || {};
+    const entries = Object.keys(dict)
+      .filter((k) => typeof k === 'string' && typeof dict[k] === 'string' && k.trim().length > 0)
+      .map((k) => [k, dict[k]]);
+
+    arToEnPairs = entries.slice().sort((a, b) => b[0].length - a[0].length);
+    enToArPairs = entries.slice().sort((a, b) => b[1].length - a[1].length);
   }
 
-  function safeReadSavedLang() {
+  function safeReadLang() {
     try {
       const val = localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(LEGACY_KEY);
       return val === 'en' ? 'en' : 'ar';
@@ -411,150 +410,137 @@
     }
   }
 
-  function safeSaveLang(lang) {
+  function safeWriteLang(lang) {
     try {
       localStorage.setItem(STORAGE_KEY, lang);
       sessionStorage.setItem(LEGACY_KEY, lang);
     } catch (_) {}
   }
 
-  function translateString(rawText, toEn) {
-    if (typeof rawText !== 'string' || !toEn) return rawText;
-    const trimmed = rawText.trim();
-    if (!trimmed) return rawText;
-
-    const dict = window.FULL_DICTIONARY || {};
-    if (Object.prototype.hasOwnProperty.call(dict, trimmed)) {
-      return rawText.replace(trimmed, dict[trimmed]);
-    }
-
-    let output = rawText;
-    for (let i = 0; i < sortedEntries.length; i++) {
-      const [arKey, enVal] = sortedEntries[i];
-      if (output.indexOf(arKey) !== -1) {
-        output = output.split(arKey).join(enVal);
+  function convertByPairs(text, pairs) {
+    if (typeof text !== 'string' || !text.trim()) return text;
+    let out = text;
+    for (let i = 0; i < pairs.length; i++) {
+      const [fromStr, toStr] = pairs[i];
+      if (out.indexOf(fromStr) !== -1) {
+        out = out.split(fromStr).join(toStr);
       }
     }
-    return output;
+    return out;
   }
 
-  function updateToggleButtonLabel(toEn) {
+  function convertString(raw, targetLang) {
+    if (typeof raw !== 'string' || !raw.trim()) return raw;
+    const dict = window.FULL_DICTIONARY || {};
+    const trimmed = raw.trim();
+
+    if (targetLang === 'en') {
+      if (Object.prototype.hasOwnProperty.call(dict, trimmed)) {
+        return raw.replace(trimmed, dict[trimmed]);
+      }
+      return convertByPairs(raw, arToEnPairs);
+    } else {
+      // ترجمة عكسية من الإنجليزية للعربية أو استعادة الأصل العربي
+      for (let i = 0; i < enToArPairs.length; i++) {
+        const [arKey, enVal] = enToArPairs[i];
+        if (trimmed === enVal) {
+          return raw.replace(trimmed, arKey);
+        }
+      }
+      return convertByPairs(raw, enToArPairs);
+    }
+  }
+
+  function updateButtonText(targetLang) {
     const btn = document.getElementById('lang-toggle-btn');
     if (btn) {
-      btn.textContent = toEn ? 'العربية' : 'English';
+      btn.textContent = targetLang === 'en' ? 'العربية' : 'English';
     }
   }
 
-  function translateAllNodes(toEn) {
-    if (!document.body || typeof document.createTreeWalker !== 'function') return;
-
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-    let currentNode = walker.nextNode();
-
-    while (currentNode) {
-      try {
-        const parent = currentNode.parentElement;
-        const tag = parent ? parent.tagName : '';
-        if (tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'NOSCRIPT') {
-          if (!TEXT_ORIGINALS.has(currentNode)) {
-            TEXT_ORIGINALS.set(currentNode, currentNode.nodeValue);
-          }
-          const originalValue = TEXT_ORIGINALS.get(currentNode);
-          const nextValue = toEn ? translateString(originalValue, true) : originalValue;
-          if (currentNode.nodeValue !== nextValue) {
-            currentNode.nodeValue = nextValue;
-          }
-        }
-      } catch (_) {}
-      currentNode = walker.nextNode();
-    }
-
-    const attrs = ['placeholder', 'title', 'aria-label', 'alt'];
-    const allElements = document.body.getElementsByTagName('*');
-
-    for (let i = 0; i < allElements.length; i++) {
-      try {
-        const el = allElements[i];
-        const tag = el.tagName;
-        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') continue;
-
-        if (!ATTR_ORIGINALS.has(el)) {
-          const snapshot = {};
-          for (let a = 0; a < attrs.length; a++) {
-            const attrName = attrs[a];
-            if (el.hasAttribute(attrName)) {
-              snapshot[attrName] = el.getAttribute(attrName);
-            }
-          }
-          ATTR_ORIGINALS.set(el, snapshot);
-        }
-
-        const saved = ATTR_ORIGINALS.get(el);
-        for (let a = 0; a < attrs.length; a++) {
-          const attrName = attrs[a];
-          if (!Object.prototype.hasOwnProperty.call(saved, attrName)) continue;
-          const origAttr = saved[attrName];
-          const nextAttr = toEn ? translateString(origAttr, true) : origAttr;
-          if (el.getAttribute(attrName) !== nextAttr) {
-            el.setAttribute(attrName, nextAttr);
-          }
-        }
-      } catch (_) {}
-    }
-  }
-
-  function applyTranslationState(lang) {
-    if (isTranslatingNow) return;
+  function runDomPass(targetLang) {
+    if (isTranslatingNow || !document.body) return;
     isTranslatingNow = true;
 
     try {
-      rebuildSortedEntries();
-      const targetLang = lang === 'en' ? 'en' : 'ar';
+      rebuildPairLists();
       const toEn = targetLang === 'en';
       window.currentSiteLang = targetLang;
 
-      const htmlEl = document.documentElement;
-      if (htmlEl) {
-        htmlEl.lang = targetLang;
-        htmlEl.dir = toEn ? 'ltr' : 'rtl';
-      }
-
-      if (document.body) {
-        document.body.dir = toEn ? 'ltr' : 'rtl';
-        document.body.classList.toggle('lang-en', toEn);
-        document.body.classList.toggle('lang-ar', !toEn);
-      }
+      document.documentElement.lang = targetLang;
+      document.documentElement.dir = toEn ? 'ltr' : 'rtl';
+      document.body.dir = toEn ? 'ltr' : 'rtl';
+      document.body.classList.toggle('lang-en', toEn);
+      document.body.classList.toggle('lang-ar', !toEn);
 
       if (typeof document.title === 'string') {
         if (!TEXT_ORIGINALS.has(document)) {
           TEXT_ORIGINALS.set(document, document.title);
         }
-        const origTitle = TEXT_ORIGINALS.get(document);
-        document.title = toEn ? translateString(origTitle, true) : origTitle;
+        const baseTitle = TEXT_ORIGINALS.get(document);
+        document.title = toEn ? convertString(baseTitle, 'en') : baseTitle;
       }
 
-      updateToggleButtonLabel(toEn);
-      translateAllNodes(toEn);
+      updateButtonText(targetLang);
+
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+      let node = walker.nextNode();
+      while (node) {
+        try {
+          const parent = node.parentElement;
+          const tag = parent ? parent.tagName : '';
+          if (tag !== 'SCRIPT' && tag !== 'STYLE' && tag !== 'NOSCRIPT') {
+            if (!TEXT_ORIGINALS.has(node)) {
+              TEXT_ORIGINALS.set(node, node.nodeValue);
+            }
+            const originalText = TEXT_ORIGINALS.get(node);
+            const nextText = toEn ? convertString(originalText, 'en') : convertString(originalText, 'ar');
+            if (node.nodeValue !== nextText) {
+              node.nodeValue = nextText;
+            }
+          }
+        } catch (_) {}
+        node = walker.nextNode();
+      }
+
+      const attrs = ['placeholder', 'title', 'aria-label', 'alt'];
+      const els = document.body.getElementsByTagName('*');
+      for (let i = 0; i < els.length; i++) {
+        try {
+          const el = els[i];
+          const tag = el.tagName;
+          if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') continue;
+
+          if (!ATTR_ORIGINALS.has(el)) {
+            const saved = {};
+            for (let a = 0; a < attrs.length; a++) {
+              const name = attrs[a];
+              if (el.hasAttribute(name)) saved[name] = el.getAttribute(name);
+            }
+            ATTR_ORIGINALS.set(el, saved);
+          }
+
+          const saved = ATTR_ORIGINALS.get(el);
+          for (let a = 0; a < attrs.length; a++) {
+            const name = attrs[a];
+            if (!Object.prototype.hasOwnProperty.call(saved, name)) continue;
+            const origAttr = saved[name];
+            const nextAttr = toEn ? convertString(origAttr, 'en') : convertString(origAttr, 'ar');
+            if (el.getAttribute(name) !== nextAttr) {
+              el.setAttribute(name, nextAttr);
+            }
+          }
+        } catch (_) {}
+      }
     } finally {
       isTranslatingNow = false;
     }
   }
 
-  window.t = function (arText, enText) {
-    if (window.currentSiteLang === 'en') {
-      if (typeof enText === 'string' && enText.length > 0) return enText;
-      const dict = window.FULL_DICTIONARY || {};
-      if (typeof arText === 'string' && Object.prototype.hasOwnProperty.call(dict, arText)) {
-        return dict[arText];
-      }
-    }
-    return arText;
-  };
-
   window.applyLanguageDictionary = function (lang) {
-    const normalized = lang === 'en' ? 'en' : 'ar';
-    safeSaveLang(normalized);
-    applyTranslationState(normalized);
+    const nextLang = lang === 'en' ? 'en' : 'ar';
+    safeWriteLang(nextLang);
+    runDomPass(nextLang);
   };
 
   window.translateWholePage = function (lang) {
@@ -562,7 +548,7 @@
   };
 
   window.refreshSiteLanguage = function () {
-    applyTranslationState(window.currentSiteLang);
+    runDomPass(window.currentSiteLang);
   };
 
   window.toggleLanguage = function () {
@@ -570,27 +556,27 @@
     window.applyLanguageDictionary(nextLang);
   };
 
-  function setupMutationObserver() {
+  function bindObserver() {
     if (typeof MutationObserver !== 'function' || !document.body) return;
-    const observer = new MutationObserver(() => {
+    const obs = new MutationObserver(() => {
       if (isTranslatingNow || window.currentSiteLang !== 'en') return;
       clearTimeout(observerTimer);
       observerTimer = setTimeout(() => {
-        applyTranslationState('en');
+        runDomPass('en');
       }, 60);
     });
-    observer.observe(document.body, { childList: true, subtree: true });
+    obs.observe(document.body, { childList: true, subtree: true });
   }
 
-  function bootI18n() {
-    setupMutationObserver();
-    const initialLang = safeReadSavedLang();
-    applyTranslationState(initialLang);
+  function init() {
+    bindObserver();
+    const saved = safeReadLang();
+    runDomPass(saved);
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootI18n, { once: true });
+    document.addEventListener('DOMContentLoaded', init, { once: true });
   } else {
-    bootI18n();
+    init();
   }
 })();
