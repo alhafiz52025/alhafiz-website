@@ -1,6 +1,7 @@
 // dashboards.js - لوحة الإدارة الشاملة ولوحات الأعضاء والكشوف والإقرارات والمستندات
 (function() {
   const LOCAL_DOCS_KEY = 'hf_official_documents_v1';
+  const LOCAL_DONOR_ASSIGNMENTS_KEY = 'hf_donor_case_assignments_v1';
 
   window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
@@ -35,6 +36,96 @@
       </div>`;
   };
 
+  function readLocalDonorAssignments() {
+    try {
+      const raw = localStorage.getItem(LOCAL_DONOR_ASSIGNMENTS_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function writeLocalDonorAssignments(mapObj) {
+    try {
+      localStorage.setItem(LOCAL_DONOR_ASSIGNMENTS_KEY, JSON.stringify(mapObj || {}));
+    } catch (_) {}
+  }
+
+  function normalizeDonorArray(val) {
+    if (Array.isArray(val)) return val.map(s => String(s || '').trim()).filter(Boolean);
+    if (typeof val === 'string' && val.trim()) {
+      return val.split(/[،,]/).map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  }
+
+  function hydrateCasesWithDonorAssignments(cases) {
+    const mapObj = readLocalDonorAssignments();
+    return (cases || []).map(c => {
+      const key = String(c.id || c.tracking_code || '');
+      const savedLocal = normalizeDonorArray(mapObj[key]);
+      const dbDonors = normalizeDonorArray(c.assigned_donors);
+      const legacyDonor = normalizeDonorArray(c.assigned_donor_name);
+      const merged = Array.from(new Set([...dbDonors, ...legacyDonor, ...savedLocal]));
+      return {
+        ...c,
+        assigned_donors: merged,
+        assigned_donor_name: merged.join('، ')
+      };
+    });
+  }
+
+  function getCaseAssignedMemberDisplay(c) {
+    if (!c) return '';
+    if (c.assigned_to_name && c.assigned_to_name !== 'غير مسند') return c.assigned_to_name;
+    if (c.assigned_to_email) {
+      const u = (window.ALL_ADMIN_USERS || []).find(x => (x.email || '').toLowerCase() === String(c.assigned_to_email).toLowerCase());
+      return u ? (u.full_name || u.email) : c.assigned_to_email;
+    }
+    return '';
+  }
+
+  function getCaseAssignedDonorsList(c) {
+    if (!c) return [];
+    return normalizeDonorArray(c.assigned_donors || c.assigned_donor_name);
+  }
+
+  function getCaseAttachmentsAudit(caseObj) {
+    const docsObj = (caseObj && caseObj.documents_data && typeof caseObj.documents_data === 'object') ? caseObj.documents_data : {};
+    const h = (caseObj && caseObj.husband_data && typeof caseObj.husband_data === 'object') ? caseObj.husband_data : {};
+    const w = (caseObj && caseObj.wife_data && typeof caseObj.wife_data === 'object') ? caseObj.wife_data : {};
+
+    const items = [
+      { label: 'صورة بطاقة الزوج (وجه)', value: docsObj.husband_id_front || h.id_front },
+      { label: 'صورة بطاقة الزوج (ظهر)', value: docsObj.husband_id_back || h.id_back },
+      { label: 'صورة بطاقة الزوجة (وجه)', value: docsObj.wife_id_front || w.id_front },
+      { label: 'صورة بطاقة الزوجة (ظهر)', value: docsObj.wife_id_back || w.id_back },
+      { label: 'البحث الاجتماعي المعتمد', value: docsObj.social_research || caseObj.social_research_doc },
+      { label: 'عقد الإيجار / إثبات السكن', value: docsObj.lease_contract || caseObj.lease_doc },
+      { label: 'التقارير الطبية / مستندات إضافية', value: docsObj.medical_report || caseObj.medical_doc }
+    ].map((it, idx) => {
+      const attached = Boolean(it.value && String(it.value).trim().length > 0);
+      return {
+        index: idx + 1,
+        label: it.label,
+        attached,
+        statusText: attached ? '✅ مرفق' : '❌ غير مرفق (لم يتم رفعه)'
+      };
+    });
+
+    const attachedCount = items.filter(x => x.attached).length;
+    const missingCount = items.length - attachedCount;
+
+    return {
+      items,
+      totalCount: items.length,
+      attachedCount,
+      missingCount,
+      isComplete: missingCount === 0
+    };
+  }
+
   // التوجيه الذكي حسب الصلاحية (أدمن أم عضو)
   window.routeLoggedInUser = async function(user) {
     document.getElementById('login-box')?.classList.add('hidden');
@@ -63,7 +154,27 @@
         query = query.or(`created_by_email.eq.${user.email},assigned_to_email.eq.${user.email}`);
       }
       const { data } = await query;
-      myCases = data || [];
+      myCases = hydrateCasesWithDonorAssignments(data || []);
+    }
+
+    const donorMap = readLocalDonorAssignments();
+    if (user.role === 'donor' || user.role === 'partner') {
+      let allFam = myCases;
+      if (window.supabaseClient && myCases.length === 0) {
+        const { data: allData } = await window.supabaseClient.from('families').select('*').order('created_at', { ascending: false });
+        allFam = hydrateCasesWithDonorAssignments(allData || []);
+      }
+      const matched = allFam.filter(f => {
+        const donors = getCaseAssignedDonorsList(f);
+        const key = String(f.id || f.tracking_code || '');
+        const localList = normalizeDonorArray(donorMap[key]);
+        const combined = [...donors, ...localList];
+        return combined.some(item => item.includes(displayName) || item.includes(user.email));
+      });
+      const existingIds = new Set(myCases.map(x => String(x.id)));
+      matched.forEach(m => {
+        if (!existingIds.has(String(m.id))) myCases.push(m);
+      });
     }
 
     area.innerHTML = `
@@ -142,8 +253,10 @@
 
   window.ALL_ADMIN_CASES = [];
   window.ALL_ADMIN_USERS = [];
+  window.ALL_ADMIN_ORGANIZATIONS = [];
   window.ALL_ADMIN_GRIEVANCES = [];
   window.ALL_OFFICIAL_DOCS = [];
+  window.SELECTED_CASE_IDS = new Set();
 
   window.refreshAdminSummaryCards = function() {
     const families = window.ALL_ADMIN_CASES || [];
@@ -164,23 +277,26 @@
   window.renderAdminFullDashboard = async function(user) {
     const area = document.getElementById('dashboard-area');
     const displayName = user.name || user.full_name || 'رئيس مجلس الأمناء';
-    let families = [], users = [], grievances = [];
+    let families = [], users = [], organizations = [], grievances = [];
     let dbWarning = '';
 
     if (window.supabaseClient) {
-      const [fRes, uRes, gRes] = await Promise.all([
+      const [fRes, uRes, gRes, oRes] = await Promise.all([
         window.supabaseClient.from('families').select('*').order('created_at', { ascending: false }),
         window.supabaseClient.from('users_profiles').select('*').order('created_at', { ascending: false }),
-        window.supabaseClient.from('grievances').select('*').order('created_at', { ascending: false })
+        window.supabaseClient.from('grievances').select('*').order('created_at', { ascending: false }),
+        window.supabaseClient.from('organizations').select('*').order('created_at', { ascending: false })
       ]);
       if (fRes.error) dbWarning = `⚠️ تعذر قراءة جدول الحالات (families): ${fRes.error.message}`;
-      families = fRes.data || [];
+      families = hydrateCasesWithDonorAssignments(fRes.data || []);
       users = uRes.data || [];
       grievances = gRes.data || [];
+      organizations = (!oRes.error && Array.isArray(oRes.data)) ? oRes.data : [];
     }
 
     window.ALL_ADMIN_CASES = families;
     window.ALL_ADMIN_USERS = users;
+    window.ALL_ADMIN_ORGANIZATIONS = organizations;
     window.ALL_ADMIN_GRIEVANCES = grievances;
 
     const approved = families.filter(f => f.status === 'approved').length;
@@ -250,11 +366,37 @@
     else if (tab === 'official') window.renderAdminOfficialSection();
   };
 
+  function buildDonorPartnerOptionsHtml() {
+    const orgs = (window.ALL_ADMIN_ORGANIZATIONS || []).filter(o => !o.status || o.status === 'active');
+    const orgLabels = orgs.map(o => `${o.name} (${o.org_type || 'جهة مانحة/شريكة'})`);
+
+    const userDonors = (window.ALL_ADMIN_USERS || [])
+      .filter(u => ['donor', 'partner'].includes(u.role))
+      .map(d => `${d.full_name || d.email} (${d.role === 'donor' ? 'جهة مانحة' : 'جهة شريكة'})`);
+
+    const combined = Array.from(new Set([...orgLabels, ...userDonors]));
+    return `<option value="">-- جهة مانحة أو جمعية شريكة --</option>` +
+      combined.map(label => `<option value="${window.escapeHtml(label)}">${window.escapeHtml(label)}</option>`).join('');
+  }
+
+  // --- قسم الحالات مع الحفاظ على كشف الصرف والفلاتر كما هي + الاختيارات المتعددة والإسنادات والطباعة الكاملة ---
   window.renderAdminCasesSection = function() {
     const box = document.getElementById('admin-tab-cases');
     if (!box) return;
     const aidOpts = (window.AID_TYPES || [])
-      .map(a => `<option value="${a}">${a}</option>`).join('');
+      .map(a => `<option value="${window.escapeHtml(a)}">${window.escapeHtml(a)}</option>`).join('');
+
+    const researchersAndMembers = (window.ALL_ADMIN_USERS || []).filter(u =>
+      u.account_status === 'active' && !['donor', 'partner'].includes(u.role)
+    );
+
+    const memberSelectOpts = `<option value="">-- إسناد لعضو / باحث / متطوع --</option>` +
+      researchersAndMembers.map(m => {
+        const label = `${m.full_name || m.email} (${m.role || 'عضو'})`;
+        return `<option value="${window.escapeHtml(m.email)}">${window.escapeHtml(label)}</option>`;
+      }).join('');
+
+    const donorSelectOpts = buildDonorPartnerOptionsHtml();
 
     box.innerHTML = `
       <div class="no-print" style="background:var(--bg-color); padding:10px; border-radius:8px; border:1px solid var(--border); margin-bottom:10px;">
@@ -275,26 +417,69 @@
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin:0;">
             <input type="checkbox" id="chk-include-signature" checked style="width:auto; margin:0;"> خانة توقيع المستلم
           </label>
-          <div style="display:flex; gap:6px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button type="button" onclick="printOfficialDisbursementSheet()" class="action-btn" style="background:#b45309; padding:5px 10px; font-size:12px;">🖨️ كشف صرف</button>
             <button type="button" onclick="exportFilteredCasesCsv()" class="nav-btn btn-gold" style="padding:5px 10px; font-size:12px;">📥 CSV</button>
           </div>
         </div>
       </div>
+
+      <div class="no-print" style="background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #cbd5e1; margin-bottom:10px;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; margin:0;">
+            <input type="checkbox" id="chk-select-all-cases" onchange="toggleSelectAllCases(this.checked)" style="width:auto; margin:0;"> تحديد الكل
+          </label>
+          <select id="flt-assignment-view" onchange="filterAndRenderCasesTable()" style="margin:0; padding:4px 8px; font-size:12px;">
+            <option value="">-- عرض كل الإسنادات --</option>
+            <option value="has_member">المسندة لأعضاء / باحثين</option>
+            <option value="no_member">غير المسندة لأعضاء / باحثين</option>
+            <option value="has_donor">المسندة لجهات مانحة / شريكة</option>
+          </select>
+
+          <select id="bulk-member-select" style="margin:0; padding:4px 8px; font-size:12px;">${memberSelectOpts}</select>
+          <button type="button" onclick="assignSelectedCasesToMember()" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:5px 10px; font-size:12px;">إسناد لعضو/باحث</button>
+
+          <select id="bulk-donor-select" style="margin:0; padding:4px 8px; font-size:12px;">${donorSelectOpts}</select>
+          <button type="button" onclick="assignSelectedCasesToDonor()" class="nav-btn" style="background:#0f766e; color:#fff; padding:5px 10px; font-size:12px;">إسناد لجهة مانحة/شريكة</button>
+          <button type="button" onclick="unassignDonorFromSelectedCases()" class="nav-btn" style="background:#64748b; color:#fff; padding:5px 10px; font-size:12px;">إزالة إسناد الجهة</button>
+          <button type="button" onclick="printDonorAssignedCasesSheet()" class="nav-btn" style="background:#334155; color:#fff; padding:5px 10px; font-size:12px;">🖨️ طباعة حالات الجهة</button>
+
+          <button type="button" onclick="printFullCaseFiles(Array.from(window.SELECTED_CASE_IDS))" class="nav-btn btn-gold" style="padding:5px 10px; font-size:12px;">📄 طباعة ملف الحالات المحددة</button>
+        </div>
+        <div id="cases-selection-metrics" style="margin-top:8px; font-size:11px; color:#334155; font-weight:700;"></div>
+        <div id="case-selected-member-alert" style="display:none; margin-top:8px;"></div>
+      </div>
+
       <div id="admin-cases-table-wrap" style="overflow-x:auto;"></div>`;
 
     window.filterAndRenderCasesTable();
   };
 
+  function refreshCasesSelectionMetrics(filteredList) {
+    const el = document.getElementById('cases-selection-metrics');
+    if (!el) return;
+    const allCases = window.ALL_ADMIN_CASES || [];
+    const selectedCount = (window.SELECTED_CASE_IDS || new Set()).size;
+    const withMemberCount = allCases.filter(c => Boolean(getCaseAssignedMemberDisplay(c))).length;
+    const withDonorCount = allCases.filter(c => getCaseAssignedDonorsList(c).length > 0).length;
+    el.innerHTML = `المعروض: ${filteredList.length} | المحدد حالياً: ${selectedCount} | مسند لأعضاء/باحثين: ${withMemberCount} | مسند لجهات مانحة/شريكة: ${withDonorCount}`;
+  }
+
   window.getFilteredAdminCases = function() {
     const aid = document.getElementById('flt-aid')?.value || '';
     const st = document.getElementById('flt-status')?.value || '';
     const q = (document.getElementById('flt-village')?.value || '').trim().toLowerCase();
+    const assignFilter = document.getElementById('flt-assignment-view')?.value || '';
     const limit = parseInt(document.getElementById('flt-limit')?.value || '0', 10);
 
     let list = (window.ALL_ADMIN_CASES || []).filter(f => {
       if (aid && f.intervention_type !== aid) return false;
       if (st && f.status !== st) return false;
+      const memberAssigned = Boolean(getCaseAssignedMemberDisplay(f));
+      const donorsAssigned = getCaseAssignedDonorsList(f).length > 0;
+      if (assignFilter === 'has_member' && !memberAssigned) return false;
+      if (assignFilter === 'no_member' && memberAssigned) return false;
+      if (assignFilter === 'has_donor' && !donorsAssigned) return false;
       if (q) {
         const h = f.husband_data || {};
         const txt = `${h.name1 || ''} ${h.name2 || ''} ${h.name3 || ''} ${f.village_hamlet || ''} ${f.tracking_code || ''}`.toLowerCase();
@@ -311,11 +496,79 @@
     return st ? list : list.filter(f => f.status === 'approved');
   };
 
+  function updateSelectedMemberAlertBanner() {
+    const banner = document.getElementById('case-selected-member-alert');
+    if (!banner) return;
+    const selectedIds = Array.from(window.SELECTED_CASE_IDS || []);
+    if (selectedIds.length === 0) {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+      return;
+    }
+
+    const warnings = [];
+    selectedIds.forEach(id => {
+      const c = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === String(id));
+      if (!c) return;
+      const memberName = getCaseAssignedMemberDisplay(c);
+      if (memberName) {
+        warnings.push(`<li>الحالة <strong>${window.escapeHtml(c.tracking_code || c.id)}</strong> مسندة إلى العضو/الباحث: <strong>${window.escapeHtml(memberName)}</strong></li>`);
+      }
+    });
+
+    if (warnings.length === 0) {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+      return;
+    }
+
+    banner.style.display = 'block';
+    banner.innerHTML = `
+      <div style="background:#fef3c7; border:1px solid #f59e0b; color:#78350f; padding:8px 12px; border-radius:6px; font-size:12px;">
+        <strong>⚠️ تنبيه إسناد للأعضاء/الباحثين:</strong>
+        <ul style="margin:4px 0 0; padding-right:18px;">${warnings.join('')}</ul>
+      </div>`;
+  }
+
+  window.toggleCaseSelection = function(caseId, checked) {
+    const key = String(caseId);
+    if (checked) {
+      window.SELECTED_CASE_IDS.add(key);
+      const c = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === key);
+      const memberName = getCaseAssignedMemberDisplay(c);
+      if (memberName) {
+        alert(`⚠️ تنبيه: الحالة (${c.tracking_code || key}) مسندة إلى: ${memberName}`);
+      }
+    } else {
+      window.SELECTED_CASE_IDS.delete(key);
+    }
+    updateSelectedMemberAlertBanner();
+    refreshCasesSelectionMetrics(window.getFilteredAdminCases());
+  };
+
+  window.toggleSelectAllCases = function(checked) {
+    const list = window.getFilteredAdminCases();
+    if (checked) {
+      list.forEach(c => window.SELECTED_CASE_IDS.add(String(c.id)));
+    } else {
+      list.forEach(c => window.SELECTED_CASE_IDS.delete(String(c.id)));
+    }
+    document.querySelectorAll('.chk-case-row').forEach(el => {
+      el.checked = Boolean(checked);
+    });
+    updateSelectedMemberAlertBanner();
+    refreshCasesSelectionMetrics(list);
+  };
+
   window.filterAndRenderCasesTable = function() {
     const wrap = document.getElementById('admin-cases-table-wrap');
     if (!wrap) return;
     const list = window.getFilteredAdminCases();
-    const members = (window.ALL_ADMIN_USERS || []).filter(u => u.account_status === 'active');
+    refreshCasesSelectionMetrics(list);
+
+    const members = (window.ALL_ADMIN_USERS || []).filter(u =>
+      u.account_status === 'active' && !['donor', 'partner'].includes(u.role)
+    );
 
     if (list.length === 0) {
       wrap.innerHTML = '<p style="text-align:center; padding:12px; color:#64748b;">لا توجد حالات مطابقة.</p>';
@@ -325,7 +578,17 @@
     wrap.innerHTML = `
       <table>
         <thead>
-          <tr><th>الكود</th><th>رب الأسرة</th><th>العنوان والنوع</th><th>إسناد</th><th>القرار</th><th class="no-print">إجراءات</th></tr>
+          <tr>
+            <th class="no-print" style="width:34px;">تحديد</th>
+            <th>الكود</th>
+            <th>رب الأسرة</th>
+            <th>العنوان والنوع</th>
+            <th>مسند إلى</th>
+            <th>المستندات</th>
+            <th>إسناد باحث/عضو</th>
+            <th>القرار</th>
+            <th class="no-print">إجراءات</th>
+          </tr>
         </thead>
         <tbody>
           ${list.map(f => {
@@ -334,10 +597,31 @@
             const opts = `<option value="">-- غير مسند --</option>` + members.map(m =>
               `<option value="${window.escapeHtml(m.email)}" ${f.assigned_to_email===m.email?'selected':''}>${window.escapeHtml(m.full_name)}</option>`
             ).join('');
+
+            const assignedMember = getCaseAssignedMemberDisplay(f);
+            const assignedDonors = getCaseAssignedDonorsList(f);
+            const assignedSummaryHtml = `
+              <div style="font-size:11px; line-height:1.5;">
+                <div><strong>عضو/باحث:</strong> ${assignedMember ? `<span style="color:#1e3a8a; font-weight:700;">${window.escapeHtml(assignedMember)}</span>` : '<span style="color:#64748b;">غير مسند</span>'}</div>
+                <div><strong>جهة مانحة/شريكة:</strong> ${assignedDonors.length > 0 ? `<span style="color:#0f766e; font-weight:700;">${window.escapeHtml(assignedDonors.join('، '))}</span>` : '<span style="color:#64748b;">غير مسند</span>'}</div>
+              </div>`;
+
+            const audit = getCaseAttachmentsAudit(f);
+            const docsBadgeHtml = audit.isComplete
+              ? `<span style="font-size:11px; font-weight:700; color:#166534;">✅ مكتمل (${audit.attachedCount}/${audit.totalCount})</span>`
+              : `<span style="font-size:11px; font-weight:700; color:#991b1b;">⚠️ ناقص (${audit.attachedCount}/${audit.totalCount})</span>`;
+
+            const isChecked = window.SELECTED_CASE_IDS.has(String(f.id));
+
             return `<tr>
+              <td class="no-print" style="text-align:center;">
+                <input type="checkbox" class="chk-case-row" value="${window.escapeHtml(f.id)}" ${isChecked ? 'checked' : ''} onchange="toggleCaseSelection('${window.escapeHtml(f.id)}', this.checked)" style="width:auto; margin:0;">
+              </td>
               <td><strong>${window.escapeHtml(f.tracking_code)}</strong></td>
               <td>${window.escapeHtml(name)}<br><small>${window.escapeHtml(h.phone || '')}</small></td>
               <td>${window.escapeHtml(f.village_hamlet)}<br><small>${window.escapeHtml(f.intervention_type)}</small></td>
+              <td>${assignedSummaryHtml}</td>
+              <td>${docsBadgeHtml}</td>
               <td><select onchange="adminAssignCase('${f.id}', this)" style="margin:0; padding:3px; font-size:11px;">${opts}</select></td>
               <td>
                 <select onchange="adminUpdateCaseStatus('${f.id}', this.value)" style="margin:0; padding:3px; font-size:11px;">
@@ -346,7 +630,8 @@
                   <option value="rejected" ${f.status==='rejected'?'selected':''}>❌ مرفوض</option>
                 </select>
               </td>
-              <td class="no-print">
+              <td class="no-print" style="display:flex; gap:4px; flex-wrap:wrap;">
+                <button type="button" onclick="printFullCaseFiles(['${window.escapeHtml(f.id)}'])" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 6px; font-size:11px;">🖨️ ملف</button>
                 <button type="button" onclick="openReceiptDeclarationModal('${f.id}')" class="nav-btn btn-gold" style="padding:3px 6px; font-size:11px;">📄 إقرار</button>
                 <button type="button" onclick="adminDeleteCase('${f.id}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 6px; font-size:11px;">🗑️</button>
               </td>
@@ -354,22 +639,256 @@
           }).join('')}
         </tbody>
       </table>`;
+    updateSelectedMemberAlertBanner();
   };
 
   window.adminAssignCase = async function(id, selEl) {
     const email = selEl.value;
     const name = selEl.options[selEl.selectedIndex]?.text || 'غير مسند';
     if (!window.supabaseClient) return;
+
+    const item = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === String(id));
+    if (item && getCaseAssignedMemberDisplay(item) && getCaseAssignedMemberDisplay(item) !== name) {
+      const ok = confirm(`⚠️ تنبيه: هذه الحالة مسندة إلى (${getCaseAssignedMemberDisplay(item)}). هل تريد تغيير الإسناد إلى (${name})؟`);
+      if (!ok) {
+        window.filterAndRenderCasesTable();
+        return;
+      }
+    }
+
     const { error } = await window.supabaseClient.from('families')
       .update({ assigned_to_email: email || null, assigned_to_name: email ? name : 'غير مسند' })
       .eq('id', id);
     if (error) return alert('❌ تعذر إسناد الحالة: ' + error.message);
-    const item = (window.ALL_ADMIN_CASES || []).find(x => x.id === id);
+
     if (item) {
       item.assigned_to_email = email || null;
       item.assigned_to_name = email ? name : 'غير مسند';
     }
+    window.filterAndRenderCasesTable();
     alert('✅ تم إسناد الحالة بنجاح.');
+  };
+
+  window.assignSelectedCasesToMember = async function() {
+    const selEl = document.getElementById('bulk-member-select');
+    const email = (selEl?.value || '').trim();
+    const name = selEl?.options[selEl.selectedIndex]?.text || '';
+    const ids = Array.from(window.SELECTED_CASE_IDS || []);
+    if (!email) return alert('⚠️ اختر عضواً أو باحثاً أو متطوعاً أولاً.');
+    if (ids.length === 0) return alert('⚠️ حدد حالة واحدة أو أكثر أولاً.');
+
+    const alreadyAssigned = ids
+      .map(id => (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === String(id)))
+      .filter(c => c && getCaseAssignedMemberDisplay(c));
+
+    if (alreadyAssigned.length > 0) {
+      const msg = alreadyAssigned
+        .map(c => `- ${c.tracking_code || c.id}: مسندة إلى (${getCaseAssignedMemberDisplay(c)})`)
+        .join('\n');
+      const ok = confirm(`⚠️ تنبيه: الحالات التالية مسندة مسبقاً:\n${msg}\n\nهل تريد إسنادها إلى (${name})؟`);
+      if (!ok) return;
+    }
+
+    if (window.supabaseClient) {
+      for (const id of ids) {
+        const { error } = await window.supabaseClient
+          .from('families')
+          .update({ assigned_to_email: email, assigned_to_name: name })
+          .eq('id', id);
+        if (error) return alert('❌ تعذر إسناد بعض الحالات: ' + error.message);
+      }
+    }
+
+    ids.forEach(id => {
+      const item = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === String(id));
+      if (item) {
+        item.assigned_to_email = email;
+        item.assigned_to_name = name;
+      }
+    });
+
+    window.filterAndRenderCasesTable();
+    alert('✅ تم إسناد الحالات المحددة للعضو/الباحث بنجاح.');
+  };
+
+  async function persistCaseDonorsInDb(caseId, donorsArray) {
+    if (!window.supabaseClient) return;
+    const { error } = await window.supabaseClient
+      .from('families')
+      .update({ assigned_donors: donorsArray })
+      .eq('id', caseId);
+    if (error && !String(error.message || '').includes('assigned_donors')) {
+      console.warn('assigned_donors sync note:', error.message);
+    }
+  }
+
+  // إسناد الجهات المانحة أو الشريكة (مستقل تماماً ولا يتعارض مع إسناد الأعضاء، ويسمح بتعدد الجهات)
+  window.assignSelectedCasesToDonor = async function() {
+    const selEl = document.getElementById('bulk-donor-select');
+    const donorLabel = (selEl?.value || '').trim();
+    const ids = Array.from(window.SELECTED_CASE_IDS || []);
+    if (!donorLabel) return alert('⚠️ اختر جهة مانحة أو جمعية شريكة أولاً.');
+    if (ids.length === 0) return alert('⚠️ حدد حالة واحدة أو أكثر أولاً.');
+
+    const donorMap = readLocalDonorAssignments();
+    for (const id of ids) {
+      const key = String(id);
+      const currentList = normalizeDonorArray(donorMap[key]);
+      if (!currentList.includes(donorLabel)) currentList.push(donorLabel);
+      donorMap[key] = currentList;
+
+      const item = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === key);
+      if (item) {
+        const merged = Array.from(new Set([...getCaseAssignedDonorsList(item), ...currentList]));
+        item.assigned_donors = merged;
+        item.assigned_donor_name = merged.join('، ');
+        await persistCaseDonorsInDb(item.id, merged);
+      }
+    }
+
+    writeLocalDonorAssignments(donorMap);
+    window.filterAndRenderCasesTable();
+    alert(`✅ تم إسناد الحالات المحددة إلى (${donorLabel}) دون أي تعارض مع إسناد الأعضاء/الباحثين.`);
+  };
+
+  window.unassignDonorFromSelectedCases = async function() {
+    const selEl = document.getElementById('bulk-donor-select');
+    const donorLabel = (selEl?.value || '').trim();
+    const ids = Array.from(window.SELECTED_CASE_IDS || []);
+    if (ids.length === 0) return alert('⚠️ حدد حالة واحدة أو أكثر أولاً.');
+
+    const donorMap = readLocalDonorAssignments();
+    for (const id of ids) {
+      const key = String(id);
+      const item = (window.ALL_ADMIN_CASES || []).find(x => String(x.id) === key);
+      const existing = item ? getCaseAssignedDonorsList(item) : normalizeDonorArray(donorMap[key]);
+      const nextList = donorLabel ? existing.filter(d => d !== donorLabel) : [];
+      donorMap[key] = nextList;
+
+      if (item) {
+        item.assigned_donors = nextList;
+        item.assigned_donor_name = nextList.join('، ');
+        await persistCaseDonorsInDb(item.id, nextList);
+      }
+    }
+
+    writeLocalDonorAssignments(donorMap);
+    window.filterAndRenderCasesTable();
+    alert('✅ تم تحديث إسناد الجهات للحالات المحددة.');
+  };
+
+  window.printDonorAssignedCasesSheet = async function() {
+    const chosenDonor = (document.getElementById('bulk-donor-select')?.value || '').trim();
+    const allCases = window.ALL_ADMIN_CASES || [];
+    const matched = chosenDonor
+      ? allCases.filter(c => getCaseAssignedDonorsList(c).includes(chosenDonor))
+      : allCases.filter(c => getCaseAssignedDonorsList(c).length > 0);
+
+    if (matched.length === 0) {
+      return alert('⚠️ لا توجد حالات مسندة للجهة المحددة لطباعتها.');
+    }
+
+    const cfg = await window.getFoundationSettings();
+    const rowsHtml = matched.map((f, idx) => {
+      const h = f.husband_data || {};
+      const name = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td>${window.escapeHtml(f.tracking_code || '')}</td>
+        <td>${window.escapeHtml(name)}</td>
+        <td>${window.escapeHtml(h.nid || '-')}</td>
+        <td>${window.escapeHtml(f.village_hamlet || '')}</td>
+        <td>${window.escapeHtml(f.intervention_type || '')}</td>
+        <td>${window.escapeHtml(getCaseAssignedDonorsList(f).join('، '))}</td>
+      </tr>`;
+    }).join('');
+
+    const bodyHtml = `
+      <h3 style="text-align:center; text-decoration:underline; margin:8px 0 10px;">كشف الحالات المسندة للجهة المانحة / الشريكة</h3>
+      <p style="font-size:13px; margin:4px 0 12px;">
+        <strong>الجهة:</strong> ${window.escapeHtml(chosenDonor || 'جميع الجهات المسند إليها')} |
+        <strong>عدد الحالات:</strong> ${matched.length}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>م</th><th>الكود</th><th>الاسم</th><th>الرقم القومي</th>
+            <th>القرية</th><th>نوع المساعدة</th><th>الجهة المسند إليها</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div style="display:flex; justify-content:space-between; margin-top:26px; font-weight:700; font-size:13px;">
+        <span>إدارة المتابعة والمشروعات</span><span>اعتماد رئيس مجلس الأمناء</span>
+      </div>`;
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, bodyHtml, 'كشف الحالات المسندة - مؤسسة الحافظ'));
+  };
+
+  function buildCaseAttachmentsAuditRows(caseObj) {
+    const audit = getCaseAttachmentsAudit(caseObj);
+    return audit.items.map(it => `
+      <tr>
+        <td>${it.index}</td>
+        <td>${window.escapeHtml(it.label)}</td>
+        <td style="font-weight:700; color:${it.attached ? '#166534' : '#991b1b'};">
+          ${window.escapeHtml(it.statusText)}
+        </td>
+      </tr>`).join('');
+  }
+
+  window.printFullCaseFiles = async function(caseIdsArray) {
+    const ids = Array.isArray(caseIdsArray) ? caseIdsArray.map(String) : [];
+    if (ids.length === 0) {
+      return alert('⚠️ حدد حالة واحدة أو أكثر لطباعة ملف البيانات الكامل.');
+    }
+
+    const targets = (window.ALL_ADMIN_CASES || []).filter(c => ids.includes(String(c.id)));
+    if (targets.length === 0) return alert('⚠️ لم يتم العثور على الحالات المحددة.');
+
+    const cfg = await window.getFoundationSettings();
+    const pagesHtml = targets.map((f, idx) => {
+      const h = f.husband_data || {};
+      const w = f.wife_data || {};
+      const housing = f.housing_data || {};
+      const fullName = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
+      const wifeName = [w.name1, w.name2, w.name3].filter(Boolean).join(' ') || '-';
+      const memberAssigned = getCaseAssignedMemberDisplay(f) || 'غير مسند';
+      const donorsAssigned = getCaseAssignedDonorsList(f).join('، ') || 'غير مسند';
+      const statusLabel = f.status === 'approved' ? 'مقبول' : (f.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة');
+      const audit = getCaseAttachmentsAudit(f);
+
+      return `
+        <div style="page-break-after:always; margin-bottom:20px;">
+          <h3 style="text-align:center; text-decoration:underline; margin:6px 0 12px;">
+            ملف بيانات الحالة الكامل (${idx + 1} من ${targets.length})
+          </h3>
+          <table>
+            <tbody>
+              <tr><th>كود المتابعة</th><td>${window.escapeHtml(f.tracking_code || '-')}</td><th>حالة الطلب</th><td>${window.escapeHtml(statusLabel)}</td></tr>
+              <tr><th>اسم رب الأسرة</th><td>${window.escapeHtml(fullName)}</td><th>الرقم القومي</th><td>${window.escapeHtml(h.nid || '-')}</td></tr>
+              <tr><th>رقم الهاتف</th><td>${window.escapeHtml(h.phone || '-')}</td><th>نوع المساعدة</th><td>${window.escapeHtml(f.intervention_type || '-')}</td></tr>
+              <tr><th>المركز / القرية</th><td>${window.escapeHtml((f.center_city || '-') + ' - ' + (f.village_hamlet || '-'))}</td><th>اسم الزوجة</th><td>${window.escapeHtml(wifeName)}</td></tr>
+              <tr><th>إجمالي الدخل</th><td>${window.escapeHtml(String(f.total_income ?? 0))}</td><th>إجمالي المصروفات</th><td>${window.escapeHtml(String(f.total_expenses ?? 0))}</td></tr>
+              <tr><th>المسند إليه (باحث/عضو)</th><td>${window.escapeHtml(memberAssigned)}</td><th>المسند إليه (جهة مانحة/شريكة)</th><td>${window.escapeHtml(donorsAssigned)}</td></tr>
+              <tr><th>بيانات السكن</th><td colspan="3">${window.escapeHtml((housing.housing_status || '-') + ' / ' + (housing.housing_type || '-'))}</td></tr>
+              <tr><th>ملاحظات الباحث</th><td colspan="3">${window.escapeHtml(f.researcher_notes || '-')}</td></tr>
+            </tbody>
+          </table>
+
+          <h4 style="margin:12px 0 6px;">
+            بيان حالة الصور والمستندات المرفقة (مرفق: ${audit.attachedCount} / غير مرفق: ${audit.missingCount}):
+          </h4>
+          <table>
+            <thead>
+              <tr><th>م</th><th>اسم المستند / الصورة</th><th>حالة الإرفاق</th></tr>
+            </thead>
+            <tbody>${buildCaseAttachmentsAuditRows(f)}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, pagesHtml, 'ملف بيانات الحالات الكامل - مؤسسة الحافظ'));
   };
 
   window.adminUpdateCaseStatus = async function(id, status) {
@@ -388,6 +907,7 @@
     const { error } = await window.supabaseClient.from('families').delete().eq('id', id);
     if (error) return alert('❌ تعذر حذف الحالة: ' + error.message);
     window.ALL_ADMIN_CASES = (window.ALL_ADMIN_CASES || []).filter(x => x.id !== id);
+    window.SELECTED_CASE_IDS.delete(String(id));
     window.refreshAdminSummaryCards();
     window.filterAndRenderCasesTable();
   };
@@ -814,7 +1334,7 @@
     window.renderAdminAchievementsSection();
   };
 
-  // --- 3. التظلمات والمستندات الرسمية والصادر والوارد وإيصالات المخازن ---
+  // --- 3. التظلمات (جار المراجعة - تم الرد - إسناد لباحث أو عضو - حذف) ---
   window.renderAdminGrievancesSection = async function() {
     const box = document.getElementById('admin-tab-grievances');
     if (!box) return;
@@ -826,17 +1346,108 @@
     window.ALL_ADMIN_GRIEVANCES = list;
     window.refreshAdminSummaryCards();
 
+    const assignees = (window.ALL_ADMIN_USERS || []).filter(u =>
+      u.account_status === 'active' && !['donor', 'partner'].includes(u.role)
+    );
+    const assigneeOpts = `<option value="">-- اختر باحثاً أو عضواً --</option>` +
+      assignees.map(u => {
+        const label = `${u.full_name || u.email} (${u.role || 'عضو'})`;
+        return `<option value="${window.escapeHtml(u.email)}">${window.escapeHtml(label)}</option>`;
+      }).join('');
+
     box.innerHTML = list.length === 0 ? '<p>لا توجد تظلمات مسجلة.</p>' : `
       <table>
-        <thead><tr><th>الكود</th><th>الاسم والهاتف</th><th>النوع والتفاصيل</th></tr></thead>
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>الاسم والهاتف</th>
+            <th>النوع والتفاصيل</th>
+            <th>الحالة والإجراءات</th>
+          </tr>
+        </thead>
         <tbody>
-          ${list.map(g => `<tr>
-            <td><strong>${window.escapeHtml(g.tracking_code)}</strong></td>
-            <td>${window.escapeHtml(g.full_name)}<br><small>${window.escapeHtml(g.phone)}</small></td>
-            <td><strong>${window.escapeHtml(g.grievance_type)}</strong><br>${window.escapeHtml(g.message_body)}</td>
-          </tr>`).join('')}
+          ${list.map(g => {
+            const st = g.status || 'جديد';
+            const assignedLabel = g.assigned_to_name || g.assigned_to_email || '';
+            const replyHtml = g.reply_note
+              ? `<div style="margin-top:4px; font-size:11px; color:#0f766e;"><strong>الرد:</strong> ${window.escapeHtml(g.reply_note)}</div>`
+              : '';
+            return `<tr>
+              <td><strong>${window.escapeHtml(g.tracking_code)}</strong></td>
+              <td>${window.escapeHtml(g.full_name)}<br><small>${window.escapeHtml(g.phone)}</small></td>
+              <td>
+                <strong>${window.escapeHtml(g.grievance_type)}</strong><br>
+                ${window.escapeHtml(g.message_body)}
+                ${replyHtml}
+              </td>
+              <td>
+                <div style="margin-bottom:6px; font-size:12px; font-weight:700;">
+                  الحالة: <span style="color:#0f766e;">${window.escapeHtml(st)}</span>
+                  ${assignedLabel ? `<div style="font-size:11px; color:#1e3a8a;">مسند إلى: ${window.escapeHtml(assignedLabel)}</div>` : ''}
+                </div>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                  <button type="button" onclick="adminSetGrievanceStatus('${g.id}', 'جار المراجعة')" class="nav-btn" style="background:#d97706; color:#fff; padding:4px 7px; font-size:11px;">جار المراجعة</button>
+                  <button type="button" onclick="adminSetGrievanceStatus('${g.id}', 'تم الرد')" class="nav-btn" style="background:#15803d; color:#fff; padding:4px 7px; font-size:11px;">تم الرد</button>
+                  <button type="button" onclick="toggleGrievanceAssignPanel('${g.id}')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:4px 7px; font-size:11px;">إسناد لباحث أو عضو</button>
+                  <button type="button" onclick="adminDeleteGrievance('${g.id}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:4px 7px; font-size:11px;">حذف</button>
+                </div>
+                <div id="grv-assign-panel-${g.id}" style="display:none; margin-top:6px; gap:5px; align-items:center; flex-wrap:wrap;">
+                  <select id="grv-assignee-sel-${g.id}" style="margin:0; padding:3px 6px; font-size:11px;">${assigneeOpts}</select>
+                  <button type="button" onclick="adminAssignGrievance('${g.id}')" class="nav-btn" style="background:#0f766e; color:#fff; padding:4px 8px; font-size:11px;">تأكيد الإسناد</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>`;
+  };
+
+  window.toggleGrievanceAssignPanel = function(id) {
+    const el = document.getElementById(`grv-assign-panel-${id}`);
+    if (!el) return;
+    el.style.display = el.style.display === 'none' || !el.style.display ? 'flex' : 'none';
+  };
+
+  window.adminSetGrievanceStatus = async function(id, newStatus) {
+    let replyNote = '';
+    if (newStatus === 'تم الرد') {
+      const entered = prompt('اكتب نص الرد على التظلم (اختياري):', '');
+      if (entered === null) return;
+      replyNote = entered.trim();
+    }
+
+    const patch = { status: newStatus };
+    if (replyNote) patch.reply_note = replyNote;
+
+    const { error } = await window.supabaseClient.from('grievances').update(patch).eq('id', id);
+    if (error) {
+      const fallback = await window.supabaseClient.from('grievances').update({ status: newStatus }).eq('id', id);
+      if (fallback.error) return alert('❌ تعذر تحديث حالة التظلم: ' + fallback.error.message);
+    }
+    window.renderAdminGrievancesSection();
+  };
+
+  window.adminAssignGrievance = async function(id) {
+    const sel = document.getElementById(`grv-assignee-sel-${id}`);
+    const email = (sel?.value || '').trim();
+    const name = sel?.options[sel.selectedIndex]?.text || '';
+    if (!email) return alert('⚠️ اختر باحثاً أو عضواً من القائمة أولاً.');
+
+    const patch = { status: 'جار المراجعة', assigned_to_email: email, assigned_to_name: name };
+    const { error } = await window.supabaseClient.from('grievances').update(patch).eq('id', id);
+    if (error) {
+      const fallback = await window.supabaseClient.from('grievances').update({ status: 'جار المراجعة' }).eq('id', id);
+      if (fallback.error) return alert('❌ تعذر إسناد التظلم: ' + fallback.error.message);
+    }
+    window.renderAdminGrievancesSection();
+    alert('✅ تم إسناد التظلم بنجاح.');
+  };
+
+  window.adminDeleteGrievance = async function(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا التظلم؟')) return;
+    const { error } = await window.supabaseClient.from('grievances').delete().eq('id', id);
+    if (error) return alert('❌ تعذر حذف التظلم: ' + error.message);
+    window.renderAdminGrievancesSection();
   };
 
   function readLocalOfficialDocs() {
@@ -1103,7 +1714,7 @@
           <tbody>${rowsHtml}</tbody>
         </table>
         <div style="display:flex; justify-content:space-between; margin-top:28px; font-weight:700; font-size:13px;">
-          <div>${isIssue ? 'توقيع المستلم:' : 'توقيع المودِع / المورِّد:'}<br><br>......................</div>
+          <div>${isIssue ? 'توقيع المستلم:' : 'توقيع المودِع / المورِّد:'}<br><br>......................</div>
           <div>أمين المخزن:<br><br>......................</div>
           <div>يعتمد / رئيس مجلس الأمناء:<br><br>......................</div>
         </div>`;
@@ -1171,7 +1782,7 @@
     });
   };
 
- window.printOfficialDocSheetOnly = async function(saveType = '', docNumInputId = '', docDateInputId = '', titleInputId = '') {
+  window.printOfficialDocSheetOnly = async function(saveType = '', docNumInputId = '', docDateInputId = '', titleInputId = '') {
     const sheet = document.getElementById('printable-official-sheet');
     if (!sheet) return;
     const clone = sheet.cloneNode(true);
@@ -1470,7 +2081,7 @@
           <div class="grid-3">
             <div><label style="font-size:11px; font-weight:700;">رقم الإيصال (تلقائي):</label><input id="wh-doc-num" value="${window.escapeHtml(nextWhNum)}" style="margin:0; font-weight:700;"></div>
             <div><label style="font-size:11px; font-weight:700;">التاريخ:</label><input id="wh-doc-date" type="date" value="${today}" style="margin:0;"></div>
-            <div><label style="font-size:11px; font-weight:700;">${isIssue ? 'اسم المستلم / الجهة *:' : 'المودِع / مصدر الإيداع *:'}</label><input id="wh-party-name" placeholder="${isIssue ? 'اسم المستلم أو القرية/المبادرة' : 'اسم المتبرع / المورِّد / الجهة'}" style="margin:0;"></div>
+            <div><label style="font-size:11px; font-weight:700;">${isIssue ? 'اسم المستلم / الجهة *:' : 'المودِع / مصدر الإيداع *:'}</label><input id="wh-party-name" placeholder="${isIssue ? 'اسم المستلم أو القرية/المبادرة' : 'اسم المتبرع / المورِّد / الجهة'}" style="margin:0;"></div>
           </div>
           <div style="margin-top:8px;">
             <label style="font-size:11px; font-weight:700;">البيان / الغرض:</label>
