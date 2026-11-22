@@ -331,7 +331,7 @@
     return attachmentRecord;
   };
 
-  function hydrateAttachmentPreviewsInCurrentStep() {
+    function hydrateAttachmentPreviewsInCurrentStep() {
     const container = document.getElementById('wizard-container');
     if (!container) return;
     const fileInputs = container.querySelectorAll('input[type="file"]');
@@ -343,8 +343,16 @@
           window.handleImmediateAttachmentPreview(inputEl, docKey);
         });
       }
-      
+      const box = ensureStatusBox(inputEl);
+      const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
+      if (cached) {
+        renderAttachmentStatusBox(box, cached);
+      }
+    });
+  }
+
   function isHusbandLivingWithFamily(hObj) {
+
     const h = hObj || {};
     const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
     if (!statusText) return true;
