@@ -322,16 +322,7 @@
     attachmentRecord.uploadError = 'تعذر الوصول إلى خدمة التخزين السحابي';
   }
 
-  window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
-  window.formData.documents = Object.assign({}, window.formData.documents || {}, {
-    [docKey]: attachmentRecord
-  });
-
-  renderAttachmentStatusBox(box, attachmentRecord);
-  return attachmentRecord;
-};
-
-   window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
+ window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
     window.formData.documents = Object.assign({}, window.formData.documents || {}, {
       [docKey]: attachmentRecord
     });
@@ -339,6 +330,7 @@
     renderAttachmentStatusBox(box, attachmentRecord);
     return attachmentRecord;
   };
+
   function hydrateAttachmentPreviewsInCurrentStep() {
     const container = document.getElementById('wizard-container');
     if (!container) return;
@@ -351,6 +343,13 @@
           window.handleImmediateAttachmentPreview(inputEl, docKey);
         });
       }
+      const box = ensureStatusBox(inputEl);
+      const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
+      if (cached) {
+        renderAttachmentStatusBox(box, cached);
+      }
+    });
+  }
       const box = ensureStatusBox(inputEl);
       const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
       if (cached) {
