@@ -1962,8 +1962,8 @@
        window.currentStep = 1;
       if (typeof window.showSection === 'function') window.showSection('home');
       else location.reload();
-    } else {
+       } else {
       showStepError('تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.');
     }
-  }; // <-- هذا السطر الناقص لإغلاق دالة submitFullWizardApplication
+  };
 })();
