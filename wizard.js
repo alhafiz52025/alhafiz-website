@@ -343,20 +343,7 @@
           window.handleImmediateAttachmentPreview(inputEl, docKey);
         });
       }
-      const box = ensureStatusBox(inputEl);
-      const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
-      if (cached) {
-        renderAttachmentStatusBox(box, cached);
-      }
-    });
-  }
-const box = ensureStatusBox(inputEl);
-      const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
-      if (cached) {
-        renderAttachmentStatusBox(box, cached);
-      }
-    });
- 
+      
   function isHusbandLivingWithFamily(hObj) {
     const h = hObj || {};
     const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
