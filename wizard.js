@@ -16,6 +16,26 @@
     'جارٍ الاستخراج'
   ];
 
+  const ATTACHMENT_FIELD_MAP = [
+    { inputId: 'h-id-front', docKey: 'hIdFront', folder: 'husband' },
+    { inputId: 'h-id-back', docKey: 'hIdBack', folder: 'husband' },
+    { inputId: 'h-medical-doc', docKey: 'hMedicalDoc', folder: 'husband_medical' },
+    { inputId: 'h-social-doc', docKey: 'hSocialDoc', folder: 'husband_social' },
+    { inputId: 'w-id-front', docKey: 'wIdFront', folder: 'wife' },
+    { inputId: 'w-id-back', docKey: 'wIdBack', folder: 'wife' },
+    { inputId: 'w-medical-doc', docKey: 'wMedicalDoc', folder: 'wife_medical' },
+    { inputId: 'w-social-doc', docKey: 'wSocialDoc', folder: 'wife_social' },
+    { inputId: 'm-cert-doc', docKey: 'mCertDoc', folder: 'marriage' },
+    { inputId: 'm-health-doc', docKey: 'mHealthDoc', folder: 'marriage' },
+    { inputId: 'doc-social-research', docKey: 'socialResearch', folder: 'housing_docs' },
+    { inputId: 'doc-insurance-h', docKey: 'insuranceH', folder: 'housing_docs' },
+    { inputId: 'doc-insurance-w', docKey: 'insuranceW', folder: 'housing_docs' },
+    { inputId: 'doc-lease', docKey: 'lease', folder: 'housing_docs' },
+    { inputId: 'doc-school-enroll', docKey: 'schoolEnroll', folder: 'housing_docs' }
+  ];
+
+  window.WIZARD_ATTACHMENTS_CACHE = window.WIZARD_ATTACHMENTS_CACHE || {};
+
   if (typeof window.formData === 'undefined') {
     window.formData = {
       interventionType: 'كفالة أيتام شهرية',
@@ -95,6 +115,221 @@
       waterSource: 'مياه حكومية / عمومية',
       sanitationType: 'متصلة بالصرف الصحي'
     }, window.formData.housing || {});
+
+    window.formData.documents = Object.assign({}, window.formData.documents || {});
+  }
+
+  function escapeSafeHtml(str) {
+    if (typeof window.escapeHtml === 'function') {
+      return window.escapeHtml(str);
+    }
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function hasDocValue(val) {
+    if (!val) return false;
+    if (typeof val === 'string') return val.trim().length > 0 && val.trim() !== 'null' && val.trim() !== 'undefined';
+    if (typeof val === 'object') {
+      if (val.uploadError) return false;
+      return Boolean(val.url || val.publicUrl || val.path || val.dataUrl || val.base64 || val.fileName || val.name);
+    }
+    return Boolean(val);
+  }
+
+  function getDocKeyForInput(inputEl, explicitKey = '') {
+    if (explicitKey) return explicitKey;
+    const id = inputEl?.id || '';
+    const found = ATTACHMENT_FIELD_MAP.find(item => item.inputId === id);
+    if (found) return found.docKey;
+    if (inputEl?.classList?.contains('c-cert')) {
+      const card = inputEl.closest('.child-item-card');
+      const cards = Array.from(document.querySelectorAll('#children-list .child-item-card'));
+      const idx = cards.indexOf(card);
+      return idx >= 0 ? `childCert_${idx}` : 'childCert';
+    }
+    return id || 'attachment';
+  }
+
+  function getFolderForDocKey(docKey, inputEl) {
+    const found = ATTACHMENT_FIELD_MAP.find(item => item.docKey === docKey || item.inputId === inputEl?.id);
+    return found ? found.folder : 'misc_docs';
+  }
+
+  function getDraftTrackingFolder() {
+    if (!window._wizardDraftFolder) {
+      window._wizardDraftFolder = 'DRAFT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+    }
+    return window._wizardDraftFolder;
+  }
+
+  function ensureStatusBox(inputEl, statusBoxId) {
+    if (!inputEl) return null;
+    if (statusBoxId) {
+      const byId = document.getElementById(statusBoxId);
+      if (byId) return byId;
+    }
+    const parent = inputEl.parentElement;
+    if (!parent) return null;
+    let box = parent.querySelector('.hf-attach-live-box');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'hf-attach-live-box';
+      box.style.cssText = 'display:flex; align-items:center; gap:8px; margin-top:6px; padding:6px 8px; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; font-size:12px; flex-wrap:wrap;';
+      parent.appendChild(box);
+    }
+    return box;
+  }
+
+  function renderAttachmentStatusBox(box, info) {
+    if (!box) return;
+    if (!info || !hasDocValue(info)) {
+      const errMsg = info && info.uploadError ? ` — ${info.uploadError}` : '';
+      box.style.borderColor = '#fecaca';
+      box.style.background = '#fef2f2';
+      box.innerHTML = `<span style="color:#b91c1c; font-weight:700;">❌ لم يتم رفع المرفق${escapeSafeHtml(errMsg)} — يرجى إعادة التصوير أو الرفع من جديد.</span>`;
+      return;
+    }
+
+    const displayName = info.fileName || info.name || info.path || 'مرفق';
+    const previewSrc = info.dataUrl || info.url || info.publicUrl || '';
+    const isImage = Boolean(
+      (info.mimeType && String(info.mimeType).startsWith('image/')) ||
+      (typeof previewSrc === 'string' && previewSrc.startsWith('data:image/')) ||
+      /\.(jpe?g|png|gif|webp|bmp)(\?|#|$)/i.test(displayName) ||
+      /\.(jpe?g|png|gif|webp|bmp)(\?|#|$)/i.test(previewSrc)
+    );
+
+    const thumbHtml = isImage && previewSrc
+      ? `<img src="${previewSrc}" alt="معاينة المرفق" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1; flex-shrink:0;">`
+      : `<span style="display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:6px; background:#e2e8f0; color:#0f172a; font-weight:800; font-size:12px; flex-shrink:0;">📄 ملف</span>`;
+
+    if (info.uploaded || info.path || info.url || info.publicUrl) {
+      box.style.borderColor = '#bbf7d0';
+      box.style.background = '#f0fdf4';
+      box.innerHTML = `
+        ${thumbHtml}
+        <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+          <span style="color:#15803d; font-weight:800;">✅ تم رفع المرفق بنجاح</span>
+          <span style="color:#334155; font-size:11px; word-break:break-all;">${escapeSafeHtml(displayName)}</span>
+        </div>
+      `;
+    } else if (info.dataUrl) {
+      box.style.borderColor = '#fde68a';
+      box.style.background = '#fffbeb';
+      box.innerHTML = `
+        ${thumbHtml}
+        <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+          <span style="color:#b45309; font-weight:800;">⚠️ تم تجهيز المعاينة محلياً — تحقق من رفع الملف أو أعد المحاولة</span>
+          <span style="color:#334155; font-size:11px; word-break:break-all;">${escapeSafeHtml(displayName)}</span>
+        </div>
+      `;
+    } else {
+      box.style.borderColor = '#fecaca';
+      box.style.background = '#fef2f2';
+      box.innerHTML = `<span style="color:#b91c1c; font-weight:700;">❌ لم يتم رفع المرفق — يرجى إعادة التصوير أو الرفع من جديد.</span>`;
+    }
+  }
+
+  window.handleImmediateAttachmentPreview = async function(inputEl, explicitDocKey = '', statusBoxId = '') {
+    if (!inputEl) return null;
+    const docKey = getDocKeyForInput(inputEl, explicitDocKey);
+    const box = ensureStatusBox(inputEl, statusBoxId);
+    const file = inputEl.files && inputEl.files[0];
+
+    if (!file) {
+      const existing = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
+      if (existing && hasDocValue(existing)) {
+        renderAttachmentStatusBox(box, existing);
+        return existing;
+      }
+      renderAttachmentStatusBox(box, null);
+      return null;
+    }
+
+    if (box) {
+      box.style.borderColor = '#bfdbfe';
+      box.style.background = '#eff6ff';
+      box.innerHTML = `<span style="color:#1d4ed8; font-weight:700;">⏳ جارٍ رفع المرفق (${escapeSafeHtml(file.name)}) والتحقق من حفظه...</span>`;
+    }
+
+    const localDataUrl = await new Promise((resolve) => {
+      if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name)) {
+        return resolve('');
+      }
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result || '');
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+
+    const attachmentRecord = {
+      name: file.name,
+      fileName: file.name,
+      size: file.size,
+      mimeType: file.type || '',
+      dataUrl: localDataUrl,
+      path: '',
+      url: '',
+      publicUrl: '',
+      uploaded: false,
+      uploadError: ''
+    };
+
+    if (window.supabaseClient && window.supabaseClient.storage) {
+      const folder = getFolderForDocKey(docKey, inputEl);
+      const draftFolder = getDraftTrackingFolder();
+      const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, '_');
+      const storagePath = `${draftFolder}/${folder}/${Date.now()}_${safeName}`;
+
+      const { error: upErr } = await window.supabaseClient.storage
+        .from('foundation-docs')
+        .upload(storagePath, file, { upsert: true });
+
+      if (!upErr) {
+        const { data: pubData } = window.supabaseClient.storage
+          .from('foundation-docs')
+          .getPublicUrl(storagePath);
+        attachmentRecord.path = storagePath;
+        attachmentRecord.url = (pubData && pubData.publicUrl) || '';
+        attachmentRecord.publicUrl = (pubData && pubData.publicUrl) || '';
+        attachmentRecord.uploaded = true;
+      } else {
+        attachmentRecord.uploadError = upErr.message || 'تعذر الرفع إلى التخزين';
+      }
+    }
+
+    window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
+    window.formData.documents = Object.assign({}, window.formData.documents || {}, {
+      [docKey]: attachmentRecord
+    });
+
+    renderAttachmentStatusBox(box, attachmentRecord);
+    return attachmentRecord;
+  };
+
+  function hydrateAttachmentPreviewsInCurrentStep() {
+    const container = document.getElementById('wizard-container');
+    if (!container) return;
+    const fileInputs = container.querySelectorAll('input[type="file"]');
+    fileInputs.forEach((inputEl) => {
+      const docKey = getDocKeyForInput(inputEl);
+      if (!inputEl.dataset.hfLiveBound) {
+        inputEl.dataset.hfLiveBound = '1';
+        inputEl.addEventListener('change', () => {
+          window.handleImmediateAttachmentPreview(inputEl, docKey);
+        });
+      }
+      const box = ensureStatusBox(inputEl);
+      const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
+      if (cached) {
+        renderAttachmentStatusBox(box, cached);
+      }
+    });
   }
 
   function isHusbandLivingWithFamily(hObj) {
@@ -336,8 +571,8 @@
         ${window.renderPersonHealthBlockHtml('h', 'الزوج')}
 
         <div class="grid-2" style="margin-top:10px;">
-          <div><label>صورة بطاقة الزوج (وش) *</label><input type="file" id="h-id-front" accept="image/*,.pdf"></div>
-          <div><label>صورة بطاقة الزوج (ظهر) *</label><input type="file" id="h-id-back" accept="image/*,.pdf"></div>
+          <div><label>صورة بطاقة الزوج (وش) *</label><input type="file" id="h-id-front" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'hIdFront')"></div>
+          <div><label>صورة بطاقة الزوج (ظهر) *</label><input type="file" id="h-id-back" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'hIdBack')"></div>
         </div>
       `;
     }
@@ -380,8 +615,8 @@
         ${window.renderPersonHealthBlockHtml('w', 'الزوجة')}
 
         <div class="grid-2" style="margin-top:10px;">
-          <div><label>صورة بطاقة الزوجة (وش) *</label><input type="file" id="w-id-front" accept="image/*,.pdf"></div>
-          <div><label>صورة بطاقة الزوجة (ظهر) *</label><input type="file" id="w-id-back" accept="image/*,.pdf"></div>
+          <div><label>صورة بطاقة الزوجة (وش) *</label><input type="file" id="w-id-front" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'wIdFront')"></div>
+          <div><label>صورة بطاقة الزوجة (ظهر) *</label><input type="file" id="w-id-back" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'wIdBack')"></div>
         </div>
       `;
     }
@@ -426,7 +661,7 @@
                 </div>
               </div>
               <div class="grid-2" style="margin-top:6px;">
-                <div><label style="font-size:11px;">شهادة الميلاد / المستند:</label><input type="file" class="c-cert" accept="image/*,.pdf"></div>
+                <div><label style="font-size:11px;">شهادة الميلاد / المستند:</label><input type="file" class="c-cert" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'childCert_${idx}')"></div>
                 <div>
                   <label style="font-size:11px;">الحالة الصحية:</label>
                   <select class="c-health" onchange="window.toggleChildHealthDetails(${idx})">
@@ -502,8 +737,8 @@
             <div><label>المتوفرات لدى العروسة *</label><input id="m-available" value="${window.formData.marriage.available || ''}"></div>
           </div>
           <div class="grid-2" style="margin-top:8px;">
-            <div><label>صورة قسيمة الزواج / الخطوبة *</label><input type="file" id="m-cert-doc" accept="image/*,.pdf"></div>
-            <div><label>الشهادة الصحية للعروسين (وش وظهر) *</label><input type="file" id="m-health-doc" accept="image/*,.pdf"></div>
+            <div><label>صورة قسيمة الزواج / الخطوبة *</label><input type="file" id="m-cert-doc" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'mCertDoc')"></div>
+            <div><label>الشهادة الصحية للعروسين (وش وظهر) *</label><input type="file" id="m-health-doc" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'mHealthDoc')"></div>
           </div>
         </div>
       `;
@@ -682,11 +917,11 @@
         </div>
 
         <div class="grid-2" style="margin-bottom:10px;">
-          <div><label>البحث الاجتماعي (مختوم) *</label><input type="file" id="doc-social-research" accept="image/*,.pdf"></div>
-          <div><label>برنت تأميني للزوج</label><input type="file" id="doc-insurance-h" accept="image/*,.pdf"></div>
-          <div><label>برنت تأميني للزوجة</label><input type="file" id="doc-insurance-w" accept="image/*,.pdf"></div>
-          <div id="lease-doc-box" class="${window.formData.housing.case==='إيجار'?'':'hidden'}"><label>عقد الإيجار الرسمي *</label><input type="file" id="doc-lease" accept="image/*,.pdf"></div>
-          <div><label>إثبات قيد دراسي للأبناء</label><input type="file" id="doc-school-enroll" accept="image/*,.pdf"></div>
+          <div><label>البحث الاجتماعي (مختوم) *</label><input type="file" id="doc-social-research" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'socialResearch')"></div>
+          <div><label>برنت تأميني للزوج</label><input type="file" id="doc-insurance-h" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'insuranceH')"></div>
+          <div><label>برنت تأميني للزوجة</label><input type="file" id="doc-insurance-w" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'insuranceW')"></div>
+          <div id="lease-doc-box" class="${window.formData.housing.case==='إيجار'?'':'hidden'}"><label>عقد الإيجار الرسمي *</label><input type="file" id="doc-lease" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'lease')"></div>
+          <div><label>إثبات قيد دراسي للأبناء</label><input type="file" id="doc-school-enroll" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'schoolEnroll')"></div>
         </div>
 
         <div style="margin-bottom:10px;">
@@ -732,6 +967,8 @@
       window.toggleLease();
       window.toggleFurnitureDeficiencies();
     }
+
+    hydrateAttachmentPreviewsInCurrentStep();
   };
 
   window.toggleChildHealthDetails = function(childIndex) {
@@ -807,11 +1044,11 @@
           <div class="grid-2" style="margin-top:10px;">
             <div>
               <label>رفع التقرير الطبي (مختوم) *</label>
-              <input type="file" id="${prefix}-medical-doc" accept="image/*,.pdf">
+              <input type="file" id="${prefix}-medical-doc" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, '${prefix}MedicalDoc')">
             </div>
             <div>
               <label>رفع البحث الاجتماعي (مختوم) *</label>
-              <input type="file" id="${prefix}-social-doc" accept="image/*,.pdf">
+              <input type="file" id="${prefix}-social-doc" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, '${prefix}SocialDoc')">
             </div>
           </div>
         </div>
@@ -882,6 +1119,7 @@
       .join('');
 
     window.renderDynamicMedicalFields(type);
+    hydrateAttachmentPreviewsInCurrentStep();
   };
 
   window.renderDynamicMedicalFields = function(type = 'h') {
@@ -1020,6 +1258,14 @@
     return /^01[0125]\d{8}$/.test(String(phone || '').trim());
   }
 
+  function isAttachmentReady(inputId, docKey) {
+    const fileInput = document.getElementById(inputId);
+    const hasFileSelected = Boolean(fileInput?.files?.length);
+    const savedDoc = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
+    if (savedDoc && hasDocValue(savedDoc)) return true;
+    return hasFileSelected && (!savedDoc || !savedDoc.uploadError);
+  }
+
   function validateStepCompletion(step) {
     if (step === 1) {
       const val = document.getElementById('intervention-type')?.value || '';
@@ -1039,8 +1285,8 @@
       const phone = (document.getElementById('h-phone')?.value || '').trim();
       const whatsapp = (document.getElementById('h-whatsapp')?.value || '').trim();
       const health = document.getElementById('h-health')?.value || 'سليم';
-      const idFront = document.getElementById('h-id-front')?.files?.length || (window.formData.documents?.hIdFront ? 1 : 0);
-      const idBack = document.getElementById('h-id-back')?.files?.length || (window.formData.documents?.hIdBack ? 1 : 0);
+      const idFront = isAttachmentReady('h-id-front', 'hIdFront');
+      const idBack = isAttachmentReady('h-id-back', 'hIdBack');
 
       if (!name1 || !name2 || !name3) return 'يرجى استكمال الاسم الثلاثي والعائلة للزوج.';
       if (!window.parseEgyptianNationalId(nid).valid) return 'الرقم القومي للزوج غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).';
@@ -1055,8 +1301,8 @@
 
       if (health !== 'سليم') {
         const need = document.getElementById('h-medical-need')?.value || '';
-        const medDoc = document.getElementById('h-medical-doc')?.files?.length || (window.formData.documents?.hMedicalDoc ? 1 : 0);
-        const socDoc = document.getElementById('h-social-doc')?.files?.length || (window.formData.documents?.hSocialDoc ? 1 : 0);
+        const medDoc = isAttachmentReady('h-medical-doc', 'hMedicalDoc');
+        const socDoc = isAttachmentReady('h-social-doc', 'hSocialDoc');
 
         if (!need) return 'يرجى تحديد الإجراء الطبي المطلوب للزوج.';
         if ([
@@ -1068,11 +1314,11 @@
           const cost = parseFloat(document.getElementById('h-monthly-cost')?.value || '0');
           if (!cost || cost <= 0) return 'يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي للزوج.';
         }
-        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوج.';
-        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم لحالة الزوج.';
+        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوج والتأكد من ظهور علامة الرفع الناجح.';
+        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم لحالة الزوج والتأكد من ظهور علامة الرفع الناجح.';
       }
 
-      if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الزوج (وجه وظهر).';
+      if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الزوج (وجه وظهر) والتأكد من ظهور علامة الرفع الناجح.';
       return null;
     }
 
@@ -1083,8 +1329,8 @@
       const nid = (document.getElementById('w-nid')?.value || '').trim();
       const phone = (document.getElementById('w-phone')?.value || '').trim();
       const health = document.getElementById('w-health')?.value || 'سليم';
-      const idFront = document.getElementById('w-id-front')?.files?.length || (window.formData.documents?.wIdFront ? 1 : 0);
-      const idBack = document.getElementById('w-id-back')?.files?.length || (window.formData.documents?.wIdBack ? 1 : 0);
+      const idFront = isAttachmentReady('w-id-front', 'wIdFront');
+      const idBack = isAttachmentReady('w-id-back', 'wIdBack');
 
       if (!name1 || !name2 || !name3) return 'يرجى استكمال الاسم الثلاثي والعائلة للزوجة.';
       if (!window.parseEgyptianNationalId(nid).valid) return 'الرقم القومي للزوجة غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).';
@@ -1092,8 +1338,8 @@
 
       if (health !== 'سليم') {
         const need = document.getElementById('w-medical-need')?.value || '';
-        const medDoc = document.getElementById('w-medical-doc')?.files?.length || (window.formData.documents?.wMedicalDoc ? 1 : 0);
-        const socDoc = document.getElementById('w-social-doc')?.files?.length || (window.formData.documents?.wSocialDoc ? 1 : 0);
+        const medDoc = isAttachmentReady('w-medical-doc', 'wMedicalDoc');
+        const socDoc = isAttachmentReady('w-social-doc', 'wSocialDoc');
 
         if (!need) return 'يرجى تحديد الإجراء الطبي المطلوب للزوجة.';
         if ([
@@ -1105,11 +1351,11 @@
           const cost = parseFloat(document.getElementById('w-monthly-cost')?.value || '0');
           if (!cost || cost <= 0) return 'يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي للزوجة.';
         }
-        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوجة.';
-        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم للزوجة.';
+        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوجة والتأكد من ظهور علامة الرفع الناجح.';
+        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم للزوجة والتأكد من ظهور علامة الرفع الناجح.';
       }
 
-      if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الزوجة (وجه وظهر).';
+      if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الزوجة (وجه وظهر) والتأكد من ظهور علامة الرفع الناجح.';
       return null;
     }
 
@@ -1133,15 +1379,15 @@
       const mPhone = (document.getElementById('m-phone')?.value || '').trim();
       const mDate = document.getElementById('m-date')?.value || '';
       const mAvail = (document.getElementById('m-available')?.value || '').trim();
-      const mCert = document.getElementById('m-cert-doc')?.files?.length || (window.formData.documents?.mCertDoc ? 1 : 0);
-      const mHealth = document.getElementById('m-health-doc')?.files?.length || (window.formData.documents?.mHealthDoc ? 1 : 0);
+      const mCert = isAttachmentReady('m-cert-doc', 'mCertDoc');
+      const mHealth = isAttachmentReady('m-health-doc', 'mHealthDoc');
 
       if (!m1 || !m2 || !m3) return 'يرجى استكمال الاسم الثلاثي والعائلة للعروسة.';
       if (!window.parseEgyptianNationalId(mNid).valid) return 'الرقم القومي للعروسة غير صحيح (14 رقماً).';
       if (!isValidEgyptianPhone(mPhone)) return 'رقم هاتف العروسة أو وليها يجب أن يتكون من 11 رقماً.';
       if (!mDate) return 'يرجى تحديد موعد الزفاف المقترح.';
       if (!mAvail) return 'يرجى إدخال المتوفرات لدى العروسة.';
-      if (!mCert || !mHealth) return 'يرجى رفع قسيمة الزواج/الخطوبة والشهادة الصحية للعروسين.';
+      if (!mCert || !mHealth) return 'يرجى رفع قسيمة الزواج/الخطوبة والشهادة الصحية للعروسين والتأكد من ظهور علامة الرفع الناجح.';
       return null;
     }
 
@@ -1170,8 +1416,8 @@
     if (step === 8) {
       const furn = document.getElementById('h-furniture')?.value || '';
       const hCase = document.getElementById('h-status-case')?.value || 'ملك';
-      const socDoc = document.getElementById('doc-social-research')?.files?.length || (window.formData.documents?.socialResearch ? 1 : 0);
-      const leaseDoc = document.getElementById('doc-lease')?.files?.length || (window.formData.documents?.lease ? 1 : 0);
+      const socDoc = isAttachmentReady('doc-social-research', 'socialResearch');
+      const leaseDoc = isAttachmentReady('doc-lease', 'lease');
 
       if (['رديء', 'رديء جداً / معدوم', 'متوسط'].includes(furn)) {
         const checkedDefs = Array.from(document.querySelectorAll('.h-deficiency-item:checked'));
@@ -1180,7 +1426,7 @@
         }
       }
 
-      if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم ضمن المستندات الرسمية.';
+      if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم ضمن المستندات الرسمية والتأكد من ظهور علامة الرفع الناجح.';
       if (hCase === 'إيجار' && !leaseDoc) return 'يرجى رفع عقد الإيجار الرسمي لأن حالة السكن إيجار.';
       return null;
     }
@@ -1224,6 +1470,7 @@
     if (window.formData.housing) {
       window.formData.housing.case = val || 'ملك';
     }
+    hydrateAttachmentPreviewsInCurrentStep();
   };
 
   window.toggleFurnitureDeficiencies = function() {
@@ -1262,7 +1509,8 @@
     window.renderWizardStep();
   };
 
- window.calcTotals = function() {
+  // حساب الفائض والعجز المالي وفق القاعدة: إجمالي المصروفات - إجمالي الدخل
+  window.calcTotals = function() {
     const readNum = (id) => {
       const val = parseFloat(document.getElementById(id)?.value);
       return Number.isFinite(val) ? val : 0;
@@ -1321,25 +1569,46 @@
     }
   };
 
-  async function uploadSingleDoc(inputId, folderName, trackingCode) {
+  async function uploadSingleDoc(inputId, folderName, trackingCode, docKey = '') {
+    const resolvedKey = getDocKeyForInput(document.getElementById(inputId), docKey);
     const fileInput = document.getElementById(inputId);
     const file = fileInput?.files?.[0];
-    if (!file) return window.formData.documents?.[inputId] || null;
+    const existing = window.formData.documents?.[resolvedKey] || window.WIZARD_ATTACHMENTS_CACHE[resolvedKey];
 
-    if (!window.supabaseClient || !window.supabaseClient.storage) {
-      return { name: file.name, size: file.size };
+    if (!file) {
+      return hasDocValue(existing) ? existing : null;
     }
 
-    const safeName = file.name.replace(/[^\w.\-]/g, '_');
+    if (existing && existing.uploaded && existing.path && existing.fileName === file.name && existing.size === file.size) {
+      return existing;
+    }
+
+    if (!window.supabaseClient || !window.supabaseClient.storage) {
+      return existing || { name: file.name, fileName: file.name, size: file.size };
+    }
+
+    const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, '_');
     const filePath = `${trackingCode}/${folderName}/${Date.now()}_${safeName}`;
     const { error } = await window.supabaseClient.storage
       .from('foundation-docs')
       .upload(filePath, file, { upsert: true });
 
     if (error) {
-      return { name: file.name, uploadError: error.message };
+      return { name: file.name, fileName: file.name, uploadError: error.message };
     }
-    return { name: file.name, path: filePath };
+
+    const { data: pubData } = window.supabaseClient.storage
+      .from('foundation-docs')
+      .getPublicUrl(filePath);
+
+    return {
+      name: file.name,
+      fileName: file.name,
+      path: filePath,
+      url: (pubData && pubData.publicUrl) || '',
+      publicUrl: (pubData && pubData.publicUrl) || '',
+      uploaded: true
+    };
   }
 
   function saveCurrentStepData() {
@@ -1410,11 +1679,12 @@
     } else if (window.currentStep === 4) {
       const rows = document.querySelectorAll('#children-list > div');
       const updatedChildren = [];
-      rows.forEach(r => {
+      rows.forEach((r, idx) => {
         const nid = r.querySelector('.c-nid')?.value || '';
         const parsed = window.parseEgyptianNationalId(nid);
         const cHealth = r.querySelector('.c-health')?.value || 'سليم';
         const cDisType = r.querySelector('.c-disability-type')?.value || '';
+        const certCache = window.formData.documents?.[`childCert_${idx}`] || window.WIZARD_ATTACHMENTS_CACHE[`childCert_${idx}`];
         updatedChildren.push({
           name: r.querySelector('.c-name')?.value || '',
           nid,
@@ -1426,7 +1696,8 @@
           disabilityType: cHealth === 'سليم' ? '' : cDisType,
           hasServiceCard: cHealth === 'سليم' ? 'لا' : (r.querySelector('.c-service-card')?.value || 'لا'),
           monthlyCost: cHealth === 'سليم' ? '' : (r.querySelector('.c-monthly-cost')?.value || ''),
-          insuranceCoverage: cHealth === 'سليم' ? 'غير محدد' : (r.querySelector('.c-insurance')?.value || 'غير محدد')
+          insuranceCoverage: cHealth === 'سليم' ? 'غير محدد' : (r.querySelector('.c-insurance')?.value || 'غير محدد'),
+          certificateDoc: certCache || null
         });
       });
       window.formData.children = updatedChildren;
@@ -1546,30 +1817,21 @@
     const totalInc = Object.values(incomesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
 
     const rawDocs = {
-      hIdFront: await uploadSingleDoc('h-id-front', 'husband', trackingCode),
-      hIdBack: await uploadSingleDoc('h-id-back', 'husband', trackingCode),
-      hMedicalDoc: await uploadSingleDoc('h-medical-doc', 'husband_medical', trackingCode),
-      hSocialDoc: await uploadSingleDoc('h-social-doc', 'husband_social', trackingCode),
-      wIdFront: await uploadSingleDoc('w-id-front', 'wife', trackingCode),
-      wIdBack: await uploadSingleDoc('w-id-back', 'wife', trackingCode),
-      wMedicalDoc: await uploadSingleDoc('w-medical-doc', 'wife_medical', trackingCode),
-      wSocialDoc: await uploadSingleDoc('w-social-doc', 'wife_social', trackingCode),
-      mCertDoc: await uploadSingleDoc('m-cert-doc', 'marriage', trackingCode),
-      mHealthDoc: await uploadSingleDoc('m-health-doc', 'marriage', trackingCode),
-      socialResearch: await uploadSingleDoc('doc-social-research', 'housing_docs', trackingCode),
-      insuranceH: await uploadSingleDoc('doc-insurance-h', 'housing_docs', trackingCode),
-      insuranceW: await uploadSingleDoc('doc-insurance-w', 'housing_docs', trackingCode),
-      lease: await uploadSingleDoc('doc-lease', 'housing_docs', trackingCode),
-      schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode)
-    };
-
-    const hasDocValue = (val) => {
-      if (!val) return false;
-      if (typeof val === 'string') return val.trim().length > 0;
-      if (typeof val === 'object') {
-        return Boolean(val.url || val.dataUrl || val.base64 || val.path || val.fileName || val.name || val.publicUrl);
-      }
-      return Boolean(val);
+      hIdFront: await uploadSingleDoc('h-id-front', 'husband', trackingCode, 'hIdFront'),
+      hIdBack: await uploadSingleDoc('h-id-back', 'husband', trackingCode, 'hIdBack'),
+      hMedicalDoc: await uploadSingleDoc('h-medical-doc', 'husband_medical', trackingCode, 'hMedicalDoc'),
+      hSocialDoc: await uploadSingleDoc('h-social-doc', 'husband_social', trackingCode, 'hSocialDoc'),
+      wIdFront: await uploadSingleDoc('w-id-front', 'wife', trackingCode, 'wIdFront'),
+      wIdBack: await uploadSingleDoc('w-id-back', 'wife', trackingCode, 'wIdBack'),
+      wMedicalDoc: await uploadSingleDoc('w-medical-doc', 'wife_medical', trackingCode, 'wMedicalDoc'),
+      wSocialDoc: await uploadSingleDoc('w-social-doc', 'wife_social', trackingCode, 'wSocialDoc'),
+      mCertDoc: await uploadSingleDoc('m-cert-doc', 'marriage', trackingCode, 'mCertDoc'),
+      mHealthDoc: await uploadSingleDoc('m-health-doc', 'marriage', trackingCode, 'mHealthDoc'),
+      socialResearch: await uploadSingleDoc('doc-social-research', 'housing_docs', trackingCode, 'socialResearch'),
+      insuranceH: await uploadSingleDoc('doc-insurance-h', 'housing_docs', trackingCode, 'insuranceH'),
+      insuranceW: await uploadSingleDoc('doc-insurance-w', 'housing_docs', trackingCode, 'insuranceW'),
+      lease: await uploadSingleDoc('doc-lease', 'housing_docs', trackingCode, 'lease'),
+      schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode, 'schoolEnroll')
     };
 
     const uploadedDocs = {};
@@ -1678,6 +1940,9 @@
       const localCases = JSON.parse(localStorage.getItem('hf_local_families') || '[]');
       localCases.unshift({ ...attemptPayload, id: 'LOCAL-' + Date.now(), created_at: new Date().toISOString() });
       localStorage.setItem('hf_local_families', JSON.stringify(localCases));
+
+      window.WIZARD_ATTACHMENTS_CACHE = {};
+      window._wizardDraftFolder = null;
 
       window.triggerInstantWhatsApp(targetPhone, waMsg);
       alert(`✅ تم تسجيل الحالة وحفظها بنجاح في قاعدة البيانات!\n\nاسم الملف: ${primaryFileName}\nرقم الطلب: ${trackingCode}\nيرجى الاحتفاظ به للمتابعة.`);
