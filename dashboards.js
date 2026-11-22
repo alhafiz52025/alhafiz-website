@@ -3,6 +3,28 @@
   const LOCAL_DOCS_KEY = 'hf_official_documents_v1';
   const LOCAL_DONOR_ASSIGNMENTS_KEY = 'hf_donor_case_assignments_v1';
 
+  window.ALL_ADMIN_CASES = window.ALL_ADMIN_CASES || [];
+  window.ALL_ADMIN_USERS = window.ALL_ADMIN_USERS || [];
+  window.ALL_ADMIN_ORGANIZATIONS = window.ALL_ADMIN_ORGANIZATIONS || [];
+  window.ALL_ADMIN_GRIEVANCES = window.ALL_ADMIN_GRIEVANCES || [];
+  window.ALL_OFFICIAL_DOCS = window.ALL_OFFICIAL_DOCS || [];
+  window.SELECTED_CASE_IDS = window.SELECTED_CASE_IDS || new Set();
+  window.MEMBER_PORTAL_CASES = window.MEMBER_PORTAL_CASES || [];
+  window.MEMBER_SELECTED_CASE_IDS = window.MEMBER_SELECTED_CASE_IDS || new Set();
+
+  function isCurrentUserAdmin(userObj) {
+    const u = userObj || window.currentUser || (() => {
+      try { return JSON.parse(sessionStorage.getItem('hf_current_user') || 'null'); } catch (_) { return null; }
+    })();
+    if (!u) return false;
+    const role = String(u.role || '').trim().toLowerCase();
+    return ['admin', 'super_admin', 'مدير', 'أدمن'].includes(role);
+  }
+
+  function escapeAttr(val) {
+    return window.escapeHtml(String(val ?? '')).replace(/"/g, '&quot;');
+  }
+
   window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
     if (!cleanPhone) return;
@@ -11,24 +33,143 @@
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  window.triggerInstantEmail = function(toEmail, subject, bodyText) {
+    const cleanEmail = String(toEmail || '').trim();
+    if (!cleanEmail) return;
+    const mailtoUrl = `mailto:${encodeURIComponent(cleanEmail)}?subject=${encodeURIComponent(subject || 'إشعار من مؤسسة الحافظ للتنمية والخدمات')}&body=${encodeURIComponent(bodyText || '')}`;
+    window.open(mailtoUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // إرسال مزدوج: واتساب + بريد إلكتروني معاً في حالة توفر البريد الإلكتروني
+  async function sendDualChannelNotice({ phone, email, subject, message }) {
+    const hasPhone = Boolean(String(phone || '').replace(/\D/g, ''));
+    const cleanEmail = String(email || '').trim();
+    const hasEmail = Boolean(cleanEmail);
+
+    if (hasEmail && typeof window.sendSystemEmail === 'function') {
+      try {
+        await window.sendSystemEmail({
+          to: cleanEmail,
+          subject: subject || 'مؤسسة الحافظ للتنمية والخدمات',
+          text: message
+        });
+      } catch (e) {
+        console.warn('sendSystemEmail fallback:', e);
+      }
+    }
+
+    if (hasPhone) {
+      window.triggerInstantWhatsApp(phone, message);
+    }
+
+    if (hasEmail && typeof window.sendSystemEmail !== 'function') {
+      setTimeout(() => {
+        window.triggerInstantEmail(cleanEmail, subject || 'مؤسسة الحافظ للتنمية والخدمات', message);
+      }, hasPhone ? 350 : 0);
+    }
+  }
+
+  function getHusbandFullName(caseObj) {
+    const h = (caseObj && caseObj.husband_data && typeof caseObj.husband_data === 'object') ? caseObj.husband_data : {};
+    return [h.name1, h.name2, h.name3].filter(Boolean).join(' ').trim();
+  }
+
+  function getWifeFullName(caseObj) {
+    const w = (caseObj && caseObj.wife_data && typeof caseObj.wife_data === 'object') ? caseObj.wife_data : {};
+    return [w.name1, w.name2, w.name3].filter(Boolean).join(' ').trim();
+  }
+
+  function isHusbandLivingWithFamily(caseObj) {
+    const h = (caseObj && caseObj.husband_data && typeof caseObj.husband_data === 'object') ? caseObj.husband_data : {};
+    const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
+    if (!statusText) return Boolean(getHusbandFullName(caseObj));
+    return statusText.includes('مقيم مع الأسرة') || statusText.includes('مقيم مع الاسرة') || statusText === 'مقيم';
+  }
+
+  // اسم الملف: باسم الزوج إذا كان (مقيم مع الأسرة)، وفي باقي الحالات باسم الزوجة
+  function getCasePrimaryDisplayName(caseObj) {
+    if (!caseObj) return 'غير محدد';
+    const hName = getHusbandFullName(caseObj);
+    const wName = getWifeFullName(caseObj);
+    if (isHusbandLivingWithFamily(caseObj)) {
+      return hName || wName || caseObj.applicant_name || 'غير محدد';
+    }
+    return wName || hName || caseObj.applicant_name || 'غير محدد';
+  }
+
   function getCaseApplicantPhone(caseObj) {
     if (!caseObj) return '';
     const h = caseObj.husband_data || {};
     const w = caseObj.wife_data || {};
-    return String(caseObj.phone || h.phone || w.phone || '').trim();
+    return String(caseObj.phone || h.whatsapp || h.phone || w.phone || '').trim();
+  }
+
+  function getCaseApplicantEmail(caseObj) {
+    if (!caseObj) return '';
+    const h = caseObj.husband_data || {};
+    const w = caseObj.wife_data || {};
+    return String(caseObj.email || caseObj.applicant_email || h.email || w.email || '').trim();
   }
 
   function getCaseApplicantName(caseObj) {
-    if (!caseObj) return 'صاحب الطلب';
-    const h = caseObj.husband_data || {};
-    const full = [h.name1, h.name2, h.name3].filter(Boolean).join(' ').trim();
-    return full || caseObj.applicant_name || 'صاحب الطلب';
+    return getCasePrimaryDisplayName(caseObj) || 'صاحب الطلب';
   }
 
   function formatCaseStatusArabic(status) {
-    if (status === 'approved') return 'مقبول للصرف';
-    if (status === 'rejected') return 'مرفوض';
+    if (status === 'approved' || status === 'مستحق') return 'مقبول للصرف / مستحق';
+    if (status === 'not_eligible' || status === 'غير مستحق') return 'غير مستحق';
+    if (status === 'rejected' || status === 'مرفوض') return 'مرفوض';
     return 'قيد المراجعة';
+  }
+
+  function formatEvaluationDecisionArabic(decision) {
+    if (decision === 'eligible' || decision === 'مستحق' || decision === 'approved') return 'مستحق';
+    if (decision === 'not_eligible' || decision === 'غير مستحق') return 'غير مستحق';
+    if (decision === 'rejected' || decision === 'مرفوض') return 'مرفوض';
+    return 'قيد التقييم';
+  }
+
+  function formatPersonHealthDetailed(person, fallbackRoleLabel = '') {
+    const p = person || {};
+    const health = String(p.health || 'سليم').trim();
+    if (health === 'سليم') {
+      return fallbackRoleLabel ? `${fallbackRoleLabel}: سليم` : 'سليم';
+    }
+    const parts = [health];
+    if (p.disabilityType) parts.push(`نوع الإعاقة/الحالة: ${p.disabilityType}`);
+    if (p.illnessType && p.illnessType !== p.disabilityType) parts.push(`التصنيف: ${p.illnessType}`);
+    if (p.illnessName) parts.push(`التشخيص: ${p.illnessName}`);
+    if (p.medicalNeed) parts.push(`الإجراء: ${p.medicalNeed}`);
+    if (p.hasServiceCard) parts.push(`كارت الخدمات المتكاملة: ${p.hasServiceCard}`);
+    if (p.monthlyCost) parts.push(`تكلفة شهرية: ${p.monthlyCost} جنيه`);
+    if (p.insuranceCoverage && p.insuranceCoverage !== 'غير محدد') parts.push(`تغطية: ${p.insuranceCoverage}`);
+    const summary = parts.join(' | ');
+    return fallbackRoleLabel ? `${fallbackRoleLabel}: ${summary}` : summary;
+  }
+
+  function caseHasDisabilityOrServiceCard(caseObj) {
+    const h = caseObj?.husband_data || {};
+    const w = caseObj?.wife_data || {};
+    const kids = Array.isArray(caseObj?.children_data) ? caseObj.children_data : [];
+    const checkPerson = (p) => {
+      if (!p) return false;
+      if (p.health === 'من ذوي الإعاقة') return true;
+      if (['إعاقة ذهنية', 'إعاقة حركية', 'إعاقة سمعية', 'إعاقة بصرية'].includes(p.disabilityType || p.illnessType)) return true;
+      if (p.hasServiceCard && p.hasServiceCard !== 'لا') return true;
+      return false;
+    };
+    return checkPerson(h) || checkPerson(w) || kids.some(checkPerson);
+  }
+
+  function isCaseAssignedToMember(caseObj, memberUser) {
+    if (!caseObj || !memberUser) return false;
+    const email = String(memberUser.email || '').trim().toLowerCase();
+    const fullName = String(memberUser.name || memberUser.full_name || '').trim();
+    const assignedEmail = String(caseObj.assigned_to_email || '').trim().toLowerCase();
+    const assignedName = String(caseObj.assigned_to_name || '').trim();
+    if (email && assignedEmail === email) return true;
+    if (fullName && assignedName && assignedName.includes(fullName)) return true;
+    return false;
   }
 
   async function buildStatusChangeNotificationMessage({ recipientName, code, entityLabel, statusLabel, replyNote = '', dayText = '', timeText = '', placeText = '' }) {
@@ -86,7 +227,7 @@
     return lines.join('\n');
   }
 
-  function showQuickMessageSendModal({ title, phone, defaultMessage }) {
+  function showQuickMessageSendModal({ title, phone, email = '', subject = '', defaultMessage }) {
     let modal = document.getElementById('hf-quick-msg-modal');
     if (!modal) {
       modal = document.createElement('div');
@@ -96,26 +237,62 @@
     }
     modal.classList.remove('hidden');
     const cleanPhone = String(phone || '').trim();
+    const cleanEmail = String(email || '').trim();
 
     modal.innerHTML = `
-      <div style="background:#fff; color:#0f172a; max-width:540px; width:100%; border-radius:14px; padding:20px;">
+      <div style="background:#fff; color:#0f172a; max-width:560px; width:100%; border-radius:14px; padding:20px;">
         <h4 style="margin:0 0 10px; color:#064e3b;">${window.escapeHtml(title || 'إرسال رسالة إشعار')}</h4>
-        <label style="font-size:12px; font-weight:700;">رقم الهاتف:</label>
-        <input id="qmsg-phone" value="${window.escapeHtml(cleanPhone)}" placeholder="01xxxxxxxxx">
-        <label style="font-size:12px; font-weight:700;">نص الرسالة (يتضمن اليوم والميعاد والمكان):</label>
+        <div class="grid-2">
+          <div>
+            <label style="font-size:12px; font-weight:700;">رقم الهاتف (واتساب):</label>
+            <input id="qmsg-phone" value="${escapeAttr(cleanPhone)}" placeholder="01xxxxxxxxx" style="margin:0;">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700;">البريد الإلكتروني:</label>
+            <input id="qmsg-email" value="${escapeAttr(cleanEmail)}" placeholder="example@domain.com" style="margin:0;">
+          </div>
+        </div>
+        <label style="font-size:12px; font-weight:700; display:block; margin-top:8px;">نص الرسالة:</label>
         <textarea id="qmsg-body" rows="7" style="margin:0;">${window.escapeHtml(defaultMessage || '')}</textarea>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-          <button type="button" id="qmsg-wa-btn" class="action-btn">💬 إرسال عبر واتساب</button>
+          <button type="button" id="qmsg-both-btn" class="action-btn">📲 إرسال (واتساب + بريد إلكتروني معاً)</button>
+          <button type="button" id="qmsg-wa-btn" class="nav-btn" style="background:#16a34a; color:#fff;">💬 واتساب فقط</button>
+          <button type="button" id="qmsg-email-btn" class="nav-btn" style="background:#1d4ed8; color:#fff;">✉️ بريد فقط</button>
           <button type="button" id="qmsg-copy-btn" class="nav-btn btn-gold">📋 نسخ النص</button>
           <button type="button" onclick="document.getElementById('hf-quick-msg-modal').classList.add('hidden')" class="nav-btn">إغلاق</button>
         </div>
       </div>`;
+
+    document.getElementById('qmsg-both-btn').onclick = async function() {
+      const targetPhone = (document.getElementById('qmsg-phone')?.value || '').trim();
+      const targetEmail = (document.getElementById('qmsg-email')?.value || '').trim();
+      const body = (document.getElementById('qmsg-body')?.value || '').trim();
+      if (!targetPhone && !targetEmail) return alert('⚠️ لا يوجد رقم هاتف أو بريد إلكتروني مسجل.');
+      await sendDualChannelNotice({
+        phone: targetPhone,
+        email: targetEmail,
+        subject: subject || title || 'إشعار من مؤسسة الحافظ للتنمية والخدمات',
+        message: body
+      });
+    };
 
     document.getElementById('qmsg-wa-btn').onclick = function() {
       const targetPhone = (document.getElementById('qmsg-phone')?.value || '').trim();
       const body = (document.getElementById('qmsg-body')?.value || '').trim();
       if (!targetPhone) return alert('⚠️ لا يوجد رقم هاتف مسجل لهذا السجل.');
       window.triggerInstantWhatsApp(targetPhone, body);
+    };
+
+    document.getElementById('qmsg-email-btn').onclick = async function() {
+      const targetEmail = (document.getElementById('qmsg-email')?.value || '').trim();
+      const body = (document.getElementById('qmsg-body')?.value || '').trim();
+      if (!targetEmail) return alert('⚠️ لا يوجد بريد إلكتروني مسجل لهذا السجل.');
+      await sendDualChannelNotice({
+        phone: '',
+        email: targetEmail,
+        subject: subject || title || 'إشعار من مؤسسة الحافظ للتنمية والخدمات',
+        message: body
+      });
     };
 
     document.getElementById('qmsg-copy-btn').onclick = async function() {
@@ -130,6 +307,38 @@
         alert('✅ تم نسخ نص الرسالة.');
       }
     };
+  }
+
+  function buildPrintableSheetHtml(cfg, bodyContent, docTitle, includeChrome = true) {
+    const headerPart = includeChrome ? window.getOfficialHeaderHtml(cfg) : '';
+    const footerPart = includeChrome ? window.getOfficialFooterHtml(cfg) : '';
+    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
+      <title>${window.escapeHtml(docTitle || 'مستند رسمي - مؤسسة الحافظ')}</title>
+      <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #0f172a; }
+        .box { border: 1px solid #cbd5e1; padding: 22px; min-height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+        th, td { border: 1px solid #334155; padding: 6px 8px; text-align: right; vertical-align: top; }
+        th { background: #064e3b; color: #fff; }
+      </style></head><body>
+      <div class="box">
+        <div>
+          ${headerPart}
+          ${bodyContent}
+        </div>
+        ${footerPart}
+      </div>
+      <script>window.onload=function(){window.print();};<\/script>
+      </body></html>`;
+  }
+
+  function openPrintWindowWithHtml(htmlContent) {
+    const w = window.open('', '_blank', 'width=980,height=1000');
+    if (!w) return alert('يرجى السماح بالنوافذ المنبثقة.');
+    w.document.open();
+    w.document.write(htmlContent);
+    w.document.close();
   }
 
   window.getOfficialHeaderHtml = function(cfg) {
@@ -262,80 +471,31 @@
     const rawItems = [
       {
         label: 'صورة بطاقة الزوج (وجه)',
-        value: pickFirstValid(
-          docsObj.husband_id_front,
-          docsObj.hIdFront,
-          docsObj['h-id-front'],
-          h.id_front,
-          h.idFront
-        )
+        value: pickFirstValid(docsObj.husband_id_front, docsObj.hIdFront, docsObj['h-id-front'], h.id_front, h.idFront)
       },
       {
         label: 'صورة بطاقة الزوج (ظهر)',
-        value: pickFirstValid(
-          docsObj.husband_id_back,
-          docsObj.hIdBack,
-          docsObj['h-id-back'],
-          h.id_back,
-          h.idBack
-        )
+        value: pickFirstValid(docsObj.husband_id_back, docsObj.hIdBack, docsObj['h-id-back'], h.id_back, h.idBack)
       },
       {
         label: 'صورة بطاقة الزوجة (وجه)',
-        value: pickFirstValid(
-          docsObj.wife_id_front,
-          docsObj.wIdFront,
-          docsObj['w-id-front'],
-          w.id_front,
-          w.idFront
-        )
+        value: pickFirstValid(docsObj.wife_id_front, docsObj.wIdFront, docsObj['w-id-front'], w.id_front, w.idFront)
       },
       {
         label: 'صورة بطاقة الزوجة (ظهر)',
-        value: pickFirstValid(
-          docsObj.wife_id_back,
-          docsObj.wIdBack,
-          docsObj['w-id-back'],
-          w.id_back,
-          w.idBack
-        )
+        value: pickFirstValid(docsObj.wife_id_back, docsObj.wIdBack, docsObj['w-id-back'], w.id_back, w.idBack)
       },
       {
         label: 'البحث الاجتماعي المعتمد',
-        value: pickFirstValid(
-          docsObj.social_research,
-          docsObj.socialResearch,
-          docsObj['doc-social-research'],
-          docsObj.hSocialDoc,
-          docsObj.wSocialDoc,
-          caseObj && caseObj.social_research_doc
-        )
+        value: pickFirstValid(docsObj.social_research, docsObj.socialResearch, docsObj['doc-social-research'], docsObj.hSocialDoc, docsObj.wSocialDoc, caseObj && caseObj.social_research_doc)
       },
       {
         label: 'عقد الإيجار / إثبات السكن',
-        value: pickFirstValid(
-          docsObj.lease_contract,
-          docsObj.housing_lease,
-          docsObj.lease,
-          docsObj['doc-lease'],
-          caseObj && caseObj.lease_doc
-        )
+        value: pickFirstValid(docsObj.lease_contract, docsObj.housing_lease, docsObj.lease, docsObj['doc-lease'], caseObj && caseObj.lease_doc)
       },
       {
         label: 'التقارير الطبية / مستندات إضافية',
-        value: pickFirstValid(
-          docsObj.medical_report,
-          docsObj.hMedicalDoc,
-          docsObj.wMedicalDoc,
-          docsObj.mHealthDoc,
-          docsObj.mCertDoc,
-          docsObj.insuranceH,
-          docsObj.insuranceW,
-          docsObj.schoolEnroll,
-          docsObj['h-medical-doc'],
-          docsObj['w-medical-doc'],
-          caseObj && caseObj.medical_doc
-        )
+        value: pickFirstValid(docsObj.medical_report, docsObj.hMedicalDoc, docsObj.wMedicalDoc, docsObj.mHealthDoc, docsObj.mCertDoc, docsObj.insuranceH, docsObj.insuranceW, docsObj.schoolEnroll, docsObj['h-medical-doc'], docsObj['w-medical-doc'], caseObj && caseObj.medical_doc)
       }
     ];
 
@@ -362,6 +522,218 @@
     };
   }
 
+  function getAttachmentDisplayInfo(val) {
+    if (!val) return { fileName: '', href: '', isImage: false };
+
+    const supabaseUrl =
+      (window.supabaseClient && window.supabaseClient.supabaseUrl) ||
+      window.SUPABASE_URL ||
+      'https://fwyacpvbhwdlivzeiper.supabase.co';
+
+    const buildStoragePublicUrl = (rawPath) => {
+      const cleanPath = String(rawPath || '').trim().replace(/^\/+/, '');
+      if (!cleanPath) return '';
+      if (/^(https?:\/\/|data:|blob:)/i.test(cleanPath)) return cleanPath;
+      const normalizedKey = cleanPath.startsWith('foundation-docs/')
+        ? cleanPath
+        : `foundation-docs/${cleanPath}`;
+      return `${supabaseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${normalizedKey}`;
+    };
+
+    let fileName = '';
+    let href = '';
+
+    if (typeof val === 'string') {
+      const s = val.trim();
+      if (!s || s === 'null' || s === 'undefined') return { fileName: '', href: '', isImage: false };
+      const isUrlOrPath = /^(https?:\/\/|data:|blob:|[\w.\-]+\/)/i.test(s);
+      href = isUrlOrPath ? buildStoragePublicUrl(s) : '';
+      const parts = s.split('/').filter(Boolean);
+      fileName = parts.length ? parts[parts.length - 1] : s;
+    } else if (typeof val === 'object') {
+      const directUrl = val.url || val.publicUrl || val.dataUrl || val.base64 || '';
+      const storagePath = val.path || '';
+      fileName = String(
+        val.fileName ||
+        val.name ||
+        (storagePath ? storagePath.split('/').pop() : '') ||
+        (directUrl && !directUrl.startsWith('data:') ? directUrl.split('/').pop() : '') ||
+        'مستند مرفق'
+      ).trim();
+
+      href = directUrl
+        ? buildStoragePublicUrl(directUrl)
+        : (storagePath ? buildStoragePublicUrl(storagePath) : '');
+    }
+
+    const isImage = Boolean(
+      (href && /^data:image\//i.test(href)) ||
+      /\.(jpe?g|png|gif|webp|bmp|svg)(\?|#|$)/i.test(fileName || href)
+    );
+
+    return { fileName, href, isImage };
+  }
+
+  window.downloadCaseAttachment = async function(caseId, itemIndex) {
+    if (!isCurrentUserAdmin()) {
+      return alert('⛔ تنزيل المرفقات متاح للأدمن فقط.');
+    }
+    const allCases = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
+    const targetCase = allCases.find(c => String(c.id) === String(caseId) || String(c.tracking_code) === String(caseId));
+    if (!targetCase) return alert('⚠️ لم يتم العثور على الحالة.');
+    const audit = getCaseAttachmentsAudit(targetCase);
+    const item = audit.items.find(x => Number(x.index) === Number(itemIndex));
+    if (!item || !item.attached) return alert('⚠️ هذا المستند غير مرفق.');
+
+    const info = getAttachmentDisplayInfo(item.value);
+    if (!info.href) return alert('⚠️ لا يوجد رابط مباشر متاح لتنزيل هذا الملف.');
+
+    try {
+      if (info.href.startsWith('data:')) {
+        const a = document.createElement('a');
+        a.href = info.href;
+        a.download = info.fileName || `attachment_${itemIndex}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+      const resp = await fetch(info.href);
+      if (!resp.ok) throw new Error('تعذر جلب الملف');
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = info.fileName || `attachment_${itemIndex}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
+    } catch (_) {
+      window.open(info.href, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  window.openFullCaseDetailsModal = function(caseIdOrCode) {
+    const allCases = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
+    const f = allCases.find(c => String(c.id) === String(caseIdOrCode) || String(c.tracking_code) === String(caseIdOrCode));
+    if (!f) return alert('⚠️ لم يتم العثور على بيانات الحالة.');
+
+    const canDownload = isCurrentUserAdmin();
+    const h = f.husband_data || {};
+    const w = f.wife_data || {};
+    const housing = f.housing_data || {};
+    const sp = housing.social_profile || {};
+    const expenses = f.expenses_data || {};
+    const incomes = f.incomes_data || {};
+    const children = Array.isArray(f.children_data) ? f.children_data : [];
+    const audit = getCaseAttachmentsAudit(f);
+
+    const primaryName = getCasePrimaryDisplayName(f);
+    const husbandName = getHusbandFullName(f) || '-';
+    const wifeName = getWifeFullName(f) || '-';
+    const totalInc = Number(f.total_income ?? 0);
+    const totalExp = Number(f.total_expenses ?? 0);
+    const balance = totalInc - totalExp;
+    const balanceText = balance < 0
+      ? `عجز شهري: ${Math.abs(balance)} جنيه`
+      : (balance > 0 ? `فائض شهري: ${balance} جنيه` : 'متعادل (0 جنيه)');
+
+    let modal = document.getElementById('hf-case-detail-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'hf-case-detail-modal';
+      modal.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,0.72); z-index:9999; display:flex; align-items:center; justify-content:center; padding:14px;';
+      document.body.appendChild(modal);
+    }
+    modal.classList.remove('hidden');
+
+    const attachRowsHtml = audit.items.map(it => {
+      const info = it.attached ? getAttachmentDisplayInfo(it.value) : { fileName: '', href: '', isImage: false };
+      let actionsHtml = '<span style="color:#94a3b8; font-size:11px;">لا يوجد ملف</span>';
+      if (it.attached) {
+        const previewBtn = info.href
+          ? `<a href="${escapeAttr(info.href)}" target="_blank" rel="noopener noreferrer" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 8px; font-size:11px; text-decoration:none;">👁️ معاينة</a>`
+          : `<span style="font-size:11px; color:#475569;">مرفق مسجل</span>`;
+        const downloadBtn = canDownload
+          ? `<button type="button" onclick="downloadCaseAttachment('${escapeAttr(f.id)}', ${it.index})" class="nav-btn" style="background:#065f46; color:#fff; padding:3px 8px; font-size:11px;">⬇️ تنزيل</button>`
+          : `<span style="font-size:11px; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:6px;">اطلاع فقط (التنزيل للأدمن)</span>`;
+        actionsHtml = `<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">${previewBtn}${downloadBtn}</div>`;
+      }
+
+      const imgThumb = (it.attached && info.isImage && info.href)
+        ? `<div style="margin-top:6px;"><img src="${escapeAttr(info.href)}" alt="${escapeAttr(it.label)}" ${!canDownload ? 'draggable="false" oncontextmenu="return false;"' : ''} style="max-height:95px; max-width:150px; border-radius:6px; border:1px solid #cbd5e1; object-fit:cover;"></div>`
+        : '';
+
+      return `
+        <tr>
+          <td style="text-align:center;">${it.index}</td>
+          <td><strong>${window.escapeHtml(it.label)}</strong></td>
+          <td style="font-weight:700; color:${it.attached ? '#166534' : '#991b1b'};">${window.escapeHtml(it.statusText)}</td>
+          <td>
+            <div style="font-size:12px;">${window.escapeHtml(info.fileName || '-')}</div>
+            ${imgThumb}
+          </td>
+          <td>${actionsHtml}</td>
+        </tr>`;
+    }).join('');
+
+    const childrenHtml = children.length === 0
+      ? '<p style="font-size:12px; color:#64748b; margin:4px 0;">لا يوجد أبناء مسجلون.</p>'
+      : `<table style="margin-top:6px;">
+          <thead><tr><th>#</th><th>الاسم</th><th>السن / النوع</th><th>الحالة الصحية والإعاقة وكارت الخدمات والتكلفة</th></tr></thead>
+          <tbody>
+            ${children.map((c, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${window.escapeHtml(c.name || '-')}</td>
+                <td>${window.escapeHtml((c.gender || '-') + (c.birthDate ? ' | ' + c.birthDate : ''))}</td>
+                <td>${window.escapeHtml(formatPersonHealthDetailed(c))}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+
+    modal.innerHTML = `
+      <div style="background:#fff; color:#0f172a; max-width:880px; width:100%; border-radius:14px; padding:20px; max-height:92vh; overflow-y:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; gap:10px; flex-wrap:wrap;">
+          <div>
+            <h3 style="margin:0; color:#064e3b;">📂 ملف الحالة الكامل: ${window.escapeHtml(primaryName)}</h3>
+            <small style="color:#475569;">كود المتابعة: <strong>${window.escapeHtml(f.tracking_code || '-')}</strong> | الحالة: <strong>${window.escapeHtml(formatCaseStatusArabic(f.status))}</strong></small>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" onclick="printFullCaseFiles(['${escapeAttr(f.id)}'])" class="nav-btn btn-gold" style="padding:5px 10px; font-size:12px;">🖨️ طباعة تقرير الحالة</button>
+            <button type="button" onclick="document.getElementById('hf-case-detail-modal').classList.add('hidden')" class="nav-btn" style="background:#dc2626; color:#fff; padding:5px 10px; font-size:12px;">إغلاق</button>
+          </div>
+        </div>
+
+        <table style="margin-top:12px;">
+          <tbody>
+            <tr><th>الاسم الظاهر للملف</th><td><strong>${window.escapeHtml(primaryName)}</strong></td><th>نوع المساعدة</th><td>${window.escapeHtml(f.intervention_type || '-')}</td></tr>
+            <tr><th>الزوج (الأب) وحالته</th><td>${window.escapeHtml(husbandName)} (${window.escapeHtml(h.status || 'غير محدد')})</td><th>الزوجة (الأم)</th><td>${window.escapeHtml(wifeName)}</td></tr>
+            <tr><th>الرقم القومي للزوج</th><td>${window.escapeHtml(h.nid || '-')}</td><th>رقم الهاتف / واتساب</th><td>${window.escapeHtml(h.whatsapp || h.phone || w.phone || '-')}</td></tr>
+            <tr><th>العنوان</th><td>${window.escapeHtml((f.center_city || '-') + ' - ' + (f.village_hamlet || '-') + (f.street_details ? ' - ' + f.street_details : ''))}</td><th>التقييم / القرار</th><td>${window.escapeHtml(formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || f.status))}</td></tr>
+            <tr><th>صحة الزوج</th><td colspan="3">${window.escapeHtml(formatPersonHealthDetailed(h))}</td></tr>
+            <tr><th>صحة الزوجة</th><td colspan="3">${window.escapeHtml(formatPersonHealthDetailed(w))}</td></tr>
+            <tr><th>القائم بالإنفاق / مساعدة أخرى</th><td>${window.escapeHtml((sp.actualProvider || '-') + ' | جهة أخرى: ' + (sp.receivesOtherAid || 'لا'))}</td><th>ديون / تاريخ الزيارة</th><td>${window.escapeHtml((sp.debtCreditorType || 'لا يوجد') + ' | زيارة: ' + (sp.visitDate || housing.visit_date || '-'))}</td></tr>
+            <tr><th>إجمالي الدخل</th><td>${totalInc} جنيه (${window.escapeHtml(JSON.stringify(incomes || {}))})</td><th>إجمالي المصروفات</th><td>${totalExp} جنيه (${window.escapeHtml(balanceText)})</td></tr>
+            <tr><th>بيانات السكن والمرافق</th><td colspan="3">${window.escapeHtml((housing.case || '-') + ' / ' + (housing.type || '-') + ' | كهرباء: ' + (housing.electricityMeter || '-') + ' | مياه: ' + (housing.waterSource || '-') + ' | صرف: ' + (housing.sanitationType || '-'))}</td></tr>
+            <tr><th>ملاحظات الباحث</th><td colspan="3">${window.escapeHtml(f.researcher_notes || f.evaluation_notes || housing.opinion || '-')}</td></tr>
+          </tbody>
+        </table>
+
+        <h4 style="margin:14px 0 6px; color:#064e3b;">👶 بيانات الأبناء (${children.length})</h4>
+        ${childrenHtml}
+
+        <h4 style="margin:14px 0 6px; color:#064e3b;">📎 المرفقات والمستندات (${audit.attachedCount}/${audit.totalCount}) — ${canDownload ? 'صلاحية الإدارة: معاينة وتنزيل' : 'صلاحية العضو/الباحث: معاينة واطلاع فقط'}</h4>
+        <table>
+          <thead>
+            <tr><th>#</th><th>المستند</th><th>الحالة</th><th>اسم الملف / معاينة</th><th>الإجراء</th></tr>
+          </thead>
+          <tbody>${attachRowsHtml}</tbody>
+        </table>
+      </div>`;
+  };
+
   window.routeLoggedInUser = async function(user) {
     document.getElementById('login-box')?.classList.add('hidden');
     document.getElementById('partner-register-box')?.classList.add('hidden');
@@ -369,7 +741,7 @@
     if (!area) return;
     area.classList.remove('hidden');
 
-    if (user.role === 'admin') {
+    if (isCurrentUserAdmin(user)) {
       await window.renderAdminFullDashboard(user);
     } else {
       await window.renderMemberPortal(user);
@@ -411,25 +783,29 @@
       });
     }
 
+    window.MEMBER_PORTAL_CASES = myCases;
+    const aidTypes = Array.from(new Set(myCases.map(c => c.intervention_type).filter(Boolean)));
+    const villages = Array.from(new Set(myCases.map(c => c.village_hamlet).filter(Boolean)));
+
     area.innerHTML = `
       <div class="card" style="border-top:4px solid var(--primary);">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+        <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border); padding-bottom:12px;">
           <div>
             <h3 style="margin:0; color:var(--primary-dark);">👤 بوابة العضو: ${window.escapeHtml(displayName)}</h3>
-            <small>الصفة: <strong>${roleNames[user.role] || user.role}</strong> | البريد: ${window.escapeHtml(user.email)}</small>
+            <small>الصفة: <strong>${roleNames[user.role] || user.role}</strong> | البريد: ${window.escapeHtml(user.email)} | المرفقات: <strong>معاينة واطلاع فقط</strong></small>
           </div>
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" onclick="showSection('apply')" class="action-btn">+ تسجيل حالة جديدة</button>
             <button type="button" onclick="logoutUser()" class="nav-btn" style="background:#dc2626; color:#fff;">تسجيل الخروج</button>
           </div>
         </div>
 
         ${user.must_change_password ? `
-          <div style="background:#fef2f2; border:1px solid #fecaca; padding:14px; border-radius:10px; margin-top:14px; color:#991b1b;">
+          <div class="no-print" style="background:#fef2f2; border:1px solid #fecaca; padding:14px; border-radius:10px; margin-top:14px; color:#991b1b;">
             <strong>⚠️ تنبيه أمني:</strong> لقد قمت بالدخول باستخدام الرمز المؤقت. يرجى تعيين كلمة مرور جديدة خاصة بك الآن.
           </div>` : ''}
 
-        <div style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border); margin-top:14px;">
+        <div class="no-print" style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border); margin-top:14px;">
           <h4 style="margin:0 0 8px; color:var(--primary-dark);">🔑 تغيير كلمة المرور الخاصة بك</h4>
           <div class="grid-3">
             <input id="mem-temp-or-old" placeholder="الرمز المؤقت أو كلمة السر الحالية" style="margin:0;">
@@ -438,29 +814,334 @@
           </div>
         </div>
 
-        <h4 style="margin-top:20px; color:var(--primary-dark);">📁 الحالات الخاصة بك والمسندة إليك (${myCases.length})</h4>
-        <div style="overflow-x:auto;">
-          <table>
-            <thead>
-              <tr><th>كود الطلب</th><th>اسم رب الأسرة</th><th>نوع المساعدة</th><th>المنطقة</th><th>الحالة</th></tr>
-            </thead>
-            <tbody>
-              ${myCases.length === 0 ? '<tr><td colspan="5" style="text-align:center;">لا توجد حالات مسجلة أو مسندة إليك حالياً.</td></tr>' : myCases.map(f => {
-                const h = f.husband_data || {};
-                const fullName = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
-                const st = f.status === 'approved' ? '✅ مقبول' : (f.status === 'rejected' ? '❌ مرفوض' : '🔍 قيد المراجعة');
-                return `<tr>
-                  <td><strong>${window.escapeHtml(f.tracking_code)}</strong></td>
-                  <td>${window.escapeHtml(fullName)}</td>
-                  <td>${window.escapeHtml(f.intervention_type)}</td>
-                  <td>${window.escapeHtml(f.center_city)} - ${window.escapeHtml(f.village_hamlet)}</td>
-                  <td>${st}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
+        <div class="no-print" style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1; margin-top:16px;">
+          <h4 style="margin:0 0 10px; color:#064e3b;">🔎 فلترة وطباعة الحالات المسندة إليك (${myCases.length})</h4>
+          <div class="grid-4">
+            <select id="mem-flt-aid" onchange="filterAndRenderMemberCasesTable()" style="margin:0;">
+              <option value="">-- كل أنواع المساعدات --</option>
+              ${aidTypes.map(a => `<option value="${escapeAttr(a)}">${window.escapeHtml(a)}</option>`).join('')}
+            </select>
+            <select id="mem-flt-village" onchange="filterAndRenderMemberCasesTable()" style="margin:0;">
+              <option value="">-- كل القرى / المناطق --</option>
+              ${villages.map(v => `<option value="${escapeAttr(v)}">${window.escapeHtml(v)}</option>`).join('')}
+            </select>
+            <select id="mem-flt-decision" onchange="filterAndRenderMemberCasesTable()" style="margin:0;">
+              <option value="">-- كل القرارات --</option>
+              <option value="pending">قيد التقييم</option>
+              <option value="مستحق">مستحق</option>
+              <option value="غير مستحق">غير مستحق</option>
+              <option value="مرفوض">مرفوض</option>
+            </select>
+            <select id="mem-flt-docs" onchange="filterAndRenderMemberCasesTable()" style="margin:0;">
+              <option value="">-- كل حالات المستندات --</option>
+              <option value="complete">مكتملة</option>
+              <option value="incomplete">ناقصة</option>
+            </select>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+            <input id="mem-flt-search" oninput="filterAndRenderMemberCasesTable()" placeholder="بحث بالاسم أو الرقم القومي أو الكود..." style="margin:0; flex:1; min-width:200px;">
+            <select id="mem-print-scope" style="margin:0; width:auto;">
+              <option value="filtered">طباعة كل الحالات المفلترة</option>
+              <option value="selected">طباعة الحالات المحددة فقط</option>
+            </select>
+            <select id="mem-print-format" style="margin:0; width:auto;">
+              <option value="basic">بيانات أساسية</option>
+              <option value="full">بيانات كاملة</option>
+              <option value="disbursement">كشف صرف</option>
+            </select>
+            <button type="button" onclick="printMemberAssignedCases()" class="action-btn" style="margin:0; background:#0f766e;">🖨️ طباعة الحالات</button>
+          </div>
+          <div id="mem-cases-metrics" style="margin-top:8px; font-size:12px; font-weight:700; color:#334155;"></div>
         </div>
+
+        <div id="member-cases-table-wrap" style="overflow-x:auto; margin-top:12px;"></div>
       </div>`;
+
+    window.filterAndRenderMemberCasesTable();
+  };
+
+  window.getFilteredMemberCases = function() {
+    const aid = document.getElementById('mem-flt-aid')?.value || '';
+    const vil = document.getElementById('mem-flt-village')?.value || '';
+    const dec = document.getElementById('mem-flt-decision')?.value || '';
+    const docsMode = document.getElementById('mem-flt-docs')?.value || '';
+    const q = (document.getElementById('mem-flt-search')?.value || '').trim().toLowerCase();
+
+    return (window.MEMBER_PORTAL_CASES || []).filter(f => {
+      if (aid && f.intervention_type !== aid) return false;
+      if (vil && f.village_hamlet !== vil) return false;
+      const currentDec = formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || '');
+      if (dec) {
+        if (dec === 'pending' && currentDec !== 'قيد التقييم') return false;
+        if (dec !== 'pending' && currentDec !== dec) return false;
+      }
+      if (docsMode) {
+        const audit = getCaseAttachmentsAudit(f);
+        if (docsMode === 'complete' && !audit.isComplete) return false;
+        if (docsMode === 'incomplete' && audit.isComplete) return false;
+      }
+      if (q) {
+        const h = f.husband_data || {};
+        const w = f.wife_data || {};
+        const primary = getCasePrimaryDisplayName(f);
+        const txt = `${primary} ${h.name1 || ''} ${h.name2 || ''} ${h.name3 || ''} ${w.name1 || ''} ${w.name2 || ''} ${w.name3 || ''} ${h.nid || ''} ${f.tracking_code || ''} ${f.village_hamlet || ''}`.toLowerCase();
+        if (!txt.includes(q)) return false;
+      }
+      return true;
+    });
+  };
+
+  window.toggleMemberCaseSelection = function(caseId, checked) {
+    const key = String(caseId);
+    if (checked) window.MEMBER_SELECTED_CASE_IDS.add(key);
+    else window.MEMBER_SELECTED_CASE_IDS.delete(key);
+    const mEl = document.getElementById('mem-cases-metrics');
+    if (mEl) {
+      const list = window.getFilteredMemberCases();
+      mEl.textContent = `المعروض: ${list.length} | المحدد للطباعة: ${window.MEMBER_SELECTED_CASE_IDS.size}`;
+    }
+  };
+
+  window.toggleSelectAllMemberCases = function(checked) {
+    const list = window.getFilteredMemberCases();
+    if (checked) list.forEach(c => window.MEMBER_SELECTED_CASE_IDS.add(String(c.id)));
+    else list.forEach(c => window.MEMBER_SELECTED_CASE_IDS.delete(String(c.id)));
+    document.querySelectorAll('.chk-mem-case-row').forEach(el => { el.checked = Boolean(checked); });
+    const mEl = document.getElementById('mem-cases-metrics');
+    if (mEl) mEl.textContent = `المعروض: ${list.length} | المحدد للطباعة: ${window.MEMBER_SELECTED_CASE_IDS.size}`;
+  };
+
+  window.filterAndRenderMemberCasesTable = function() {
+    const wrap = document.getElementById('member-cases-table-wrap');
+    if (!wrap) return;
+    const list = window.getFilteredMemberCases();
+    const mEl = document.getElementById('mem-cases-metrics');
+    if (mEl) mEl.textContent = `المعروض: ${list.length} | المحدد للطباعة: ${window.MEMBER_SELECTED_CASE_IDS.size}`;
+
+    if (list.length === 0) {
+      wrap.innerHTML = '<p style="text-align:center; padding:12px; color:#64748b;">لا توجد حالات مطابقة للفلترة الحالية.</p>';
+      return;
+    }
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th class="no-print" style="width:36px;">
+              <input type="checkbox" onchange="toggleSelectAllMemberCases(this.checked)" style="width:auto; margin:0;">
+            </th>
+            <th>كود الطلب</th>
+            <th>اسم الحالة (حسب وضع الأب)</th>
+            <th>نوع المساعدة / المنطقة</th>
+            <th>المستندات</th>
+            <th>تقييم الحالة (المسندة لك)</th>
+            <th class="no-print">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.map(f => {
+            const displayName = getCasePrimaryDisplayName(f);
+            const audit = getCaseAttachmentsAudit(f);
+            const docsText = audit.isComplete
+              ? `<span style="color:#166534; font-weight:700; font-size:11px;">✅ مكتمل (${audit.attachedCount}/${audit.totalCount})</span>`
+              : `<span style="color:#991b1b; font-weight:700; font-size:11px;">⚠️ ناقص (${audit.attachedCount}/${audit.totalCount})</span>`;
+
+            const assignedToMe = isCaseAssignedToMember(f, window.currentUser);
+            const currentDec = formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || '');
+            const isChecked = window.MEMBER_SELECTED_CASE_IDS.has(String(f.id));
+
+            const evalControlHtml = assignedToMe
+              ? `
+                <select id="mem-eval-sel-${escapeAttr(f.id)}" style="margin:0; padding:3px 6px; font-size:11px;">
+                  <option value="" ${currentDec === 'قيد التقييم' ? 'selected' : ''}>-- اختر القرار --</option>
+                  <option value="مستحق" ${currentDec === 'مستحق' ? 'selected' : ''}>مستحق</option>
+                  <option value="غير مستحق" ${currentDec === 'غير مستحق' ? 'selected' : ''}>غير مستحق</option>
+                  <option value="مرفوض" ${currentDec === 'مرفوض' ? 'selected' : ''}>مرفوض</option>
+                </select>
+                <button type="button" onclick="memberEvaluateAssignedCase('${escapeAttr(f.id)}')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:3px 7px; font-size:11px; margin-top:4px;">حفظ التقييم</button>
+              `
+              : `<span style="font-size:11px; color:#64748b;">${window.escapeHtml(currentDec)} (اطلاع فقط)</span>`;
+
+            return `
+              <tr>
+                <td class="no-print" style="text-align:center;">
+                  <input type="checkbox" class="chk-mem-case-row" ${isChecked ? 'checked' : ''} onchange="toggleMemberCaseSelection('${escapeAttr(f.id)}', this.checked)" style="width:auto; margin:0;">
+                </td>
+                <td><strong>${window.escapeHtml(f.tracking_code || '-')}</strong></td>
+                <td>
+                  <strong>${window.escapeHtml(displayName)}</strong>
+                  <div style="font-size:11px; color:#475569;">${isHusbandLivingWithFamily(f) ? 'رب الأسرة (مقيم مع الأسرة)' : 'الزوجة / العائل الفعلي'}</div>
+                </td>
+                <td>${window.escapeHtml(f.intervention_type || '-')}<br><small>${window.escapeHtml((f.center_city || '') + ' - ' + (f.village_hamlet || ''))}</small></td>
+                <td>${docsText}</td>
+                <td>${evalControlHtml}</td>
+                <td class="no-print" style="display:flex; gap:4px; flex-wrap:wrap;">
+                  <button type="button" onclick="openFullCaseDetailsModal('${escapeAttr(f.id)}')" class="nav-btn" style="background:#065f46; color:#fff; padding:4px 8px; font-size:11px;">👁️ عرض الملف</button>
+                  <button type="button" onclick="printSingleMemberCase('${escapeAttr(f.id)}')" class="nav-btn btn-gold" style="padding:4px 8px; font-size:11px;">🖨️ طباعة</button>
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  };
+
+  window.memberEvaluateAssignedCase = async function(caseId) {
+    const user = window.currentUser;
+    if (!user) return alert('⚠️ يرجى تسجيل الدخول أولاً.');
+    const item = (window.MEMBER_PORTAL_CASES || []).find(c => String(c.id) === String(caseId));
+    if (!item) return alert('⚠️ الحالة غير موجودة.');
+    if (!isCaseAssignedToMember(item, user)) {
+      return alert('⛔ غير مسموح: يمكنك تقييم الحالات المسندة إليك فقط.');
+    }
+
+    const sel = document.getElementById(`mem-eval-sel-${caseId}`);
+    const decision = (sel?.value || '').trim();
+    if (!['مستحق', 'غير مستحق', 'مرفوض'].includes(decision)) {
+      return alert('⚠️ اختر أحد القرارات الثلاثة: (مستحق / غير مستحق / مرفوض).');
+    }
+
+    const notes = prompt('ملاحظات الباحث أو العضو حول التقييم (اختياري):', item.evaluation_notes || item.researcher_notes || '') ?? '';
+    const evaluatorName = user.name || user.full_name || user.email;
+
+    const patch = {
+      evaluation_decision: decision,
+      eligibility_verdict: decision,
+      evaluation_notes: notes.trim(),
+      researcher_notes: notes.trim() || item.researcher_notes || '',
+      evaluated_by: evaluatorName,
+      evaluated_at: new Date().toISOString()
+    };
+
+    if (window.supabaseClient) {
+      const { error } = await window.supabaseClient.from('families').update(patch).eq('id', caseId);
+      if (error) {
+        const fallback = await window.supabaseClient.from('families').update({ eligibility_verdict: decision }).eq('id', caseId);
+        if (fallback.error) return alert('❌ تعذر حفظ التقييم: ' + fallback.error.message);
+      }
+    }
+
+    Object.assign(item, patch);
+    window.filterAndRenderMemberCasesTable();
+    alert(`✅ تم حفظ قرار التقييم (${decision}) للحالة (${item.tracking_code || caseId}).`);
+  };
+
+  window.printSingleMemberCase = async function(caseId) {
+    const item = (window.MEMBER_PORTAL_CASES || []).find(c => String(c.id) === String(caseId));
+    if (!item) return alert('⚠️ الحالة غير موجودة.');
+    const format = document.getElementById('mem-print-format')?.value || 'full';
+    await renderMemberCasesPrintSheet([item], format);
+  };
+
+  window.printMemberAssignedCases = async function() {
+    const scope = document.getElementById('mem-print-scope')?.value || 'filtered';
+    const format = document.getElementById('mem-print-format')?.value || 'basic';
+    let targets = window.getFilteredMemberCases();
+    if (scope === 'selected') {
+      const ids = window.MEMBER_SELECTED_CASE_IDS;
+      targets = targets.filter(c => ids.has(String(c.id)));
+      if (targets.length === 0) {
+        targets = (window.MEMBER_PORTAL_CASES || []).filter(c => ids.has(String(c.id)));
+      }
+    }
+    if (targets.length === 0) return alert('⚠️ لا توجد حالات متاحة للطباعة حسب التحديد الحالي.');
+    await renderMemberCasesPrintSheet(targets, format);
+  };
+
+  async function renderMemberCasesPrintSheet(casesList, format) {
+    const cfg = await window.getFoundationSettings();
+    const user = window.currentUser || {};
+    const actorName = user.name || user.full_name || user.email || 'عضو/باحث';
+    const formatNames = { basic: 'بيانات أساسية', full: 'بيانات كاملة', disbursement: 'كشف صرف' };
+
+    let bodyHtml = '';
+    if (format === 'disbursement') {
+      const rowsHtml = casesList.map((f, idx) => {
+        const h = f.husband_data || {};
+        const name = getCasePrimaryDisplayName(f);
+        const dec = formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || f.status);
+        return `<tr>
+          <td>${idx + 1}</td>
+          <td>${window.escapeHtml(f.tracking_code || '-')}</td>
+          <td>${window.escapeHtml(name)}</td>
+          <td>${window.escapeHtml(h.nid || '-')}</td>
+          <td>${window.escapeHtml(f.village_hamlet || '-')}</td>
+          <td>${window.escapeHtml(f.intervention_type || '-')}</td>
+          <td>${window.escapeHtml(dec)}</td>
+          <td style="min-width:95px;"></td>
+          <td style="min-width:110px;"></td>
+        </tr>`;
+      }).join('');
+
+      bodyHtml = `
+        <h3 style="text-align:center; text-decoration:underline; margin:8px 0;">كشف صرف — حالات مسندة (${window.escapeHtml(actorName)})</h3>
+        <p style="font-size:12px;"><strong>عدد الحالات:</strong> ${casesList.length} | <strong>التاريخ:</strong> ${new Date().toLocaleDateString('ar-EG')}</p>
+        <table>
+          <thead>
+            <tr><th>م</th><th>الكود</th><th>الاسم</th><th>الرقم القومي</th><th>القرية</th><th>نوع المساعدة</th><th>القرار</th><th>قيمة الصرف</th><th>توقيع المستلم</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>`;
+    } else if (format === 'basic') {
+      const rowsHtml = casesList.map((f, idx) => {
+        const h = f.husband_data || {};
+        const name = getCasePrimaryDisplayName(f);
+        const dec = formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || f.status);
+        const audit = getCaseAttachmentsAudit(f);
+        return `<tr>
+          <td>${idx + 1}</td>
+          <td>${window.escapeHtml(f.tracking_code || '-')}</td>
+          <td>${window.escapeHtml(name)}</td>
+          <td>${window.escapeHtml(h.nid || '-')}</td>
+          <td>${window.escapeHtml(h.phone || '-')}</td>
+          <td>${window.escapeHtml((f.center_city || '') + ' - ' + (f.village_hamlet || ''))}</td>
+          <td>${window.escapeHtml(f.intervention_type || '-')}</td>
+          <td>${window.escapeHtml(dec)}</td>
+          <td>${audit.attachedCount}/${audit.totalCount}</td>
+        </tr>`;
+      }).join('');
+
+      bodyHtml = `
+        <h3 style="text-align:center; text-decoration:underline; margin:8px 0;">تقرير بيانات أساسية — حالات مسندة (${window.escapeHtml(actorName)})</h3>
+        <p style="font-size:12px;"><strong>عدد الحالات:</strong> ${casesList.length} | <strong>النمط:</strong> ${formatNames[format]}</p>
+        <table>
+          <thead>
+            <tr><th>م</th><th>الكود</th><th>الاسم</th><th>الرقم القومي</th><th>الهاتف</th><th>الموقع</th><th>نوع المساعدة</th><th>القرار</th><th>المستندات</th></tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>`;
+    } else {
+      bodyHtml = casesList.map((f, idx) => {
+        const h = f.husband_data || {};
+        const w = f.wife_data || {};
+        const housing = f.housing_data || {};
+        const audit = getCaseAttachmentsAudit(f);
+        const primaryName = getCasePrimaryDisplayName(f);
+        const dec = formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || f.status);
+        return `
+          <div style="page-break-after:always; margin-bottom:18px;">
+            <h3 style="text-align:center; text-decoration:underline; margin:6px 0 10px;">ملف حالة (${idx + 1} من ${casesList.length}) — بيانات كاملة</h3>
+            <table>
+              <tbody>
+                <tr><th>كود المتابعة</th><td>${window.escapeHtml(f.tracking_code || '-')}</td><th>القرار / التقييم</th><td>${window.escapeHtml(dec)}</td></tr>
+                <tr><th>اسم الحالة المعتمد</th><td>${window.escapeHtml(primaryName)}</td><th>الرقم القومي للزوج</th><td>${window.escapeHtml(h.nid || '-')}</td></tr>
+                <tr><th>الهاتف / واتساب</th><td>${window.escapeHtml(h.whatsapp || h.phone || w.phone || '-')}</td><th>نوع المساعدة</th><td>${window.escapeHtml(f.intervention_type || '-')}</td></tr>
+                <tr><th>المركز / القرية</th><td>${window.escapeHtml((f.center_city || '-') + ' - ' + (f.village_hamlet || '-'))}</td><th>الدخل / المصروفات</th><td>${window.escapeHtml(String(f.total_income ?? 0))} / ${window.escapeHtml(String(f.total_expenses ?? 0))}</td></tr>
+                <tr><th>الحالة الصحية والإعاقة</th><td colspan="3">${window.escapeHtml(formatPersonHealthDetailed(h, 'الزوج') + ' || ' + formatPersonHealthDetailed(w, 'الزوجة'))}</td></tr>
+                <tr><th>بيانات السكن</th><td colspan="3">${window.escapeHtml((housing.case || housing.housing_status || '-') + ' / ' + (housing.type || housing.housing_type || '-'))}</td></tr>
+                <tr><th>ملاحظات الباحث</th><td colspan="3">${window.escapeHtml(f.evaluation_notes || f.researcher_notes || '-')}</td></tr>
+              </tbody>
+            </table>
+            <h4 style="margin:10px 0 6px;">بيان حالة الصور والمستندات المرفقة (مرفق: ${audit.attachedCount} / غير مرفق: ${audit.missingCount}):</h4>
+            <table>
+              <thead><tr><th>م</th><th>اسم المستند / الصورة</th><th>حالة الإرفاق</th></tr></thead>
+              <tbody>${buildCaseAttachmentsAuditRows(f)}</tbody>
+            </table>
+          </div>`;
+      }).join('');
+    }
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, bodyHtml, `طباعة حالات العضو - ${actorName}`));
   };
 
   window.changeMemberOwnPassword = async function() {
@@ -485,12 +1166,68 @@
     window.renderMemberPortal(window.currentUser);
   };
 
-  window.ALL_ADMIN_CASES = [];
-  window.ALL_ADMIN_USERS = [];
-  window.ALL_ADMIN_ORGANIZATIONS = [];
-  window.ALL_ADMIN_GRIEVANCES = [];
-  window.ALL_OFFICIAL_DOCS = [];
-  window.SELECTED_CASE_IDS = new Set();
+  window.adminChangeOwnPassword = async function() {
+    if (!isCurrentUserAdmin()) return alert('⛔ متاح للأدمن فقط.');
+    const curPass = (document.getElementById('adm-cur-pass')?.value || '').trim();
+    const newPass = (document.getElementById('adm-new-pass')?.value || '').trim();
+    const confPass = (document.getElementById('adm-conf-pass')?.value || '').trim();
+
+    if (!newPass || newPass.length < 6) return alert('⚠️ كلمة السر الجديدة يجب أن تكون 6 أحرف أو أكثر.');
+    if (newPass !== confPass) return alert('⚠️ تأكيد كلمة السر الجديدة غير متطابق.');
+
+    const u = window.currentUser || {};
+    if (window.supabaseClient && u.email) {
+      const { data, error: fetchErr } = await window.supabaseClient.from('users_profiles').select('*').eq('email', u.email).maybeSingle();
+      if (!fetchErr && data && data.password_hash && curPass && data.password_hash !== curPass) {
+        return alert('❌ كلمة السر الحالية غير صحيحة.');
+      }
+      if (data && data.id) {
+        const { error } = await window.supabaseClient.from('users_profiles').update({
+          password_hash: newPass,
+          must_change_password: false
+        }).eq('id', data.id);
+        if (error) return alert('❌ تعذر تحديث كلمة السر في قاعدة البيانات: ' + error.message);
+      }
+    }
+
+    if (window.currentUser) {
+      window.currentUser.password_hash = newPass;
+      sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
+    }
+
+    document.getElementById('adm-cur-pass').value = '';
+    document.getElementById('adm-new-pass').value = '';
+    document.getElementById('adm-conf-pass').value = '';
+    alert('✅ تم تغيير الرقم السري للأدمن بنجاح.');
+  };
+
+  window.adminIssueMemberTempCode = async function(userId, email, fullName, phone) {
+    if (!isCurrentUserAdmin()) return alert('⛔ إرسال الرمز المؤقت للأعضاء متاح للأدمن فقط.');
+    const tempCode = 'HF-' + Math.floor(100000 + Math.random() * 900000);
+
+    if (window.supabaseClient) {
+      const { error } = await window.supabaseClient
+        .from('users_profiles')
+        .update({ temp_code: tempCode, must_change_password: true })
+        .eq('id', userId);
+      if (error) return alert('❌ تعذر حفظ الرمز المؤقت: ' + error.message);
+    }
+
+    const msg =
+      `مؤسسة الحافظ للتنمية والخدمات\n` +
+      `مرحباً أ/ ${fullName || 'عضو المؤسسة'}\n` +
+      `تم إصدار رمز دخول مؤقت لحسابك بواسطة الإدارة:\n` +
+      `الرمز المؤقت: ${tempCode}\n` +
+      `يرجى الدخول وتعيين كلمة مرور جديدة مباشرة.`;
+
+    showQuickMessageSendModal({
+      title: `إرسال الرمز المؤقت للعضو (${fullName || email})`,
+      phone: phone || '',
+      email: email || '',
+      subject: 'الرمز المؤقت لاستعادة كلمة المرور - مؤسسة الحافظ',
+      defaultMessage: msg
+    });
+  };
 
   window.refreshAdminSummaryCards = function() {
     const families = window.ALL_ADMIN_CASES || [];
@@ -543,9 +1280,22 @@
             <h3 style="margin:0; color:var(--primary-dark);">🛡️ لوحة التحكم الإدارية</h3>
             <small>المسؤول: <strong>${window.escapeHtml(displayName)}</strong></small>
           </div>
-          <div style="display:flex; gap:6px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" onclick="toggleAdminPasswordBox()" class="nav-btn btn-gold">🔑 تغيير الرقم السري للأدمن</button>
             <button type="button" onclick="window.print()" class="nav-btn">🖨️ طباعة</button>
             <button type="button" onclick="logoutUser()" class="nav-btn" style="background:#dc2626; color:#fff;">خروج</button>
+          </div>
+        </div>
+
+        <div id="admin-password-change-box" class="no-print hidden" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px; margin-top:10px;">
+          <h4 style="margin:0 0 8px; color:#064e3b;">🔑 تغيير الرقم السري لحساب الأدمن</h4>
+          <div class="grid-3">
+            <input id="adm-cur-pass" type="password" placeholder="الرقم السري الحالي" style="margin:0;">
+            <input id="adm-new-pass" type="password" placeholder="الرقم السري الجديد (6 أحرف+)" style="margin:0;">
+            <input id="adm-conf-pass" type="password" placeholder="تأكيد الرقم السري الجديد" style="margin:0;">
+          </div>
+          <div style="margin-top:8px;">
+            <button type="button" onclick="adminChangeOwnPassword()" class="action-btn" style="padding:6px 14px; font-size:12px;">حفظ الرقم السري الجديد</button>
           </div>
         </div>
 
@@ -586,6 +1336,10 @@
     window.renderAdminCasesSection();
   };
 
+  window.toggleAdminPasswordBox = function() {
+    document.getElementById('admin-password-change-box')?.classList.toggle('hidden');
+  };
+
   window.switchAdminTab = function(tab) {
     const tabs = ['cases', 'members', 'announcements', 'achievements', 'grievances', 'official'];
     tabs.forEach(t => {
@@ -610,14 +1364,14 @@
 
     const combined = Array.from(new Set([...orgLabels, ...userDonors]));
     return `<option value="">-- جهة مانحة أو جمعية شريكة --</option>` +
-      combined.map(label => `<option value="${window.escapeHtml(label)}">${window.escapeHtml(label)}</option>`).join('');
+      combined.map(label => `<option value="${escapeAttr(label)}">${window.escapeHtml(label)}</option>`).join('');
   }
 
   window.renderAdminCasesSection = function() {
     const box = document.getElementById('admin-tab-cases');
     if (!box) return;
     const aidOpts = (window.AID_TYPES || [])
-      .map(a => `<option value="${window.escapeHtml(a)}">${window.escapeHtml(a)}</option>`).join('');
+      .map(a => `<option value="${escapeAttr(a)}">${window.escapeHtml(a)}</option>`).join('');
 
     const researchersAndMembers = (window.ALL_ADMIN_USERS || []).filter(u =>
       u.account_status === 'active' && !['donor', 'partner'].includes(u.role)
@@ -626,7 +1380,7 @@
     const memberSelectOpts = `<option value="">-- إسناد لعضو / باحث / متطوع --</option>` +
       researchersAndMembers.map(m => {
         const label = `${m.full_name || m.email} (${m.role || 'عضو'})`;
-        return `<option value="${window.escapeHtml(m.email)}">${window.escapeHtml(label)}</option>`;
+        return `<option value="${escapeAttr(m.email)}">${window.escapeHtml(label)}</option>`;
       }).join('');
 
     const donorSelectOpts = buildDonorPartnerOptionsHtml();
@@ -645,6 +1399,13 @@
           </select>
           <input id="flt-village" oninput="filterAndRenderCasesTable()" placeholder="القرية أو الاسم..." style="margin:0;">
           <input id="flt-limit" type="number" min="1" oninput="filterAndRenderCasesTable()" placeholder="العدد (50)" style="margin:0;">
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <select id="flt-special-need" onchange="filterAndRenderCasesTable()" style="margin:0; padding:4px 8px; font-size:12px;">
+            <option value="">-- كل الفئات الصحية والمالية --</option>
+            <option value="disability_card">ذوي الإعاقة / كارت الخدمات المتكاملة</option>
+            <option value="financial_deficit">حالات ذات عجز مالي شهري</option>
+          </select>
         </div>
         <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:8px; align-items:center;">
           <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; margin:0;">
@@ -706,12 +1467,19 @@
     const aid = document.getElementById('flt-aid')?.value || '';
     const st = document.getElementById('flt-status')?.value || '';
     const q = (document.getElementById('flt-village')?.value || '').trim().toLowerCase();
+    const specialNeed = document.getElementById('flt-special-need')?.value || '';
     const assignFilter = document.getElementById('flt-assignment-view')?.value || '';
     const limit = parseInt(document.getElementById('flt-limit')?.value || '0', 10);
 
     let list = (window.ALL_ADMIN_CASES || []).filter(f => {
       if (aid && f.intervention_type !== aid) return false;
       if (st && f.status !== st) return false;
+      if (specialNeed === 'disability_card' && !caseHasDisabilityOrServiceCard(f)) return false;
+      if (specialNeed === 'financial_deficit') {
+        const inc = Number(f.total_income ?? 0);
+        const exp = Number(f.total_expenses ?? 0);
+        if ((inc - exp) >= 0) return false;
+      }
       const memberAssigned = Boolean(getCaseAssignedMemberDisplay(f));
       const donorsAssigned = getCaseAssignedDonorsList(f).length > 0;
       if (assignFilter === 'has_member' && !memberAssigned) return false;
@@ -719,7 +1487,9 @@
       if (assignFilter === 'has_donor' && !donorsAssigned) return false;
       if (q) {
         const h = f.husband_data || {};
-        const txt = `${h.name1 || ''} ${h.name2 || ''} ${h.name3 || ''} ${f.village_hamlet || ''} ${f.tracking_code || ''}`.toLowerCase();
+        const w = f.wife_data || {};
+        const primary = getCasePrimaryDisplayName(f);
+        const txt = `${primary} ${h.name1 || ''} ${h.name2 || ''} ${h.name3 || ''} ${w.name1 || ''} ${w.name2 || ''} ${w.name3 || ''} ${f.village_hamlet || ''} ${f.tracking_code || ''}`.toLowerCase();
         if (!txt.includes(q)) return false;
       }
       return true;
@@ -818,7 +1588,7 @@
           <tr>
             <th class="no-print" style="width:34px;">تحديد</th>
             <th>الكود</th>
-            <th>رب الأسرة</th>
+            <th>صاحب الملف</th>
             <th>العنوان والنوع</th>
             <th>مسند إلى</th>
             <th>المستندات</th>
@@ -830,9 +1600,9 @@
         <tbody>
           ${list.map(f => {
             const h = f.husband_data || {};
-            const name = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
+            const name = getCasePrimaryDisplayName(f);
             const opts = `<option value="">-- غير مسند --</option>` + members.map(m =>
-              `<option value="${window.escapeHtml(m.email)}" ${f.assigned_to_email===m.email?'selected':''}>${window.escapeHtml(m.full_name)}</option>`
+              `<option value="${escapeAttr(m.email)}" ${f.assigned_to_email===m.email?'selected':''}>${window.escapeHtml(m.full_name)}</option>`
             ).join('');
 
             const assignedMember = getCaseAssignedMemberDisplay(f);
@@ -848,29 +1618,34 @@
               ? `<span style="font-size:11px; font-weight:700; color:#166534;">✅ مكتمل (${audit.attachedCount}/${audit.totalCount})</span>`
               : `<span style="font-size:11px; font-weight:700; color:#991b1b;">⚠️ ناقص (${audit.attachedCount}/${audit.totalCount})</span>`;
 
+            const evalBadge = (f.evaluation_decision || f.eligibility_verdict)
+              ? `<div style="font-size:10px; color:#0f766e; font-weight:700; margin-top:2px;">تقييم: ${window.escapeHtml(formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict))}</div>`
+              : '';
+
             const isChecked = window.SELECTED_CASE_IDS.has(String(f.id));
 
             return `<tr>
               <td class="no-print" style="text-align:center;">
-                <input type="checkbox" class="chk-case-row" value="${window.escapeHtml(f.id)}" ${isChecked ? 'checked' : ''} onchange="toggleCaseSelection('${window.escapeHtml(f.id)}', this.checked)" style="width:auto; margin:0;">
+                <input type="checkbox" class="chk-case-row" value="${escapeAttr(f.id)}" ${isChecked ? 'checked' : ''} onchange="toggleCaseSelection('${escapeAttr(f.id)}', this.checked)" style="width:auto; margin:0;">
               </td>
               <td><strong>${window.escapeHtml(f.tracking_code)}</strong></td>
-              <td>${window.escapeHtml(name)}<br><small>${window.escapeHtml(h.phone || '')}</small></td>
+              <td>${window.escapeHtml(name)}<br><small>${window.escapeHtml(h.phone || '')}</small>${evalBadge}</td>
               <td>${window.escapeHtml(f.village_hamlet)}<br><small>${window.escapeHtml(f.intervention_type)}</small></td>
               <td>${assignedSummaryHtml}</td>
               <td>${docsBadgeHtml}</td>
-              <td><select onchange="adminAssignCase('${f.id}', this)" style="margin:0; padding:3px; font-size:11px;">${opts}</select></td>
+              <td><select onchange="adminAssignCase('${escapeAttr(f.id)}', this)" style="margin:0; padding:3px; font-size:11px;">${opts}</select></td>
               <td>
-                <select onchange="adminUpdateCaseStatus('${f.id}', this.value)" style="margin:0; padding:3px; font-size:11px;">
+                <select onchange="adminUpdateCaseStatus('${escapeAttr(f.id)}', this.value)" style="margin:0; padding:3px; font-size:11px;">
                   <option value="pending" ${f.status==='pending'?'selected':''}>🔍 مراجعة</option>
                   <option value="approved" ${f.status==='approved'?'selected':''}>✅ مقبول</option>
                   <option value="rejected" ${f.status==='rejected'?'selected':''}>❌ مرفوض</option>
                 </select>
               </td>
               <td class="no-print" style="display:flex; gap:4px; flex-wrap:wrap;">
-                <button type="button" onclick="printFullCaseFiles(['${window.escapeHtml(f.id)}'])" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 6px; font-size:11px;">🖨️ ملف</button>
-                <button type="button" onclick="openReceiptDeclarationModal('${f.id}')" class="nav-btn btn-gold" style="padding:3px 6px; font-size:11px;">📄 إقرار</button>
-                <button type="button" onclick="adminDeleteCase('${f.id}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 6px; font-size:11px;">🗑️</button>
+                <button type="button" onclick="openFullCaseDetailsModal('${escapeAttr(f.id)}')" class="nav-btn" style="background:#064e3b; color:#fff; padding:3px 6px; font-size:11px;">👁️ عرض</button>
+                <button type="button" onclick="printFullCaseFiles(['${escapeAttr(f.id)}'])" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 6px; font-size:11px;">🖨️ تقرير</button>
+                <button type="button" onclick="openReceiptDeclarationModal('${escapeAttr(f.id)}')" class="nav-btn btn-gold" style="padding:3px 6px; font-size:11px;">📄 إقرار</button>
+                <button type="button" onclick="adminDeleteCase('${escapeAttr(f.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 6px; font-size:11px;">🗑️</button>
               </td>
             </tr>`;
           }).join('')}
@@ -1027,7 +1802,7 @@
     const cfg = await window.getFoundationSettings();
     const rowsHtml = matched.map((f, idx) => {
       const h = f.husband_data || {};
-      const name = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
+      const name = getCasePrimaryDisplayName(f);
       return `<tr>
         <td>${idx + 1}</td>
         <td>${window.escapeHtml(f.tracking_code || '')}</td>
@@ -1063,14 +1838,21 @@
 
   function buildCaseAttachmentsAuditRows(caseObj) {
     const audit = getCaseAttachmentsAudit(caseObj);
-    return audit.items.map(it => `
-      <tr>
-        <td>${it.index}</td>
-        <td>${window.escapeHtml(it.label)}</td>
-        <td style="font-weight:700; color:${it.attached ? '#166534' : '#991b1b'};">
-          ${window.escapeHtml(it.statusText)}
-        </td>
-      </tr>`).join('');
+    return audit.items.map(it => {
+      const info = it.attached ? getAttachmentDisplayInfo(it.value) : { fileName: '', href: '' };
+      const fileDetails = it.attached
+        ? `<div style="font-size:11px; color:#334155; margin-top:2px;">الملف: ${window.escapeHtml(info.fileName || 'مرفق')}${info.href ? ` — <a href="${escapeAttr(info.href)}" target="_blank" rel="noopener noreferrer">معاينة</a>` : ''}</div>`
+        : '';
+      return `
+        <tr>
+          <td>${it.index}</td>
+          <td>${window.escapeHtml(it.label)}</td>
+          <td style="font-weight:700; color:${it.attached ? '#166534' : '#991b1b'};">
+            ${window.escapeHtml(it.statusText)}
+            ${fileDetails}
+          </td>
+        </tr>`;
+    }).join('');
   }
 
   window.printFullCaseFiles = async function(caseIdsArray) {
@@ -1079,7 +1861,14 @@
       return alert('⚠️ حدد حالة واحدة أو أكثر لطباعة ملف البيانات الكامل.');
     }
 
-    const targets = (window.ALL_ADMIN_CASES || []).filter(c => ids.includes(String(c.id)));
+    const pool = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
+    const seen = new Set();
+    const targets = pool.filter(c => {
+      const k = String(c.id);
+      if (!ids.includes(k) || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
     if (targets.length === 0) return alert('⚠️ لم يتم العثور على الحالات المحددة.');
 
     const cfg = await window.getFoundationSettings();
@@ -1087,28 +1876,34 @@
       const h = f.husband_data || {};
       const w = f.wife_data || {};
       const housing = f.housing_data || {};
-      const fullName = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
-      const wifeName = [w.name1, w.name2, w.name3].filter(Boolean).join(' ') || '-';
+      const sp = housing.social_profile || {};
+      const children = Array.isArray(f.children_data) ? f.children_data : [];
+      const fullName = getCasePrimaryDisplayName(f);
+      const wifeName = getWifeFullName(f) || '-';
       const memberAssigned = getCaseAssignedMemberDisplay(f) || 'غير مسند';
       const donorsAssigned = getCaseAssignedDonorsList(f).join('، ') || 'غير مسند';
       const statusLabel = formatCaseStatusArabic(f.status);
       const audit = getCaseAttachmentsAudit(f);
+      const kidsHealthText = children.length
+        ? children.map((c, i) => `${i + 1}) ${c.name || '-'}: ${formatPersonHealthDetailed(c)}`).join(' — ')
+        : 'لا يوجد أبناء';
 
       return `
         <div style="page-break-after:always; margin-bottom:20px;">
           <h3 style="text-align:center; text-decoration:underline; margin:6px 0 12px;">
-            ملف بيانات الحالة الكامل (${idx + 1} من ${targets.length})
+            تقرير بيانات الحالة (${idx + 1} من ${targets.length})
           </h3>
           <table>
             <tbody>
               <tr><th>كود المتابعة</th><td>${window.escapeHtml(f.tracking_code || '-')}</td><th>حالة الطلب</th><td>${window.escapeHtml(statusLabel)}</td></tr>
-              <tr><th>اسم رب الأسرة</th><td>${window.escapeHtml(fullName)}</td><th>الرقم القومي</th><td>${window.escapeHtml(h.nid || '-')}</td></tr>
-              <tr><th>رقم الهاتف</th><td>${window.escapeHtml(h.phone || '-')}</td><th>نوع المساعدة</th><td>${window.escapeHtml(f.intervention_type || '-')}</td></tr>
+              <tr><th>اسم صاحب الملف</th><td>${window.escapeHtml(fullName)}</td><th>الرقم القومي</th><td>${window.escapeHtml(h.nid || '-')}</td></tr>
+              <tr><th>رقم الهاتف / واتساب</th><td>${window.escapeHtml(h.whatsapp || h.phone || w.phone || '-')}</td><th>نوع المساعدة</th><td>${window.escapeHtml(f.intervention_type || '-')}</td></tr>
               <tr><th>المركز / القرية</th><td>${window.escapeHtml((f.center_city || '-') + ' - ' + (f.village_hamlet || '-'))}</td><th>اسم الزوجة</th><td>${window.escapeHtml(wifeName)}</td></tr>
               <tr><th>إجمالي الدخل</th><td>${window.escapeHtml(String(f.total_income ?? 0))}</td><th>إجمالي المصروفات</th><td>${window.escapeHtml(String(f.total_expenses ?? 0))}</td></tr>
               <tr><th>المسند إليه (باحث/عضو)</th><td>${window.escapeHtml(memberAssigned)}</td><th>المسند إليه (جهة مانحة/شريكة)</th><td>${window.escapeHtml(donorsAssigned)}</td></tr>
-              <tr><th>بيانات السكن</th><td colspan="3">${window.escapeHtml((housing.housing_status || '-') + ' / ' + (housing.housing_type || '-'))}</td></tr>
-              <tr><th>ملاحظات الباحث</th><td colspan="3">${window.escapeHtml(f.researcher_notes || '-')}</td></tr>
+              <tr><th>الحالة الصحية والإعاقة</th><td colspan="3">${window.escapeHtml(formatPersonHealthDetailed(h, 'الزوج') + ' || ' + formatPersonHealthDetailed(w, 'الزوجة') + ' || الأبناء: ' + kidsHealthText)}</td></tr>
+              <tr><th>البيانات الاجتماعية والسكن</th><td colspan="3">${window.escapeHtml('الإنفاق الفعلي: ' + (sp.actualProvider || '-') + ' | جهة أخرى: ' + (sp.receivesOtherAid || 'لا') + ' | السكن: ' + (housing.case || '-') + '/' + (housing.type || '-') + ' | كهرباء: ' + (housing.electricityMeter || '-') + ' | مياه: ' + (housing.waterSource || '-') + ' | صرف: ' + (housing.sanitationType || '-'))}</td></tr>
+              <tr><th>ملاحظات الباحث</th><td colspan="3">${window.escapeHtml(f.evaluation_notes || f.researcher_notes || housing.opinion || '-')}</td></tr>
             </tbody>
           </table>
 
@@ -1124,7 +1919,7 @@
         </div>`;
     }).join('');
 
-    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, pagesHtml, 'ملف بيانات الحالات الكامل - مؤسسة الحافظ'));
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, pagesHtml, 'تقرير بيانات الحالات - مؤسسة الحافظ'));
   };
 
   window.adminUpdateCaseStatus = async function(id, status) {
@@ -1137,6 +1932,7 @@
     window.refreshAdminSummaryCards();
 
     const phone = getCaseApplicantPhone(item);
+    const email = getCaseApplicantEmail(item);
     const name = getCaseApplicantName(item);
     const code = item?.tracking_code || '';
     const statusAr = formatCaseStatusArabic(status);
@@ -1150,6 +1946,8 @@
     showQuickMessageSendModal({
       title: `تم تحديث حالة الطلب (${code}) إلى: ${statusAr}`,
       phone,
+      email,
+      subject: `تحديث حالة الطلب رقم (${code}) - مؤسسة الحافظ`,
       defaultMessage: msg
     });
   };
@@ -1169,7 +1967,7 @@
     const cfg = await window.getFoundationSettings();
     const rowsHtml = list.map((f, idx) => {
       const h = f.husband_data || {};
-      const name = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || 'غير محدد';
+      const name = getCasePrimaryDisplayName(f);
       return `<tr>
         <td>${idx + 1}</td>
         <td>${window.escapeHtml(f.tracking_code)}</td>
@@ -1181,20 +1979,7 @@
       </tr>`;
     }).join('');
 
-    const w = window.open('', '_blank', 'width=950,height=1000');
-    if (!w) return alert('يرجى السماح بالنوافذ المنبثقة.');
-    w.document.open();
-    w.document.write(`
-      <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
-      <title>كشف صرف رسمي - مؤسسة الحافظ</title>
-      <style>
-        @page { size: A4; margin: 14mm; }
-        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #0f172a; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
-        th, td { border: 1px solid #334155; padding: 6px 8px; text-align: right; }
-        th { background: #064e3b; color: #fff; }
-      </style></head><body>
-      ${window.getOfficialHeaderHtml(cfg)}
+    const bodyHtml = `
       <h3 style="text-align:center; text-decoration:underline; margin:8px 0;">كشف صرف وتسليم مساعدات</h3>
       <table>
         <thead>
@@ -1208,11 +1993,9 @@
       </table>
       <div style="display:flex; justify-content:space-between; margin-top:28px; font-weight:700; font-size:13px;">
         <span>لجنة الصرف والتوزيع</span><span>اعتماد رئيس مجلس الأمناء</span>
-      </div>
-      ${window.getOfficialFooterHtml(cfg)}
-      <script>window.onload=function(){window.print();};<\/script>
-      </body></html>`);
-    w.document.close();
+      </div>`;
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, bodyHtml, 'كشف صرف رسمي - مؤسسة الحافظ'));
   }
 
   function openDisbursementScheduleAndNotifyModal(list, withSig) {
@@ -1254,113 +2037,101 @@
           <label style="font-size:12px; font-weight:700;">ملاحظة إضافية (اختياري):</label>
           <input id="dsb-extra-note" placeholder="مثال: إحضار بطاقة الرقم القومي" style="margin:0;">
         </div>
-
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-          <button type="button" id="dsb-print-now-btn" class="action-btn">🖨️ طباعة كشف الصرف الآن</button>
-          <button type="button" id="dsb-build-msgs-btn" class="nav-btn btn-gold">✉️ تجهيز قائمة رسائل الاستلام</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+          <button type="button" id="dsb-confirm-print-notify" class="action-btn">🖨️ طباعة الكشف وتجهيز الإرسال</button>
           <button type="button" onclick="document.getElementById('hf-disbursement-notify-modal').classList.add('hidden')" class="nav-btn">إغلاق</button>
         </div>
-
-        <div id="dsb-recipients-list" style="margin-top:14px;"></div>
+        <div id="dsb-recipients-list" style="margin-top:12px; max-height:220px; overflow-y:auto;"></div>
       </div>`;
 
-    window.toggleDisbursementPlaceInput = function() {
-      const mode = document.getElementById('dsb-place-mode')?.value;
-      const inp = document.getElementById('dsb-place-custom');
-      if (!inp) return;
-      if (mode === 'hq') inp.value = 'مقر مؤسسة الحافظ - عبد الصمد، مركز إهناسيا';
-      else if (mode === 'call_for_location') inp.value = 'يرجى التواصل معنا لمعرفة مكان الاستلام المحدد';
-      else inp.value = '';
-    };
+    document.getElementById('dsb-confirm-print-notify').onclick = async function() {
+      const dayText = (document.getElementById('dsb-day')?.value || '').trim();
+      const timeText = (document.getElementById('dsb-time')?.value || '').trim();
+      const mode = document.getElementById('dsb-place-mode')?.value || 'hq';
+      const placeText = (document.getElementById('dsb-place-custom')?.value || '').trim();
+      const extraNote = (document.getElementById('dsb-extra-note')?.value || '').trim();
 
-    document.getElementById('dsb-print-now-btn').onclick = function() {
-      executePrintDisbursementSheet(list, withSig);
-    };
+      await executePrintDisbursementSheet(list, withSig);
 
-    document.getElementById('dsb-build-msgs-btn').onclick = async function() {
-      const scheduleInfo = {
-        mode: document.getElementById('dsb-place-mode')?.value || 'hq',
-        dayText: (document.getElementById('dsb-day')?.value || '').trim(),
-        timeText: (document.getElementById('dsb-time')?.value || '').trim(),
-        placeText: (document.getElementById('dsb-place-custom')?.value || '').trim(),
-        extraNote: (document.getElementById('dsb-extra-note')?.value || '').trim()
-      };
-
-      const container = document.getElementById('dsb-recipients-list');
-      if (!container) return;
-
-      const cards = await Promise.all(list.map(async (c, idx) => {
-        const name = getCaseApplicantName(c);
-        const phone = getCaseApplicantPhone(c);
-        const msgText = await buildDisbursementPickupMessage(c, scheduleInfo);
-        return `
-          <div style="border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-bottom:8px; background:#f8fafc;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div>
-                <strong>${idx + 1}- ${window.escapeHtml(name)}</strong>
-                <small>(كود: ${window.escapeHtml(c.tracking_code || '-')} | هاتف: ${window.escapeHtml(phone || 'غير مسجل')})</small>
+      const recBox = document.getElementById('dsb-recipients-list');
+      if (recBox) {
+        const cards = [];
+        for (const c of list) {
+          const msg = await buildDisbursementPickupMessage(c, { mode, dayText, timeText, placeText, extraNote });
+          const ph = getCaseApplicantPhone(c);
+          const em = getCaseApplicantEmail(c);
+          const nm = getCaseApplicantName(c);
+          cards.push(`
+            <div style="border:1px solid #cbd5e1; border-radius:8px; padding:8px; margin-bottom:6px; background:#f8fafc; font-size:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                <strong>${window.escapeHtml(nm)} (${window.escapeHtml(c.tracking_code || '')}) — ${window.escapeHtml(ph || 'لا يوجد هاتف')}${em ? ' | ' + window.escapeHtml(em) : ''}</strong>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                  ${em ? `<button type="button" onclick="window.triggerInstantWhatsApp('${escapeAttr(ph)}', decodeURIComponent('${encodeURIComponent(msg)}')); setTimeout(()=>window.triggerInstantEmail('${escapeAttr(em)}', 'موعد استلام المساعدة - مؤسسة الحافظ', decodeURIComponent('${encodeURIComponent(msg)}')), 350);" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 8px; font-size:11px;">📲 واتساب + بريد</button>` : ''}
+                  <button type="button" onclick="window.triggerInstantWhatsApp('${escapeAttr(ph)}', decodeURIComponent('${encodeURIComponent(msg)}'))" class="nav-btn" style="background:#16a34a; color:#fff; padding:3px 8px; font-size:11px;">💬 واتساب</button>
+                  ${em ? `<button type="button" onclick="window.triggerInstantEmail('${escapeAttr(em)}', 'موعد استلام المساعدة - مؤسسة الحافظ', decodeURIComponent('${encodeURIComponent(msg)}'))" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:3px 8px; font-size:11px;">✉️ بريد</button>` : ''}
+                </div>
               </div>
-              <button type="button" class="nav-btn btn-gold dsb-send-item-btn" data-phone="${window.escapeHtml(phone)}" style="padding:4px 8px; font-size:11px;">💬 إرسال واتساب</button>
-            </div>
-            <textarea class="dsb-item-msg-text" rows="5" style="margin:6px 0 0; font-size:11px;">${window.escapeHtml(msgText)}</textarea>
-          </div>`;
-      }));
-
-      container.innerHTML = cards.join('');
-      container.querySelectorAll('.dsb-send-item-btn').forEach((btn, idx) => {
-        btn.onclick = function() {
-          const p = btn.getAttribute('data-phone') || '';
-          const txt = container.querySelectorAll('.dsb-item-msg-text')[idx]?.value || '';
-          if (!p) return alert('⚠️ لا يوجد رقم هاتف مسجل لهذه الحالة.');
-          window.triggerInstantWhatsApp(p, txt);
-        };
-      });
+            </div>`);
+        }
+        recBox.innerHTML = cards.join('');
+      }
     };
   }
 
-  window.printOfficialDisbursementSheet = async function() {
+  window.toggleDisbursementPlaceInput = function() {
+    const mode = document.getElementById('dsb-place-mode')?.value;
+    const inp = document.getElementById('dsb-place-custom');
+    if (!inp) return;
+    if (mode === 'hq') inp.value = 'مقر مؤسسة الحافظ - عبد الصمد، مركز إهناسيا';
+    else if (mode === 'call_for_location') inp.value = 'يرجى التواصل معنا لتحديد مكان الاستلام';
+  };
+
+  window.printOfficialDisbursementSheet = function() {
     const list = window.getDisbursementCases();
-    if (list.length === 0) return alert('⚠️ لا توجد حالات مقبولة أو مطابقة في الكشف للطباعة.');
+    if (list.length === 0) return alert('⚠️ لا توجد حالات معتمدة للصرف مطابقة للفلترة.');
     const withSig = Boolean(document.getElementById('chk-include-signature')?.checked);
     const mode = document.getElementById('disbursement-print-mode')?.value || 'print_only';
-
     if (mode === 'print_and_notify') {
       openDisbursementScheduleAndNotifyModal(list, withSig);
-      return;
+    } else {
+      executePrintDisbursementSheet(list, withSig);
     }
-    await executePrintDisbursementSheet(list, withSig);
   };
 
   window.exportFilteredCasesCsv = function() {
-    const list = window.getDisbursementCases();
-    if (list.length === 0) return alert('⚠️ لا توجد حالات مقبولة أو مطابقة لتصديرها.');
-    const withSig = document.getElementById('chk-include-signature')?.checked;
+    const list = window.getFilteredAdminCases();
+    if (list.length === 0) return alert('⚠️ لا توجد بيانات لتصديرها.');
     const headers = ['الكود', 'الاسم', 'الرقم القومي', 'الهاتف', 'القرية', 'نوع المساعدة', 'الحالة'];
-    if (withSig) headers.push('توقيع المستلم');
-
-    const lines = [headers.join(',')];
-    list.forEach(f => {
+    const rows = list.map(f => {
       const h = f.husband_data || {};
-      const name = [h.name1, h.name2, h.name3].filter(Boolean).join(' ');
-      const row = [f.tracking_code, name, h.nid || '', h.phone || '', f.village_hamlet, f.intervention_type, f.status];
-      if (withSig) row.push('');
-      lines.push(row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+      const name = getCasePrimaryDisplayName(f);
+      return [
+        f.tracking_code || '',
+        name,
+        h.nid || '',
+        h.phone || '',
+        f.village_hamlet || '',
+        f.intervention_type || '',
+        formatCaseStatusArabic(f.status)
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
     });
-
-    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'alhafiz-disbursement.csv';
+    a.href = url;
+    a.download = `alhafez_cases_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
     a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
   };
 
   window.openReceiptDeclarationModal = function(caseId) {
-    const f = (window.ALL_ADMIN_CASES || []).find(x => x.id === caseId);
-    if (!f) return;
-    const h = f.husband_data || {};
-    const fullName = [h.name1, h.name2, h.name3].filter(Boolean).join(' ') || '';
-    const itemsOpts = (window.GRANT_RECEIPT_ITEMS || [])
-      .map(i => `<option value="${i}">${i}</option>`).join('');
+    const item = (window.ALL_ADMIN_CASES || []).find(c => String(c.id) === String(caseId));
+    if (!item) return alert('⚠️ الحالة غير موجودة.');
+    const h = item.husband_data || {};
+    const name = getCasePrimaryDisplayName(item);
 
     let modal = document.getElementById('hf-receipt-modal');
     if (!modal) {
@@ -1370,193 +2141,182 @@
       document.body.appendChild(modal);
     }
     modal.classList.remove('hidden');
+
     modal.innerHTML = `
-      <div style="background:#fff; color:#0f172a; max-width:520px; width:100%; border-radius:14px; padding:20px;">
-        <h4 style="margin:0 0 10px; color:#064e3b;">📄 تجهيز إقرار استلام مساعدة</h4>
-        <label style="font-size:12px; font-weight:700;">اسم المستلم:</label>
-        <input id="rec-person-name" value="${window.escapeHtml(fullName)}">
-        <label style="font-size:12px; font-weight:700;">الرقم القومي:</label>
-        <input id="rec-person-nid" value="${window.escapeHtml(h.nid || '')}">
-        <label style="font-size:12px; font-weight:700;">العنوان:</label>
-        <input id="rec-person-addr" value="${window.escapeHtml((f.center_city || '') + ' - ' + (f.village_hamlet || ''))}">
-        <label style="font-size:12px; font-weight:700;">اختر البند المُسلّم (أو اختر "أخرى" لتركه فارغاً للملء يدوياً):</label>
-        <select id="rec-item-select">${itemsOpts}</select>
-        <input id="rec-item-custom" placeholder="تفاصيل إضافية للبند (اختياري)">
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <button type="button" onclick="printReceiptDeclarationSheet()" class="action-btn">🖨️ طباعة الإقرار الرسمي</button>
+      <div style="background:#fff; color:#0f172a; max-width:540px; width:100%; border-radius:14px; padding:20px;">
+        <h4 style="margin:0 0 10px; color:#064e3b;">📄 تحرير إقرار استلام مساعدة</h4>
+        <p style="font-size:13px; margin:4px 0;"><strong>الاسم:</strong> ${window.escapeHtml(name)} | <strong>الكود:</strong> ${window.escapeHtml(item.tracking_code || '')}</p>
+        <label style="font-size:12px; font-weight:700;">بيان المساعدة / المبلغ المستلم:</label>
+        <input id="rcp-aid-desc" value="${escapeAttr(item.intervention_type || '')}" style="margin:0;">
+        <label style="font-size:12px; font-weight:700; display:block; margin-top:8px;">ملاحظات إضافية:</label>
+        <input id="rcp-notes" placeholder="رقم إيصال أو ملاحظات..." style="margin:0;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:14px;">
+          <button type="button" onclick="printReceiptDeclaration('${escapeAttr(item.id)}')" class="action-btn">🖨️ طباعة الإقرار</button>
           <button type="button" onclick="document.getElementById('hf-receipt-modal').classList.add('hidden')" class="nav-btn">إغلاق</button>
         </div>
       </div>`;
   };
 
-  window.printReceiptDeclarationSheet = async function() {
-    const name = document.getElementById('rec-person-name')?.value || '........................................';
-    const nid = document.getElementById('rec-person-nid')?.value || '..............................';
-    const addr = document.getElementById('rec-person-addr')?.value || '........................................';
-    const selItem = document.getElementById('rec-item-select')?.value || '';
-    const customTxt = (document.getElementById('rec-item-custom')?.value || '').trim();
-    const isManualBlank = selItem.includes('أخرى');
-    const itemDisplay = isManualBlank
-      ? '....................................................................................................'
-      : (selItem + (customTxt ? ' (' + customTxt + ')' : ''));
-
+  window.printReceiptDeclaration = async function(caseId) {
+    const item = (window.ALL_ADMIN_CASES || []).find(c => String(c.id) === String(caseId));
+    if (!item) return;
     const cfg = await window.getFoundationSettings();
-    const w = window.open('', '_blank', 'width=900,height=1000');
-    if (!w) return alert('يرجى السماح بالنوافذ المنبثقة.');
+    const h = item.husband_data || {};
+    const name = getCasePrimaryDisplayName(item);
+    const aidDesc = (document.getElementById('rcp-aid-desc')?.value || item.intervention_type || '').trim();
+    const notes = (document.getElementById('rcp-notes')?.value || '').trim();
 
-    w.document.open();
-    w.document.write(`
-      <!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
-      <title>إقرار استلام - مؤسسة الحافظ</title>
-      <style>
-        @page { size: A4; margin: 16mm; }
-        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #0f172a; }
-        .wrap { border: 1px solid #cbd5e1; padding: 24px; min-height: 250mm; display: flex; flex-direction: column; justify-content: space-between; }
-      </style></head><body>
-      <div class="wrap">
-        <div>
-          ${window.getOfficialHeaderHtml(cfg)}
-          <h3 style="text-align:center; text-decoration:underline; margin:12px 0 20px;">إقرار استلام مساعدة عينية / خدمية</h3>
-          <p style="font-size:15px; line-height:2.2;">
-            أقر أنا الموقع أدناه / <strong>${window.escapeHtml(name)}</strong><br>
-            المقيم في / <strong>${window.escapeHtml(addr)}</strong><br>
-            وأحمل بطاقة رقم قومي / <strong>${window.escapeHtml(nid)}</strong><br>
-            بأنني قد استلمت من <strong>${window.escapeHtml(cfg.org_name)}</strong> (${window.escapeHtml(cfg.reg_no)}) المساعدة الآتي بيانها:<br>
-            <strong>نوع وبيان المساعدة المستلمة:</strong><br>
-            <span style="display:block; padding:10px; border:1px dashed #64748b; margin:8px 0; font-weight:700;">
-              ${window.escapeHtml(itemDisplay)}
-            </span>
-            <strong>وأتعهد تعهداً كاملاً أمام الله وأمام إدارة المؤسسة بعدم بيع هذه المساعدة أو التصرف فيها بالبيع أو التبرع أو التنازل للغير تحت أي ظرف، وفي حالة الاستغناء عنها أو عدم الحاجة إليها ألتزم بردها وتسليمها إلى مقر مؤسسة الحافظ للتنمية والخدمات لإعادة توجيهها لأسرة أخرى مستحقة، وهذا إقرار مني بذلك.</strong>
-          </p>
-          <div style="display:flex; justify-content:space-between; margin-top:34px; font-weight:700; font-size:14px;">
-            <div>توقيع المستلم وبصمته:<br><br>.................................</div>
-            <div>شاهد أول:<br><br>.................................</div>
-            <div>يعتمد / رئيس مجلس الأمناء:<br><br>.................................</div>
-          </div>
-        </div>
-        ${window.getOfficialFooterHtml(cfg)}
-      </div>
-      <script>window.onload=function(){window.print();};<\/script>
-      </body></html>`);
-    w.document.close();
+    const bodyHtml = `
+      <h3 style="text-align:center; text-decoration:underline; margin:14px 0;">إقرار استلام مساعدة</h3>
+      <p style="font-size:14px; line-height:2;">
+        أقر أنا الموقع أدناه: <strong>${window.escapeHtml(name)}</strong>،
+        والحامل لبطاقة رقم قومي: <strong>${window.escapeHtml(h.nid || '....................')}</strong>،
+        والمقيم في: <strong>${window.escapeHtml((item.village_hamlet || '') + ' - ' + (item.center_city || ''))}</strong>،
+        بأنني قد استلمت من <strong>${window.escapeHtml(cfg.org_name || 'مؤسسة الحافظ للتنمية والخدمات')}</strong>
+        المساعدة المقررة وهي: <strong>${window.escapeHtml(aidDesc)}</strong>
+        وذلك عن الطلب رقم: <strong>${window.escapeHtml(item.tracking_code || '')}</strong>.
+      </p>
+      ${notes ? `<p style="font-size:13px;"><strong>ملاحظات:</strong> ${window.escapeHtml(notes)}</p>` : ''}
+      <div style="display:flex; justify-content:space-between; margin-top:36px; font-weight:700; font-size:13px;">
+        <span>توقيع المستلم: ........................</span>
+        <span>مسؤول الصرف: ........................</span>
+        <span>اعتماد الإدارة: ........................</span>
+      </div>`;
+
+    openPrintWindowWithHtml(buildPrintableSheetHtml(cfg, bodyHtml, 'إقرار استلام مساعدة - مؤسسة الحافظ'));
   };
 
   window.renderAdminMembersSection = async function() {
     const box = document.getElementById('admin-tab-members');
     if (!box) return;
-    let users = [];
-    if (window.supabaseClient) {
-      const { data } = await window.supabaseClient
-        .from('users_profiles').select('*').order('created_at', { ascending: false });
-      users = data || [];
-      window.ALL_ADMIN_USERS = users;
-      window.refreshAdminSummaryCards();
-    }
+    const { data } = await window.supabaseClient
+      .from('users_profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
+    const users = data || [];
+    window.ALL_ADMIN_USERS = users;
+    window.refreshAdminSummaryCards();
+
+    const roleNames = {
+      admin: 'أدمن',
+      researcher: 'باحث ميداني',
+      volunteer: 'متطوع',
+      partner: 'جهة شريكة',
+      donor: 'جهة مانحة'
+    };
 
     box.innerHTML = `
       <div style="background:var(--bg-color); padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:12px;">
-        <h4 style="margin:0 0 8px; color:var(--primary-dark);">+ إضافة عضو جديد مباشرة (باحث / متطوع / شريك / مانح)</h4>
-        <div class="grid-3">
-          <input id="new-mem-name" placeholder="الاسم الكامل *" style="margin:0;">
-          <input id="new-mem-phone" maxlength="11" placeholder="رقم الهاتف (11 رقم) *" style="margin:0;">
-          <input id="new-mem-email" type="email" placeholder="البريد الإلكتروني *" style="margin:0;">
-          <select id="new-mem-role" style="margin:0;">
+        <h4 style="margin:0 0 8px; color:var(--primary-dark);">➕ إضافة عضو / باحث / جهة جديدة</h4>
+        <div class="grid-4">
+          <input id="new-u-name" placeholder="الاسم الكامل *" style="margin:0;">
+          <input id="new-u-email" placeholder="البريد الإلكتروني *" style="margin:0;">
+          <input id="new-u-phone" placeholder="رقم الهاتف / واتساب" style="margin:0;">
+          <select id="new-u-role" style="margin:0;">
             <option value="researcher">باحث ميداني</option>
             <option value="volunteer">متطوع</option>
             <option value="partner">جهة شريكة</option>
             <option value="donor">جهة مانحة</option>
+            <option value="admin">أدمن</option>
           </select>
-          <input id="new-mem-pass" placeholder="كلمة السر المبدئية *" style="margin:0;">
-          <button type="button" onclick="adminCreateMemberDirect()" class="action-btn" style="margin:0;">+ حفظ وتفعيل العضو</button>
+        </div>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <input id="new-u-pass" placeholder="كلمة السر (افتراضي 123456)" style="margin:0; max-width:240px;">
+          <label style="display:inline-flex; align-items:center; gap:5px; font-size:12px; margin:0;">
+            <input type="checkbox" id="new-u-notify" checked style="width:auto; margin:0;"> إرسال إشعار الانضمام (واتساب + بريد)
+          </label>
+          <button type="button" onclick="adminCreateUserAccount()" class="action-btn" style="margin:0;">+ إنشاء الحساب</button>
         </div>
       </div>
 
       <div style="overflow-x:auto;">
         <table>
           <thead>
-            <tr><th>العضو والهاتف</th><th>الصفة</th><th>رؤية كل الحالات</th><th>الحالة</th><th>الرمز المؤقت (واتساب)</th><th class="no-print">حذف</th></tr>
+            <tr><th>الاسم</th><th>البريد والهاتف</th><th>الصفة</th><th>الحالة</th><th>إجراءات</th></tr>
           </thead>
           <tbody>
-            ${users.length === 0 ? '<tr><td colspan="6" style="text-align:center;">لا يوجد أعضاء مسجلون.</td></tr>' : users.map(u => `
+            ${users.map(u => `
               <tr>
-                <td><strong>${window.escapeHtml(u.full_name)}</strong><br><small>${window.escapeHtml(u.email)} | ${window.escapeHtml(u.phone)}</small></td>
-                <td>
-                  <select onchange="adminUpdateMemberField('${u.id}', {role: this.value})" style="margin:0; padding:3px; font-size:11px;">
-                    <option value="researcher" ${u.role==='researcher'?'selected':''}>باحث ميداني</option>
-                    <option value="volunteer" ${u.role==='volunteer'?'selected':''}>متطوع</option>
-                    <option value="partner" ${u.role==='partner'?'selected':''}>جهة شريكة</option>
-                    <option value="donor" ${u.role==='donor'?'selected':''}>جهة مانحة</option>
-                  </select>
+                <td><strong>${window.escapeHtml(u.full_name || '-')}</strong></td>
+                <td>${window.escapeHtml(u.email || '-')}<br><small>${window.escapeHtml(u.phone || '')}</small></td>
+                <td>${window.escapeHtml(roleNames[u.role] || u.role || 'عضو')}</td>
+                <td>${u.account_status === 'active' ? '✅ نشط' : '⏳ معلق/موقوف'}</td>
+                <td style="display:flex; gap:4px; flex-wrap:wrap;">
+                  <button type="button" onclick="adminToggleUserStatus('${escapeAttr(u.id)}', '${u.account_status === 'active' ? 'suspended' : 'active'}')" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 7px; font-size:11px;">${u.account_status === 'active' ? 'إيقاف' : 'تفعيل'}</button>
+                  <button type="button" onclick="adminIssueMemberTempCode('${escapeAttr(u.id)}', '${escapeAttr(u.email || '')}', '${escapeAttr(u.full_name || '')}', '${escapeAttr(u.phone || '')}')" class="nav-btn btn-gold" style="padding:3px 7px; font-size:11px;">🔑 رمز مؤقت</button>
+                  <button type="button" onclick="adminNotifyMemberJoin('${escapeAttr(u.id)}')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:3px 7px; font-size:11px;">📩 إشعار انضمام</button>
                 </td>
-                <td style="text-align:center;">
-                  <input type="checkbox" ${u.can_view_all_cases?'checked':''} onchange="adminUpdateMemberField('${u.id}', {can_view_all_cases: this.checked})" style="width:auto; margin:0;">
-                </td>
-                <td>
-                  <select onchange="adminUpdateMemberField('${u.id}', {account_status: this.value})" style="margin:0; padding:3px; font-size:11px; font-weight:700;">
-                    <option value="pending" ${u.account_status==='pending'?'selected':''}>⏳ معلق</option>
-                    <option value="active" ${u.account_status==='active'?'selected':''}>✅ نشط ومفعل</option>
-                    <option value="suspended" ${u.account_status==='suspended'?'selected':''}>⛔ موقوف</option>
-                  </select>
-                </td>
-                <td class="no-print">
-                  <button type="button" onclick="adminSendTempCodeWhatsApp('${u.id}', '${window.escapeHtml(u.full_name)}', '${window.escapeHtml(u.phone)}')" class="nav-btn btn-gold" style="padding:3px 6px; font-size:11px;">🔑 إرسال رمز مؤقت</button>
-                </td>
-                <td class="no-print">
-                  <button type="button" onclick="adminDeleteMember('${u.id}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 6px; font-size:11px;">🗑️</button>
-                </td>
-              </tr>
-            `).join('')}
+              </tr>`).join('')}
           </tbody>
         </table>
       </div>`;
   };
 
-  window.adminCreateMemberDirect = async function() {
-    const full_name = (document.getElementById('new-mem-name')?.value || '').trim();
-    const phone = (document.getElementById('new-mem-phone')?.value || '').trim();
-    const email = (document.getElementById('new-mem-email')?.value || '').trim().toLowerCase();
-    const role = document.getElementById('new-mem-role')?.value || 'researcher';
-    const password_hash = (document.getElementById('new-mem-pass')?.value || '').trim();
-    if (!full_name || !phone || !email || !password_hash) return alert('⚠️ استكمل جميع بيانات العضو.');
-    if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ رقم الهاتف يجب أن يكون 11 رقماً يبدأ بـ 01.');
+  window.adminCreateUserAccount = async function() {
+    const full_name = (document.getElementById('new-u-name')?.value || '').trim();
+    const email = (document.getElementById('new-u-email')?.value || '').trim().toLowerCase();
+    const phone = (document.getElementById('new-u-phone')?.value || '').trim();
+    const role = document.getElementById('new-u-role')?.value || 'researcher';
+    const password_hash = (document.getElementById('new-u-pass')?.value || '123456').trim();
+    const notify = Boolean(document.getElementById('new-u-notify')?.checked);
 
-    const dup = (window.ALL_ADMIN_USERS || []).some(u => (u.email || '').toLowerCase() === email || (u.phone || '') === phone);
-    if (dup) return alert('⚠️ البريد الإلكتروني أو رقم الهاتف مسجل مسبقاً.');
+    if (!full_name || !email) return alert('⚠️ أدخل الاسم الكامل والبريد الإلكتروني.');
+    if (!window.supabaseClient) return;
 
-    const member_code = 'MBR-' + Math.floor(1000 + Math.random() * 9000);
     const { error } = await window.supabaseClient.from('users_profiles').insert([{
-      member_code, full_name, phone, email, password_hash, role, account_status: 'active'
+      full_name,
+      email,
+      phone,
+      role,
+      password_hash,
+      account_status: 'active'
     }]);
-    if (error) return alert('❌ خطأ: ' + error.message);
-    alert('✅ تم إضافة العضو وحفظه في قاعدة البيانات.');
-    window.renderAdminMembersSection();
+    if (error) return alert('❌ تعذر إنشاء الحساب: ' + error.message);
+
+    await window.renderAdminMembersSection();
+    alert('✅ تم إنشاء الحساب بنجاح.');
+
+    if (notify) {
+      const msg =
+        `مؤسسة الحافظ للتنمية والخدمات\n` +
+        `مرحباً أ/ ${full_name}\n` +
+        `تم تفعيل حسابك في منظومة مؤسسة الحافظ.\n` +
+        `البريد الإلكتروني: ${email}\n` +
+        `كلمة المرور الأولية: ${password_hash}`;
+      showQuickMessageSendModal({
+        title: `إرسال بيانات الانضمام للعضو (${full_name})`,
+        phone,
+        email,
+        subject: 'تفعيل حسابك في مؤسسة الحافظ للتنمية والخدمات',
+        defaultMessage: msg
+      });
+    }
   };
 
-  window.adminUpdateMemberField = async function(id, patch) {
+  window.adminToggleUserStatus = async function(userId, nextStatus) {
     if (!window.supabaseClient) return;
-    const { error } = await window.supabaseClient.from('users_profiles').update(patch).eq('id', id);
-    if (error) return alert('❌ تعذر حفظ التعديل: ' + error.message);
-    alert('✅ تم حفظ التعديل في قاعدة البيانات بنجاح.');
+    const { error } = await window.supabaseClient.from('users_profiles').update({ account_status: nextStatus }).eq('id', userId);
+    if (error) return alert('❌ تعذر تحديث حالة العضو: ' + error.message);
+    await window.renderAdminMembersSection();
   };
 
-  window.adminSendTempCodeWhatsApp = async function(id, name, phone) {
-    const tempCode = String(Math.floor(100000 + Math.random() * 900000));
-    if (!window.supabaseClient) return;
-    const { error } = await window.supabaseClient.from('users_profiles')
-      .update({ temp_code: tempCode, must_change_password: true })
-      .eq('id', id);
-    if (error) return alert('❌ تعذر حفظ الرمز المؤقت: ' + error.message);
+  window.adminNotifyMemberJoin = function(userId) {
+    const u = (window.ALL_ADMIN_USERS || []).find(x => String(x.id) === String(userId));
+    if (!u) return;
+    const msg =
+      `مؤسسة الحافظ للتنمية والخدمات\n` +
+      `مرحباً أ/ ${u.full_name || 'عضو المؤسسة'}\n` +
+      `نرحب بانضمامكم إلى فريق العمل بمؤسسة الحافظ للتنمية والخدمات.\n` +
+      `البريد الإلكتروني المسجل: ${u.email || '-'}\n` +
+      `حالة الحساب: ${u.account_status === 'active' ? 'نشط' : 'قيد المراجعة'}`;
 
-    const msg = `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\nمرحباً أ/ ${name}\nالرمز المؤقت للدخول وتعيين كلمة مرور جديدة هو: ${tempCode}\nيرجى الدخول وتغييره فوراً من صفحتك.`;
-    window.triggerInstantWhatsApp(phone, msg);
-    alert(`✅ تم توليد الرمز المؤقت (${tempCode}) وفتح الواتساب لإرساله للعضو.`);
-  };
-
-  window.adminDeleteMember = async function(id) {
-    if (!confirm('هل أنت متأكد من حذف هذا العضو نهائياً؟')) return;
-    const { error } = await window.supabaseClient.from('users_profiles').delete().eq('id', id);
-    if (error) return alert('❌ تعذر حذف العضو: ' + error.message);
-    window.renderAdminMembersSection();
+    showQuickMessageSendModal({
+      title: `إشعار انضمام — ${u.full_name || u.email}`,
+      phone: u.phone || '',
+      email: u.email || '',
+      subject: 'إشعار انضمام - مؤسسة الحافظ للتنمية والخدمات',
+      defaultMessage: msg
+    });
   };
 
   window.renderAdminAnnouncementsSection = async function() {
@@ -1570,66 +2330,42 @@
 
     box.innerHTML = `
       <div style="background:var(--bg-color); padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:12px;">
-        <h4 style="margin:0 0 8px; color:var(--primary-dark);">📢 نشر منحة أو مبادرة جديدة</h4>
-        <input id="ann-title" placeholder="عنوان المبادرة (مثال: مبادرة وصلات المياه أو الأسقف) *">
-        <textarea id="ann-desc" rows="2" placeholder="شروط وتفاصيل المبادرة والأوراق المطلوبة *"></textarea>
-        <div class="grid-3">
-          <input id="ann-cat" placeholder="التصنيف (مثال: مبادرة مياه)" style="margin:0;">
-          <input id="ann-deadline" placeholder="آخر موعد للتقديم" style="margin:0;">
-          <input id="ann-img" placeholder="رابط صورة (اختياري)" style="margin:0;">
-        </div>
-        <button type="button" onclick="adminSaveAnnouncement()" class="action-btn" style="margin-top:8px;">+ نشر المبادرة</button>
+        <h4 style="margin:0 0 8px; color:var(--primary-dark);">📢 إضافة منحة أو إعلان جديد</h4>
+        <input id="ann-title" placeholder="عنوان المنحة أو الإعلان *">
+        <textarea id="ann-body" rows="2" placeholder="تفاصيل المنحة وشروط التقديم *"></textarea>
+        <button type="button" onclick="adminAddAnnouncement()" class="action-btn">+ نشر الإعلان</button>
       </div>
       <div class="grid-2">
-        ${list.map(a => `
+        ${list.map(item => `
           <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
-            <strong>${window.escapeHtml(a.title)}</strong>
-            <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(a.description)}</p>
-            <div style="display:flex; gap:6px;">
-              <button type="button" onclick="adminToggleAnnouncement('${a.id}', ${!a.is_active})" class="nav-btn btn-gold" style="font-size:11px; padding:4px 8px;">
-                ${a.is_active ? '⏸️ إغلاق' : '▶️ فتح'}
-              </button>
-              <button type="button" onclick="adminDeleteAnnouncement('${a.id}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
-            </div>
+            <strong>${window.escapeHtml(item.title || '')}</strong>
+            <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.body || item.description || '')}</p>
+            <button type="button" onclick="adminDeleteAnnouncement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
           </div>`).join('')}
       </div>`;
   };
 
-  window.adminSaveAnnouncement = async function() {
+  window.adminAddAnnouncement = async function() {
     const title = (document.getElementById('ann-title')?.value || '').trim();
-    const description = (document.getElementById('ann-desc')?.value || '').trim();
-    const category = (document.getElementById('ann-cat')?.value || 'مبادرة مفتوحة').trim();
-    const deadline = (document.getElementById('ann-deadline')?.value || '').trim();
-    const image_url = (document.getElementById('ann-img')?.value || 'logo.jpg').trim();
-    if (!title || !description) return alert('⚠️ اكتب عنوان وتفاصيل المبادرة.');
-
-    const { error } = await window.supabaseClient
-      .from('announcements')
-      .insert([{ title, description, category, deadline, image_url, is_active: true }]);
-    if (error) return alert('❌ تعذر نشر المبادرة: ' + error.message);
-
-    alert('✅ تم نشر المبادرة بنجاح.');
-    window.renderAdminAnnouncementsSection();
-    if (typeof window.renderPublicAnnouncements === 'function') window.renderPublicAnnouncements();
-  };
-
-  window.adminToggleAnnouncement = async function(id, state) {
-    const { error } = await window.supabaseClient.from('announcements').update({ is_active: state }).eq('id', id);
-    if (error) return alert('❌ تعذر تحديث حالة المبادرة: ' + error.message);
+    const body = (document.getElementById('ann-body')?.value || '').trim();
+    if (!title) return alert('⚠️ اكتب عنوان المنحة أو الإعلان.');
+    const { error } = await window.supabaseClient.from('announcements').insert([{ title, body }]);
+    if (error) return alert('❌ تعذر نشر الإعلان: ' + error.message);
+    alert('✅ تم نشر الإعلان بنجاح.');
     window.renderAdminAnnouncementsSection();
   };
 
   window.adminDeleteAnnouncement = async function(id) {
-    if (!confirm('حذف هذه المبادرة؟')) return;
+    if (!confirm('حذف هذا الإعلان؟')) return;
     const { error } = await window.supabaseClient.from('announcements').delete().eq('id', id);
-    if (error) return alert('❌ تعذر حذف المبادرة: ' + error.message);
+    if (error) return alert('❌ تعذر حذف الإعلان: ' + error.message);
     window.renderAdminAnnouncementsSection();
   };
 
   window.renderAdminAchievementsSection = async function() {
     const box = document.getElementById('admin-tab-achievements');
     if (!box) return;
-    const cfg = await window.getFoundationSettings();
+    const cfg = typeof window.getFoundationSettings === 'function' ? await window.getFoundationSettings() : {};
     const { data } = await window.supabaseClient
       .from('achievements')
       .select('*')
@@ -1640,10 +2376,10 @@
       <div style="background:#ecfdf5; padding:12px; border-radius:8px; border:1px solid #a7f3d0; margin-bottom:14px; color:#0f172a;">
         <h4 style="margin:0 0 8px; color:#064e3b;">📊 تعديل أرقام الأثر الميداني</h4>
         <div class="grid-4">
-          <div><label style="font-size:11px;">حقائب غذائية:</label><input id="st-food" value="${window.escapeHtml(cfg.stat_food_bags)}" style="margin:0;"></div>
-          <div><label style="font-size:11px;">دعم نقدي:</label><input id="st-cash" value="${window.escapeHtml(cfg.stat_cash_aid)}" style="margin:0;"></div>
-          <div><label style="font-size:11px;">بطاطين:</label><input id="st-blankets" value="${window.escapeHtml(cfg.stat_blankets)}" style="margin:0;"></div>
-          <div><label style="font-size:11px;">قرية وعزبة:</label><input id="st-villages" value="${window.escapeHtml(cfg.stat_villages)}" style="margin:0;"></div>
+          <div><label style="font-size:11px;">حقائب غذائية:</label><input id="st-food" value="${escapeAttr(cfg.stat_food_bags || '+450')}" style="margin:0;"></div>
+          <div><label style="font-size:11px;">دعم نقدي:</label><input id="st-cash" value="${escapeAttr(cfg.stat_cash_aid || '+112')}" style="margin:0;"></div>
+          <div><label style="font-size:11px;">بطاطين:</label><input id="st-blankets" value="${escapeAttr(cfg.stat_blankets || '+100')}" style="margin:0;"></div>
+          <div><label style="font-size:11px;">قرية وعزبة:</label><input id="st-villages" value="${escapeAttr(cfg.stat_villages || '14')}" style="margin:0;"></div>
         </div>
         <button type="button" onclick="adminSaveSiteStats()" class="action-btn" style="margin-top:8px;">💾 حفظ الأرقام</button>
       </div>
@@ -1660,7 +2396,7 @@
           <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
             <strong>${window.escapeHtml(item.title)}</strong>
             <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || '')}</p>
-            <button type="button" onclick="adminDeleteAchievement('${item.id}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
+            <button type="button" onclick="adminDeleteAchievement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
           </div>`).join('')}
       </div>`;
   };
@@ -1712,7 +2448,7 @@
     const assigneeOpts = `<option value="">-- اختر باحثاً أو عضواً --</option>` +
       assignees.map(u => {
         const label = `${u.full_name || u.email} (${u.role || 'عضو'})`;
-        return `<option value="${window.escapeHtml(u.email)}">${window.escapeHtml(label)}</option>`;
+        return `<option value="${escapeAttr(u.email)}">${window.escapeHtml(label)}</option>`;
       }).join('');
 
     box.innerHTML = list.length === 0 ? '<p>لا توجد تظلمات مسجلة.</p>' : `
@@ -1746,14 +2482,14 @@
                   ${assignedLabel ? `<div style="font-size:11px; color:#1e3a8a;">مسند إلى: ${window.escapeHtml(assignedLabel)}</div>` : ''}
                 </div>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                  <button type="button" onclick="adminSetGrievanceStatus('${g.id}', 'جار المراجعة')" class="nav-btn" style="background:#d97706; color:#fff; padding:4px 7px; font-size:11px;">جار المراجعة</button>
-                  <button type="button" onclick="adminSetGrievanceStatus('${g.id}', 'تم الرد')" class="nav-btn" style="background:#15803d; color:#fff; padding:4px 7px; font-size:11px;">تم الرد</button>
-                  <button type="button" onclick="toggleGrievanceAssignPanel('${g.id}')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:4px 7px; font-size:11px;">إسناد لباحث أو عضو</button>
-                  <button type="button" onclick="adminDeleteGrievance('${g.id}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:4px 7px; font-size:11px;">حذف</button>
+                  <button type="button" onclick="adminSetGrievanceStatus('${escapeAttr(g.id)}', 'جار المراجعة')" class="nav-btn" style="background:#d97706; color:#fff; padding:4px 7px; font-size:11px;">جار المراجعة</button>
+                  <button type="button" onclick="adminSetGrievanceStatus('${escapeAttr(g.id)}', 'تم الرد')" class="nav-btn" style="background:#15803d; color:#fff; padding:4px 7px; font-size:11px;">تم الرد</button>
+                  <button type="button" onclick="toggleGrievanceAssignPanel('${escapeAttr(g.id)}')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:4px 7px; font-size:11px;">إسناد لباحث أو عضو</button>
+                  <button type="button" onclick="adminDeleteGrievance('${escapeAttr(g.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:4px 7px; font-size:11px;">حذف</button>
                 </div>
-                <div id="grv-assign-panel-${g.id}" style="display:none; margin-top:6px; gap:5px; align-items:center; flex-wrap:wrap;">
-                  <select id="grv-assignee-sel-${g.id}" style="margin:0; padding:3px 6px; font-size:11px;">${assigneeOpts}</select>
-                  <button type="button" onclick="adminAssignGrievance('${g.id}')" class="nav-btn" style="background:#0f766e; color:#fff; padding:4px 8px; font-size:11px;">تأكيد الإسناد</button>
+                <div id="grv-assign-panel-${escapeAttr(g.id)}" style="display:none; margin-top:6px; gap:5px; align-items:center; flex-wrap:wrap;">
+                  <select id="grv-assignee-sel-${escapeAttr(g.id)}" style="margin:0; padding:3px 6px; font-size:11px;">${assigneeOpts}</select>
+                  <button type="button" onclick="adminAssignGrievance('${escapeAttr(g.id)}')" class="nav-btn" style="background:#0f766e; color:#fff; padding:4px 8px; font-size:11px;">تأكيد الإسناد</button>
                 </div>
               </td>
             </tr>`;
@@ -1799,6 +2535,8 @@
     showQuickMessageSendModal({
       title: `تم تحديث حالة التظلم (${gItem?.tracking_code || ''}) إلى: ${newStatus}`,
       phone: gItem?.phone || '',
+      email: gItem?.email || '',
+      subject: `تحديث حالة التظلم رقم (${gItem?.tracking_code || ''}) - مؤسسة الحافظ`,
       defaultMessage: msg
     });
   };
@@ -1829,6 +2567,8 @@
     showQuickMessageSendModal({
       title: `تم إسناد التظلم (${gItem?.tracking_code || ''}) وتحديث حالته`,
       phone: gItem?.phone || '',
+      email: gItem?.email || '',
+      subject: `متابعة التظلم رقم (${gItem?.tracking_code || ''}) - مؤسسة الحافظ`,
       defaultMessage: msg
     });
   };
@@ -1887,7 +2627,11 @@
       warehouse_deposit: 'DEP',
       board: 'BRD',
       delegation: 'DLG',
-      letter: 'LTR'
+      letter: 'LTR',
+      cash_receipt: 'CSH',
+      field_inspection: 'INSP',
+      custody_handover: 'CST',
+      stocktake: 'STK'
     };
     const prefix = prefixMap[docType] || 'DOC';
     const year = new Date().getFullYear();
@@ -1957,7 +2701,11 @@
       warehouse_deposit: '📥 إيصال إيداع مخزني',
       board: '📋 محضر مجلس الأمناء',
       delegation: '📄 تفويض رسمي',
-      letter: '✉️ خطاب رسمي'
+      letter: '✉️ خطاب رسمي',
+      cash_receipt: '🧾 إيصال استلام نقدي / تبرع مالي',
+      field_inspection: '📝 محضر معاينة / بحث اجتماعي ميداني',
+      custody_handover: '📑 محضر تسليم واستلام عهدة / مساعدات',
+      stocktake: '📊 محضر جرد مخزني / تسوية عهدة'
     };
     return labels[type] || type;
   }
@@ -1995,48 +2743,13 @@
               <td>${window.escapeHtml(d.doc_date || '-')}</td>
               <td>${window.escapeHtml(d.title_or_party || '-')}</td>
               <td class="no-print" style="display:flex; gap:4px; flex-wrap:wrap;">
-                <button type="button" onclick="reprintSavedOfficialDoc('${window.escapeHtml(d.doc_number)}')" class="nav-btn btn-gold" style="padding:3px 7px; font-size:11px;">🖨️ طباعة</button>
-                <button type="button" onclick="deleteOfficialDocumentRecord('${window.escapeHtml(d.doc_number)}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 7px; font-size:11px;">🗑️</button>
+                <button type="button" onclick="reprintSavedOfficialDoc('${escapeAttr(d.doc_number)}')" class="nav-btn btn-gold" style="padding:3px 7px; font-size:11px;">🖨️ طباعة</button>
+                <button type="button" onclick="deleteOfficialDocumentRecord('${escapeAttr(d.doc_number)}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 7px; font-size:11px;">🗑️</button>
               </td>
             </tr>`).join('')}
         </tbody>
       </table>`;
   };
-
-  function buildPrintableSheetHtml(cfg, bodyContent, docTitle, includeChrome = true) {
-    const headerPart = includeChrome ? window.getOfficialHeaderHtml(cfg) : '';
-    const footerPart = includeChrome ? window.getOfficialFooterHtml(cfg) : '';
-    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
-      <title>${window.escapeHtml(docTitle || 'مستند رسمي - مؤسسة الحافظ')}</title>
-      <style>
-        @page { size: A4; margin: 15mm; }
-        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; direction: rtl; color: #0f172a; }
-        .box { border: 1px solid #cbd5e1; padding: 22px; min-height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
-        th, td { border: 1px solid #334155; padding: 6px 8px; text-align: right; }
-        th { background: #064e3b; color: #fff; }
-      </style></head><body>
-      <div class="box">
-        <div>
-          ${headerPart}
-          ${bodyContent}
-        </div>
-        ${footerPart}
-      </div>
-      <script>window.onload=function(){window.print();};<\/script>
-      </body></html>`;
-  }
-
-  function openPrintWindowWithHtml(html) {
-    const w = window.open('', '_blank', 'width=920,height=1000');
-    if (!w) {
-      alert('يرجى السماح بالنوافذ المنبثقة للطباعة.');
-      return;
-    }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
-  }
 
   window.reprintSavedOfficialDoc = async function(docNumber) {
     const doc = (window.ALL_OFFICIAL_DOCS || []).find(x => x.doc_number === docNumber);
@@ -2275,6 +2988,10 @@
         <button type="button" onclick="renderOfficialDocTemplate('incoming')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:7px 11px; font-size:12px;">📥 الوارد</button>
         <button type="button" onclick="renderOfficialDocTemplate('warehouse_issue')" class="nav-btn" style="background:#9a3412; color:#fff; padding:7px 11px; font-size:12px;">📦 إيصال صرف مخزني</button>
         <button type="button" onclick="renderOfficialDocTemplate('warehouse_deposit')" class="nav-btn" style="background:#166534; color:#fff; padding:7px 11px; font-size:12px;">📥 إيصال إيداع مخزني</button>
+        <button type="button" onclick="renderOfficialDocTemplate('cash_receipt')" class="nav-btn" style="background:#047857; color:#fff; padding:7px 11px; font-size:12px;">🧾 إيصال استلام نقدي</button>
+        <button type="button" onclick="renderOfficialDocTemplate('field_inspection')" class="nav-btn" style="background:#0369a1; color:#fff; padding:7px 11px; font-size:12px;">📝 محضر معاينة ميدانية</button>
+        <button type="button" onclick="renderOfficialDocTemplate('custody_handover')" class="nav-btn" style="background:#7c2d12; color:#fff; padding:7px 11px; font-size:12px;">📑 محضر تسليم عهدة</button>
+        <button type="button" onclick="renderOfficialDocTemplate('stocktake')" class="nav-btn" style="background:#374151; color:#fff; padding:7px 11px; font-size:12px;">📊 محضر جرد مخزني</button>
       </div>
 
       <div id="official-doc-editor-box"></div>
@@ -2292,6 +3009,10 @@
               <option value="board">محاضر مجلس الأمناء</option>
               <option value="delegation">التفويضات الرسمية</option>
               <option value="letter">الخطابات الرسمية</option>
+              <option value="cash_receipt">إيصالات الاستلام النقدي</option>
+              <option value="field_inspection">محاضر المعاينة الميدانية</option>
+              <option value="custody_handover">محاضر تسليم العهد</option>
+              <option value="stocktake">محاضر الجرد المخزني</option>
             </select>
             <input id="doc-archive-search" oninput="renderOfficialDocsArchiveTable()" placeholder="بحث بالرقم أو الجهة أو الموضوع..." style="margin:0; padding:4px 8px; font-size:12px;">
           </div>
@@ -2491,6 +3212,100 @@
           </div>
         </div>`;
       window.addWarehouseItemRow('wh-items-tbody');
+    } else if (type === 'cash_receipt') {
+      const nextCshNum = window.generateNextOfficialDocNumber('cash_receipt');
+      editor.innerHTML = `
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${header}
+            <h4 style="text-align:center; text-decoration:underline; margin:6px 0 14px;">
+              إيصال استلام نقدي / تبرع مالي رقم ( <input id="csh-doc-num" value="${window.escapeHtml(nextCshNum)}" style="width:145px; display:inline; padding:3px; margin:0; text-align:center; font-weight:700;"> )
+            </h4>
+            <p style="font-size:13px; line-height:2.1;">
+              التاريخ: <input id="csh-doc-date" type="date" value="${today}" style="width:140px; display:inline; padding:3px; margin:0;"><br>
+              استلمنا من السيد / السادة: <input id="csh-donor" placeholder="................................................" style="width:65%; display:inline; padding:4px; margin:0;"><br>
+              مبلغ وقدره: <input placeholder="..................." style="width:150px; display:inline; padding:4px; margin:0;"> جنيه مصري (فقط: <input placeholder="........................................" style="width:45%; display:inline; padding:4px; margin:0;">)<br>
+              طريقة السداد: <select style="width:170px; display:inline; padding:3px; margin:0;"><option>نقدي</option><option>تحويل بنكي / إنستا باي</option><option>شيك</option></select>
+              — البند / الغرض: <input placeholder="تبرع عام / زكاة / صدقة / كفالة / مشروع" style="width:45%; display:inline; padding:4px; margin:0;">
+            </p>
+            <div style="display:flex; justify-content:space-between; margin-top:32px; font-weight:700; font-size:13px;">
+              <span>المُسلِّم / المتبرع</span><span>أمين الصندوق / المستلم</span><span>اعتماد رئيس مجلس الأمناء</span>
+            </div>
+          </div>
+          ${footer}
+        </div>
+        <button type="button" onclick="printOfficialDocSheetOnly('cash_receipt', 'csh-doc-num', 'csh-doc-date', 'csh-donor')" class="action-btn no-print">💾 حفظ وطباعة الإيصال النقدي</button>`;
+    } else if (type === 'field_inspection') {
+      const nextInspNum = window.generateNextOfficialDocNumber('field_inspection');
+      editor.innerHTML = `
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${header}
+            <h4 style="text-align:center; text-decoration:underline; margin:6px 0 14px;">
+              محضر معاينة / بحث اجتماعي ميداني رقم ( <input id="insp-doc-num" value="${window.escapeHtml(nextInspNum)}" style="width:145px; display:inline; padding:3px; margin:0; text-align:center; font-weight:700;"> )
+            </h4>
+            <p style="font-size:13px; line-height:2.1;">
+              بتاريخ <input id="insp-doc-date" type="date" value="${today}" style="width:140px; display:inline; padding:3px; margin:0;">
+              تم إجراء معاينة ميدانية للحالة / الأسرة: <input id="insp-case-name" placeholder="................................................" style="width:55%; display:inline; padding:4px; margin:0;"><br>
+              العنوان / القرية: <input placeholder="................................................" style="width:65%; display:inline; padding:4px; margin:0;">
+            </p>
+            <div id="insp-lines"></div>
+            <button type="button" onclick="addDocDynamicLine('insp-lines', '....................................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:11px;">+ إضافة ملاحظة معاينة</button>
+            <div style="display:flex; justify-content:space-between; margin-top:28px; font-weight:700; font-size:13px;">
+              <span>الباحث الميداني</span><span>مراجع الحالة</span><span>رئيس مجلس الأمناء</span>
+            </div>
+          </div>
+          ${footer}
+        </div>
+        <button type="button" onclick="printOfficialDocSheetOnly('field_inspection', 'insp-doc-num', 'insp-doc-date', 'insp-case-name')" class="action-btn no-print">💾 حفظ وطباعة محضر المعاينة</button>`;
+      window.addDocDynamicLine('insp-lines', 'وصف حالة المسكن والأسرة والاحتياج الفعلي: ............................', true);
+    } else if (type === 'custody_handover') {
+      const nextCstNum = window.generateNextOfficialDocNumber('custody_handover');
+      editor.innerHTML = `
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${header}
+            <h4 style="text-align:center; text-decoration:underline; margin:6px 0 14px;">
+              محضر تسليم واستلام عهدة / مساعدات رقم ( <input id="cst-doc-num" value="${window.escapeHtml(nextCstNum)}" style="width:145px; display:inline; padding:3px; margin:0; text-align:center; font-weight:700;"> )
+            </h4>
+            <p style="font-size:13px; line-height:2.1;">
+              التاريخ: <input id="cst-doc-date" type="date" value="${today}" style="width:140px; display:inline; padding:3px; margin:0;">
+              — المُسلِّم: <input placeholder="......................................" style="width:45%; display:inline; padding:4px; margin:0;"><br>
+              المُستلِم / صاحب العهدة: <input id="cst-receiver" placeholder="......................................" style="width:55%; display:inline; padding:4px; margin:0;">
+            </p>
+            <div id="cst-lines"></div>
+            <button type="button" onclick="addDocDynamicLine('cst-lines', '....................................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:11px;">+ إضافة بند عهدة/مساعدة</button>
+            <div style="display:flex; justify-content:space-between; margin-top:28px; font-weight:700; font-size:13px;">
+              <span>المُسلِّم</span><span>المُستلِم</span><span>اعتماد الإدارة</span>
+            </div>
+          </div>
+          ${footer}
+        </div>
+        <button type="button" onclick="printOfficialDocSheetOnly('custody_handover', 'cst-doc-num', 'cst-doc-date', 'cst-receiver')" class="action-btn no-print">💾 حفظ وطباعة محضر العهدة</button>`;
+      window.addDocDynamicLine('cst-lines', '....................................................................', true);
+    } else if (type === 'stocktake') {
+      const nextStkNum = window.generateNextOfficialDocNumber('stocktake');
+      editor.innerHTML = `
+        <div id="printable-official-sheet" class="card" style="background:#fff; color:#0f172a;">
+          <div>
+            ${header}
+            <h4 style="text-align:center; text-decoration:underline; margin:6px 0 14px;">
+              محضر جرد مخزني / تسوية عهدة رقم ( <input id="stk-doc-num" value="${window.escapeHtml(nextStkNum)}" style="width:145px; display:inline; padding:3px; margin:0; text-align:center; font-weight:700;"> )
+            </h4>
+            <p style="font-size:13px; line-height:2.1;">
+              التاريخ: <input id="stk-doc-date" type="date" value="${today}" style="width:140px; display:inline; padding:3px; margin:0;">
+              — المخزن / الموقع: <input id="stk-loc" placeholder="مخزن المؤسسة الرئيسي" style="width:55%; display:inline; padding:4px; margin:0;">
+            </p>
+            <div id="stk-lines"></div>
+            <button type="button" onclick="addDocDynamicLine('stk-lines', '....................................................................', true)" class="nav-btn no-print" style="margin-top:6px; font-size:11px;">+ إضافة صنف للجرد</button>
+            <div style="display:flex; justify-content:space-between; margin-top:28px; font-weight:700; font-size:13px;">
+              <span>أمين المخزن</span><span>لجنة الجرد</span><span>رئيس مجلس الأمناء</span>
+            </div>
+          </div>
+          ${footer}
+        </div>
+        <button type="button" onclick="printOfficialDocSheetOnly('stocktake', 'stk-doc-num', 'stk-doc-date', 'stk-loc')" class="action-btn no-print">💾 حفظ وطباعة محضر الجرد</button>`;
+      window.addDocDynamicLine('stk-lines', '....................................................................', true);
     }
   };
 
@@ -2508,8 +3323,8 @@
         <option value="donor">جهة مانحة</option>
       </select>
       <input id="req-name" placeholder="الاسم الكامل أو اسم الجهة *">
-      <input id="req-phone" maxlength="11" placeholder="رقم الهاتف (11 رقم) *">
-      <input id="req-email" type="email" placeholder="البريد الإلكتروني *">
+      <input id="req-phone" maxlength="11" placeholder="رقم الهاتف / واتساب (11 رقم) *">
+      <input id="req-email" type="email" placeholder="البريد الإلكتروني (إلزامي) *">
       <input id="req-pass" type="password" placeholder="كلمة المرور المقترحة *">
       <button type="button" onclick="submitNewMembershipRequest()" class="action-btn" style="width:100%; margin-bottom:8px;">إرسال طلب الانضمام</button>
       <button type="button" onclick="location.reload()" class="nav-btn" style="width:100%;">رجوع</button>`;
@@ -2521,8 +3336,9 @@
     const phone = (document.getElementById('req-phone')?.value || '').trim();
     const email = (document.getElementById('req-email')?.value || '').trim().toLowerCase();
     const password_hash = (document.getElementById('req-pass')?.value || '').trim();
-    if (!full_name || !phone || !email || !password_hash) return alert('⚠️ استكمل جميع الحقول.');
+    if (!full_name || !phone || !email || !password_hash) return alert('⚠️ استكمل جميع الحقول بما فيها البريد الإلكتروني ورقم الهاتف.');
     if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ رقم الهاتف يجب أن يتكون من 11 رقماً يبدأ بـ 01.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return alert('⚠️ يرجى إدخال بريد إلكتروني صحيح.');
 
     const member_code = 'MEM-' + Math.floor(1000 + Math.random() * 9000);
     const { error } = await window.supabaseClient.from('users_profiles').insert([{
@@ -2530,8 +3346,20 @@
     }]);
     if (error) return alert('❌ خطأ: ' + error.message);
 
-    const waMsg = `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\nتم استلام طلب انضمامكم بنجاح بكود (${member_code}) وهو قيد المراجعة.`;
-    window.triggerInstantWhatsApp(phone, waMsg);
+    const officialWhatsApp = (window.FOUNDATION_CONFIG && window.FOUNDATION_CONFIG.whatsappPhone) || '01000880156';
+    const noticeMsg =
+      `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: ${officialWhatsApp})\n` +
+      `تم استلام طلب انضمامكم بنجاح بكود (${member_code}) وهو قيد المراجعة.\n` +
+      `الاسم: ${full_name}\n` +
+      `البريد الإلكتروني: ${email}`;
+
+    await sendDualChannelNotice({
+      phone,
+      email,
+      subject: `تأكيد استلام طلب الانضمام (${member_code}) - مؤسسة الحافظ`,
+      message: noticeMsg
+    });
+
     alert('✅ تم إرسال طلب الانضمام وحفظه في قاعدة البيانات بنجاح.');
     location.reload();
   };
