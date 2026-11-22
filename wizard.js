@@ -1979,6 +1979,6 @@ const box = ensureStatusBox(inputEl);
       else location.reload();
     } else {
       showStepError('تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.');
-   }
-  ];
+    }
+  }
 })();
