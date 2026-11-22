@@ -1262,7 +1262,7 @@
     window.renderWizardStep();
   };
 
-  window.calcTotals = function() {
+ window.calcTotals = function() {
     const readNum = (id) => {
       const val = parseFloat(document.getElementById(id)?.value);
       return Number.isFinite(val) ? val : 0;
@@ -1289,15 +1289,25 @@
     const incA = readNum('inc-aid');
 
     const totalInc = incH + incO + incP + incA;
-    const balance = totalInc - totalExp;
+
+    // الحساب المعتمد: إجمالي المصروفات - إجمالي الدخل
+    const expenseMinusIncome = totalExp - totalInc;
 
     let statusBadge = '';
-    if (balance < 0) {
-      statusBadge = `⚠️ يوجد عجز مالي شهري بقيمة: ${Math.abs(balance)} جنيه`;
-    } else if (balance > 0) {
-      statusBadge = `🟢 يوجد فائض مالي شهري بقيمة: ${balance} جنيه`;
+    let balanceHtml = '';
+
+    if (expenseMinusIncome > 0) {
+      // المصروفات أكبر من الدخل => يوجد عجز
+      statusBadge = `⚠️ يوجد عجز مالي شهري بقيمة: ${expenseMinusIncome} جنيه`;
+      balanceHtml = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;font-weight:bold;">${expenseMinusIncome} جنيه</span>`;
+    } else if (expenseMinusIncome < 0) {
+      // المصروفات أقل من الدخل => يوجد فائض
+      const surplusAmount = Math.abs(expenseMinusIncome);
+      statusBadge = `🟢 يوجد فائض مالي شهري بقيمة: ${surplusAmount} جنيه`;
+      balanceHtml = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;font-weight:bold;">${surplusAmount} جنيه</span>`;
     } else {
       statusBadge = `⚖️ الدخل والمصاريف متعادلان (0 جنيه)`;
+      balanceHtml = `⚖️ الدخل والمصاريف متعادلان (0 جنيه)`;
     }
 
     const incDisplay = document.getElementById('total-inc-display');
@@ -1307,13 +1317,7 @@
 
     const balDisplay = document.getElementById('balance-display');
     if (balDisplay) {
-      if (balance < 0) {
-        balDisplay.innerHTML = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;font-weight:bold;">${Math.abs(balance)} جنيه</span>`;
-      } else if (balance > 0) {
-        balDisplay.innerHTML = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;font-weight:bold;">${balance} جنيه</span>`;
-      } else {
-        balDisplay.innerHTML = `⚖️ يوجد فائض مالي شهري بقيمة: <span style="color:#334155;">0 جنيه</span> | يوجد عجز مالي شهري بقيمة: <span style="color:#334155;">0 جنيه</span>`;
-      }
+      balDisplay.innerHTML = balanceHtml;
     }
   };
 
