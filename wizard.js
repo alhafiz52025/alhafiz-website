@@ -1043,35 +1043,54 @@
   };
 
   window.calcTotals = function() {
-    const rent = parseFloat(document.getElementById('exp-rent')?.value) || 0;
-    const water = parseFloat(document.getElementById('exp-water')?.value) || 0;
-    const electric = parseFloat(document.getElementById('exp-electric')?.value) || 0;
-    const gas = parseFloat(document.getElementById('exp-gas')?.value) || 0;
-    const edu = parseFloat(document.getElementById('exp-edu')?.value) || 0;
-    const health = parseFloat(document.getElementById('exp-health')?.value) || 0;
-    const food = parseFloat(document.getElementById('exp-food')?.value) || 0;
-    const debts = parseFloat(document.getElementById('exp-debts')?.value) || 0;
+    const readNum = (id) => {
+      const val = parseFloat(document.getElementById(id)?.value);
+      return Number.isFinite(val) ? val : 0;
+    };
+
+    const rent = readNum('exp-rent');
+    const water = readNum('exp-water');
+    const electric = readNum('exp-electric');
+    const gas = readNum('exp-gas');
+    const edu = readNum('exp-edu');
+    const health = readNum('exp-health');
+    const food = readNum('exp-food');
+    const debts = readNum('exp-debts');
 
     const totalExp = rent + water + electric + gas + edu + health + food + debts;
     const expDisplay = document.getElementById('total-exp-display');
-    if (expDisplay) expDisplay.innerText = totalExp;
+    if (expDisplay) {
+      expDisplay.innerText = `${totalExp} جنيه`;
+    }
 
-    const incH = parseFloat(document.getElementById('inc-husband')?.value) || 0;
-    const incO = parseFloat(document.getElementById('inc-others')?.value) || 0;
-    const incP = parseFloat(document.getElementById('inc-pension')?.value) || 0;
-    const incA = parseFloat(document.getElementById('inc-aid')?.value) || 0;
+    const incH = readNum('inc-husband');
+    const incO = readNum('inc-others');
+    const incP = readNum('inc-pension');
+    const incA = readNum('inc-aid');
 
     const totalInc = incH + incO + incP + incA;
-    const incDisplay = document.getElementById('total-inc-display');
-    if (incDisplay) incDisplay.innerText = totalInc;
-
     const balance = totalInc - totalExp;
+
+    let statusBadge = '';
+    if (balance < 0) {
+      statusBadge = `⚠️ يوجد عجز مالي شهري بقيمة: ${Math.abs(balance)} جنيه`;
+    } else if (balance > 0) {
+      statusBadge = `🟢 يوجد فائض مالي شهري بقيمة: ${balance} جنيه`;
+    } else {
+      statusBadge = `⚖️ الدخل والمصاريف متعادلان (0 جنيه)`;
+    }
+
+    const incDisplay = document.getElementById('total-inc-display');
+    if (incDisplay) {
+      incDisplay.innerHTML = `إجمالي الدخل الشهري: <strong>${totalInc} جنيه</strong> — ${statusBadge}`;
+    }
+
     const balDisplay = document.getElementById('balance-display');
     if (balDisplay) {
       if (balance < 0) {
-        balDisplay.innerHTML = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;">${Math.abs(balance)} جنيه</span>`;
+        balDisplay.innerHTML = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;font-weight:bold;">${Math.abs(balance)} جنيه</span>`;
       } else if (balance > 0) {
-        balDisplay.innerHTML = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;">${balance} جنيه</span>`;
+        balDisplay.innerHTML = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;font-weight:bold;">${balance} جنيه</span>`;
       } else {
         balDisplay.innerHTML = `⚖️ يوجد فائض مالي شهري بقيمة: <span style="color:#334155;">0 جنيه</span> | يوجد عجز مالي شهري بقيمة: <span style="color:#334155;">0 جنيه</span>`;
       }
@@ -1213,7 +1232,7 @@
     }
   }
 
- window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+  window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
     if (!cleanPhone) return;
     const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0/, ''));
@@ -1267,7 +1286,7 @@
     const totalExp = Object.values(expensesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
     const totalInc = Object.values(incomesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
 
-    const uploadedDocs = {
+    const rawDocs = {
       hIdFront: await uploadSingleDoc('h-id-front', 'husband', trackingCode),
       hIdBack: await uploadSingleDoc('h-id-back', 'husband', trackingCode),
       hMedicalDoc: await uploadSingleDoc('h-medical-doc', 'husband_medical', trackingCode),
@@ -1284,7 +1303,31 @@
       lease: await uploadSingleDoc('doc-lease', 'housing_docs', trackingCode),
       schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode)
     };
-   window.formData.documents = uploadedDocs;
+
+    const hasDocValue = (val) => {
+      if (!val) return false;
+      if (typeof val === 'string') return val.trim().length > 0;
+      if (typeof val === 'object') {
+        return Boolean(val.url || val.dataUrl || val.base64 || val.path || val.fileName || val.name || val.publicUrl);
+      }
+      return Boolean(val);
+    };
+
+    const uploadedDocs = {};
+    Object.entries(rawDocs).forEach(([key, val]) => {
+      if (hasDocValue(val)) {
+        uploadedDocs[key] = val;
+      }
+    });
+
+    if (uploadedDocs.hIdFront) uploadedDocs.husband_id_front = uploadedDocs.hIdFront;
+    if (uploadedDocs.hIdBack) uploadedDocs.husband_id_back = uploadedDocs.hIdBack;
+    if (uploadedDocs.wIdFront) uploadedDocs.wife_id_front = uploadedDocs.wIdFront;
+    if (uploadedDocs.wIdBack) uploadedDocs.wife_id_back = uploadedDocs.wIdBack;
+    if (uploadedDocs.socialResearch) uploadedDocs.social_research = uploadedDocs.socialResearch;
+    if (uploadedDocs.lease) uploadedDocs.housing_lease = uploadedDocs.lease;
+
+    window.formData.documents = uploadedDocs;
 
     const currentActor = window.currentUser || JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
     const safeNum = (v) => {
@@ -1306,7 +1349,7 @@
       expenses_data: expensesObj && typeof expensesObj === 'object' ? expensesObj : {},
       incomes_data: incomesObj && typeof incomesObj === 'object' ? incomesObj : {},
       housing_data: window.formData.housing && typeof window.formData.housing === 'object' ? window.formData.housing : {},
-      documents_data: uploadedDocs ?? {},
+      documents_data: uploadedDocs,
       total_income: safeNum(totalInc),
       total_expenses: safeNum(totalExp),
       status: 'pending',
