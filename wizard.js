@@ -3,12 +3,29 @@
   window.currentStep = window.currentStep || 1;
   window.totalWizardSteps = 8;
 
+  const DISABILITY_TYPES = [
+    'إعاقة ذهنية',
+    'إعاقة حركية',
+    'إعاقة سمعية',
+    'إعاقة بصرية'
+  ];
+
+  const SERVICE_CARD_OPTIONS = [
+    'لا',
+    'نعم',
+    'جارٍ الاستخراج'
+  ];
+
   if (typeof window.formData === 'undefined') {
     window.formData = {
       interventionType: 'كفالة أيتام شهرية',
       husband: {
+        status: 'مقيم مع الأسرة',
         health: 'سليم',
         illnessType: 'مؤقت',
+        disabilityType: 'إعاقة حركية',
+        hasServiceCard: 'لا',
+        insuranceCoverage: 'غير محدد',
         medicalNeed: 'إجراء عملية جراحية',
         subDetail: '',
         monthlyCost: '',
@@ -19,6 +36,9 @@
         maritalStatus: 'متزوجة ومقيمة مع الأسرة',
         health: 'سليم',
         illnessType: 'مؤقت',
+        disabilityType: 'إعاقة حركية',
+        hasServiceCard: 'لا',
+        insuranceCoverage: 'غير محدد',
         medicalNeed: 'إجراء عملية جراحية',
         subDetail: '',
         monthlyCost: '',
@@ -37,18 +57,62 @@
       incomes: {
         husband: 0, others: 0, pension: 0, aid: 0
       },
+      socialProfile: {
+        actualProvider: 'الزوج (رب الأسرة)',
+        receivesOtherAid: 'لا',
+        otherAidDetails: '',
+        hasLegalDebtIssue: 'لا',
+        debtCreditorType: '',
+        visitDate: new Date().toISOString().slice(0, 10)
+      },
       housing: {
         case: 'ملك',
         type: 'ريفي / بيت ريفي',
         roof: 'خشب',
         walls: 'طوب لبن',
         floor: 'ترابية',
+        electricityMeter: 'عداد رسمي',
+        waterSource: 'مياه حكومية / عمومية',
+        sanitationType: 'متصلة بالصرف الصحي',
         furniture: 'رديء',
         deficiencies: [],
         opinion: 'حالة شديدة الاستحقاق وعاجلة'
       },
       documents: {}
     };
+  } else {
+    window.formData.socialProfile = Object.assign({
+      actualProvider: 'الزوج (رب الأسرة)',
+      receivesOtherAid: 'لا',
+      otherAidDetails: '',
+      hasLegalDebtIssue: 'لا',
+      debtCreditorType: '',
+      visitDate: new Date().toISOString().slice(0, 10)
+    }, window.formData.socialProfile || {});
+
+    window.formData.housing = Object.assign({
+      electricityMeter: 'عداد رسمي',
+      waterSource: 'مياه حكومية / عمومية',
+      sanitationType: 'متصلة بالصرف الصحي'
+    }, window.formData.housing || {});
+  }
+
+  function isHusbandLivingWithFamily(hObj) {
+    const h = hObj || {};
+    const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
+    if (!statusText) return true;
+    return statusText.includes('مقيم مع الأسرة') || statusText.includes('مقيم مع الاسرة') || statusText === 'مقيم';
+  }
+
+  function computePrimaryApplicantName(hObj, wObj) {
+    const h = hObj || {};
+    const w = wObj || {};
+    const hFull = [h.name1, h.name2, h.name3].filter(Boolean).join(' ').trim();
+    const wFull = [w.name1, w.name2, w.name3].filter(Boolean).join(' ').trim();
+    if (isHusbandLivingWithFamily(h)) {
+      return hFull || wFull || '';
+    }
+    return wFull || hFull || '';
   }
 
   window.addEventListener('DOMContentLoaded', () => {
@@ -163,18 +227,25 @@
     // --- الخطوة 1: تحديد نوع التدخل الأساسي ---
     if (window.currentStep === 1) {
       const aidOptions = (window.AID_TYPES || []).map(a => `<option value="${a}" ${window.formData.interventionType===a?'selected':''}>${a}</option>`).join('');
+      const sp = window.formData.socialProfile || {};
       html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">🎯 الخطوة الأولى: تحديد نوع التدخل والمساعدات الخاصة</h4>
-        <div style="margin-bottom:14px;">
-          <label style="font-weight:700;">نوع المساعدة الأساسية المطلوبة للأسرة *</label>
-          <select id="intervention-type" onchange="window.formData.interventionType = this.value">
-            ${aidOptions}
-          </select>
+        <h4 style="color:var(--primary-dark); margin-top:0;">🎯 الخطوة الأولى: تحديد نوع التدخل وبيانات البحث الميداني</h4>
+        <div class="grid-2" style="margin-bottom:14px;">
+          <div>
+            <label style="font-weight:700;">نوع المساعدة الأساسية المطلوبة للأسرة *</label>
+            <select id="intervention-type" onchange="window.formData.interventionType = this.value">
+              ${aidOptions}
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:700;">تاريخ إجراء البحث / الزيارة الميدانية *</label>
+            <input type="date" id="sp-visit-date" value="${sp.visitDate || new Date().toISOString().slice(0, 10)}" onchange="window.formData.socialProfile.visitDate = this.value">
+          </div>
         </div>
         <p style="font-size:13px; color:#64748b;">يرجى استكمال كل قسم بالكامل قبل الانتقال إلى القسم التالي.</p>
       `;
     }
-       // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
+    // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
     else if (window.currentStep === 2) {
       const locs = window.EGYPT_LOCATIONS || {};
       const govKeys = Object.keys(locs);
@@ -195,8 +266,7 @@
         allVillages.map(v => `<option value="${v}" ${v===selectedVillage?'selected':''}>${v}</option>`).join('') +
         (selectedCenter ? `<option value="__NEW__" ${selectedVillage==='__NEW__'?'selected':''}>+ إضافة قرية / عزبة / تابع جديد غير مدرج</option>` : '');
 
-
-      const statusOptions = (window.HUSBAND_MARITAL_STATUSES || []).map(s => `<option value="${s}" ${window.formData.husband.status===s?'selected':''}>${s}</option>`).join('');
+      const statusOptions = (window.HUSBAND_MARITAL_STATUSES || ['مقيم مع الأسرة', 'غائب / مسافر', 'منفصل / مطلق', 'متوفى', 'مريض / عاجز عن الكسب']).map(s => `<option value="${s}" ${window.formData.husband.status===s?'selected':''}>${s}</option>`).join('');
       const jobOptions = (window.EGYPT_JOBS || []).map(j => `<option value="${j}" ${window.formData.husband.job===j?'selected':''}>${j}</option>`).join('');
 
       html += `
@@ -208,8 +278,9 @@
         </div>
         <div class="grid-3">
           <div>
-            <label>الحالة الاجتماعية *</label>
-            <select id="h-status">${statusOptions}</select>
+            <label>الحالة الاجتماعية للأب *</label>
+            <select id="h-status" onchange="if(window.formData.husband){window.formData.husband.status=this.value;}">${statusOptions}</select>
+            <small style="color:#0f766e; font-size:11px;">يُعتمد اسم الزوج في ملف البحث إذا كان (مقيم مع الأسرة)، وفي باقي الحالات يُعتمد اسم الزوجة.</small>
           </div>
           <div>
             <label>الرقم القومي (14 رقم حصراً) *</label>
@@ -234,7 +305,7 @@
           </div>
         </div>
 
-                <div style="background:#f8fafc; padding:12px; border-radius:8px; margin:10px 0; border:1px solid #cbd5e1;">
+        <div style="background:#f8fafc; padding:12px; border-radius:8px; margin:10px 0; border:1px solid #cbd5e1;">
           <label style="font-weight:700; color:var(--primary-dark);">العنوان الإداري (التسلسل الجغرافي المعتمد) *</label>
           <div class="grid-3" style="margin-top:6px;">
             <div>
@@ -255,7 +326,6 @@
           </div>
           <div style="margin-top:8px;"><input id="h-street" placeholder="شارع / رقم الحارة / التفاصيل كما مدون بالبطاقة *" value="${window.formData.husband.street || ''}"></div>
         </div>
-
 
         <div class="grid-3">
           <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" value="${window.formData.husband.phone || ''}"></div>
@@ -326,8 +396,15 @@
         <div id="children-list">
           ${(window.formData.children || []).map((c, idx) => {
             const stOpts = childStatuses.map(s => `<option value="${s}" ${c.socialStatus===s?'selected':''}>${s}</option>`).join('');
+            const cHealth = c.health || 'سليم';
+            const isSickOrDisabled = (cHealth === 'مريض' || cHealth === 'من ذوي الإعاقة');
+            const cDisType = c.disabilityType || 'إعاقة حركية';
+            const cCard = c.hasServiceCard || 'لا';
+            const cIns = c.insuranceCoverage || 'غير محدد';
+            const cCost = c.monthlyCost || '';
+
             return `
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:12px; border-radius:10px; margin-bottom:10px;">
+            <div class="child-item-card" style="background:#f8fafc; border:1px solid #cbd5e1; padding:12px; border-radius:10px; margin-bottom:10px;">
               <strong>الابن / الابنة رقم ${idx + 1}</strong>
               <div class="grid-3" style="margin-top:6px;">
                 <input placeholder="اسم الابن ثلاثي *" class="c-name" value="${c.name || ''}">
@@ -352,13 +429,47 @@
                 <div><label style="font-size:11px;">شهادة الميلاد / المستند:</label><input type="file" class="c-cert" accept="image/*,.pdf"></div>
                 <div>
                   <label style="font-size:11px;">الحالة الصحية:</label>
-                  <select class="c-health">
-                    <option value="سليم" ${c.health!=='مريض'?'selected':''}>سليم</option>
-                    <option value="مريض" ${c.health==='مريض'?'selected':''}>مريض بمرض مزمن أو إعاقة</option>
+                  <select class="c-health" onchange="window.toggleChildHealthDetails(${idx})">
+                    <option value="سليم" ${cHealth==='سليم'?'selected':''}>سليم</option>
+                    <option value="مريض" ${cHealth==='مريض'?'selected':''}>مريض</option>
+                    <option value="من ذوي الإعاقة" ${cHealth==='من ذوي الإعاقة'?'selected':''}>من ذوي الإعاقة</option>
                   </select>
                 </div>
               </div>
-              <button type="button" onclick="removeChildRow(${idx})" class="nav-btn" style="background:#b91c1c; color:#fff; margin-top:6px; font-size:11px;">حذف هذا الابن</button>
+
+              <div class="c-health-details ${isSickOrDisabled ? '' : 'hidden'}" style="margin-top:8px; padding:10px; background:#fff; border:1px dashed #cbd5e1; border-radius:8px;">
+                <div class="grid-3">
+                  <div>
+                    <label style="font-size:11px;">نوع الحالة / الإعاقة:</label>
+                    <select class="c-disability-type">
+                      ${DISABILITY_TYPES.map(dt => `<option value="${dt}" ${cDisType===dt?'selected':''}>${dt}</option>`).join('')}
+                      <option value="مرض مزمن" ${cDisType==='مرض مزمن'?'selected':''}>مرض مزمن</option>
+                      <option value="مرض مؤقت" ${cDisType==='مرض مؤقت'?'selected':''}>مرض مؤقت</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;">هل يوجد كارت خدمات متكاملة؟</label>
+                    <select class="c-service-card">
+                      ${SERVICE_CARD_OPTIONS.map(sc => `<option value="${sc}" ${cCard===sc?'selected':''}>${sc}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label style="font-size:11px;">التكلفة الشهرية إن وجدت (جنيه):</label>
+                    <input type="number" min="0" class="c-monthly-cost" value="${cCost}" placeholder="0">
+                  </div>
+                </div>
+                <div style="margin-top:6px;">
+                  <label style="font-size:11px;">تغطية علاج / تأمين:</label>
+                  <select class="c-insurance">
+                    <option value="غير محدد" ${cIns==='غير محدد'?'selected':''}>غير محدد</option>
+                    <option value="تأمين صحي" ${cIns==='تأمين صحي'?'selected':''}>تأمين صحي</option>
+                    <option value="علاج على نفقة الدولة" ${cIns==='علاج على نفقة الدولة'?'selected':''}>علاج على نفقة الدولة</option>
+                    <option value="تكافل وكرامة" ${cIns==='تكافل وكرامة'?'selected':''}>تكافل وكرامة</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="button" onclick="removeChildRow(${idx})" class="nav-btn" style="background:#b91c1c; color:#fff; margin-top:8px; font-size:11px;">حذف هذا الابن</button>
             </div>
           `;
           }).join('')}
@@ -397,10 +508,11 @@
         </div>
       `;
     }
-    // --- الخطوة 6: المصروفات ---
+    // --- الخطوة 6: المصروفات والبيانات الاجتماعية ---
     else if (window.currentStep === 6) {
+      const sp = window.formData.socialProfile || {};
       html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">💸 القسم الرابع: المصروفات والأعباء الشهرية</h4>
+        <h4 style="color:var(--primary-dark); margin-top:0;">💸 القسم الرابع: المصروفات والوضع الاجتماعي للأسرة</h4>
         <div class="grid-2">
           <div><label>قيمة الإيجار الشهري *</label><input type="number" min="0" id="exp-rent" value="${window.formData.expenses.rent ?? 0}" oninput="calcTotals()"></div>
           <div><label>فواتير مياه *</label><input type="number" min="0" id="exp-water" value="${window.formData.expenses.water ?? 0}" oninput="calcTotals()"></div>
@@ -411,6 +523,39 @@
           <div><label>المستلزمات المعيشية الأساسية (مأكل ومسكن) *</label><input type="number" min="0" id="exp-food" value="${window.formData.expenses.food ?? 0}" oninput="calcTotals()"></div>
           <div><label>أقساط ديون والتزامات أخرى *</label><input type="number" min="0" id="exp-debts" value="${window.formData.expenses.debts ?? 0}" oninput="calcTotals()"></div>
         </div>
+
+        <div style="background:#f8fafc; border:1px solid #cbd5e1; padding:12px; border-radius:8px; margin-top:12px;">
+          <strong style="color:var(--primary-dark); display:block; margin-bottom:8px;">بيانات الإعالة والديون والمساعدات الأخرى</strong>
+          <div class="grid-2">
+            <div>
+              <label>القائم بالإنفاق الفعلي على الأسرة *</label>
+              <select id="sp-actual-provider">
+                <option value="الزوج (رب الأسرة)" ${sp.actualProvider==='الزوج (رب الأسرة)'?'selected':''}>الزوج (رب الأسرة)</option>
+                <option value="الزوجة (الأم)" ${sp.actualProvider==='الزوجة (الأم)'?'selected':''}>الزوجة (الأم)</option>
+                <option value="أحد الأبناء" ${sp.actualProvider==='أحد الأبناء'?'selected':''}>أحد الأبناء</option>
+                <option value="طرف آخر / جهة" ${sp.actualProvider==='طرف آخر / جهة'?'selected':''}>طرف آخر / جهة</option>
+              </select>
+            </div>
+            <div>
+              <label>هل تتلقى الأسرة مساعدة من جهة أخرى؟ *</label>
+              <select id="sp-other-aid">
+                <option value="لا" ${sp.receivesOtherAid!=='نعم'?'selected':''}>لا</option>
+                <option value="نعم" ${sp.receivesOtherAid==='نعم'?'selected':''}>نعم</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div>
+              <label>تفاصيل المساعدة الأخرى (إن وجدت):</label>
+              <input id="sp-other-aid-details" value="${sp.otherAidDetails || ''}" placeholder="اسم الجمعية أو نوع المساعدة">
+            </div>
+            <div>
+              <label>جهة الدين / تعثر قضائي إن وجد:</label>
+              <input id="sp-debt-creditor" value="${sp.debtCreditorType || ''}" placeholder="مثال: قرض/أقساط أو تعثر قضائي">
+            </div>
+          </div>
+        </div>
+
         <div style="background:#fee2e2; border:1px solid #fecaca; padding:12px; border-radius:8px; margin-top:12px; text-align:center;">
           <span style="font-weight:700; color:#991b1b; font-size:15px;">إجمالي المصروفات الشهرية: <strong id="total-exp-display">0</strong> جنيه</span>
         </div>
@@ -433,7 +578,7 @@
         </div>
       `;
     }
-    // --- الخطوة 8: السكن، الفرش والأثاث ونواقصه، المستندات، ورأي الباحث ---
+    // --- الخطوة 8: السكن، المرافق، الفرش والأثاث ونواقصه، المستندات، ورأي الباحث ---
     else if (window.currentStep === 8) {
       const furnList = window.FURNITURE_CONDITIONS || ["رديء جداً / معدوم", "رديء", "متوسط", "جيد", "جيد جداً / ممتاز"];
       const furnOpts = furnList.map(f => `<option value="${f}" ${window.formData.housing.furniture===f?'selected':''}>${f}</option>`).join('');
@@ -441,7 +586,7 @@
       const selectedDefs = window.formData.housing.deficiencies || [];
 
       html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">📋 القسم السادس: وصف السكن، المستندات الرسمية، ورأي الباحث</h4>
+        <h4 style="color:var(--primary-dark); margin-top:0;">📋 القسم السادس: وصف السكن والمرافق والمستندات ورأي الباحث</h4>
         <div class="grid-2" style="margin-bottom:10px;">
           <div>
             <label>حالة السكن أولاً *</label>
@@ -492,6 +637,33 @@
           </div>
         </div>
 
+        <div class="grid-3" style="margin-bottom:10px;">
+          <div>
+            <label>عداد الكهرباء *</label>
+            <select id="h-elec-meter">
+              <option value="عداد رسمي" ${window.formData.housing.electricityMeter==='عداد رسمي'?'selected':''}>عداد رسمي</option>
+              <option value="ممارسة / مشترك" ${window.formData.housing.electricityMeter==='ممارسة / مشترك'?'selected':''}>ممارسة / مشترك</option>
+              <option value="لا يوجد" ${window.formData.housing.electricityMeter==='لا يوجد'?'selected':''}>لا يوجد</option>
+            </select>
+          </div>
+          <div>
+            <label>مصدر المياه *</label>
+            <select id="h-water-src">
+              <option value="مياه حكومية / عمومية" ${window.formData.housing.waterSource==='مياه حكومية / عمومية'?'selected':''}>مياه حكومية / عمومية</option>
+              <option value="وصلة مشتركة / جيران" ${window.formData.housing.waterSource==='وصلة مشتركة / جيران'?'selected':''}>وصلة مشتركة / جيران</option>
+              <option value="لا يوجد" ${window.formData.housing.waterSource==='لا يوجد'?'selected':''}>لا يوجد</option>
+            </select>
+          </div>
+          <div>
+            <label>دورة المياه والصرف الصحي *</label>
+            <select id="h-sanitation">
+              <option value="متصلة بالصرف الصحي" ${window.formData.housing.sanitationType==='متصلة بالصرف الصحي'?'selected':''}>متصلة بالصرف الصحي</option>
+              <option value="بيارة / ترنش" ${window.formData.housing.sanitationType==='بيارة / ترنش'?'selected':''}>بيارة / ترنش</option>
+              <option value="غير صالحة / متهالكة" ${window.formData.housing.sanitationType==='غير صالحة / متهالكة'?'selected':''}>غير صالحة / متهالكة</option>
+            </select>
+          </div>
+        </div>
+
         <div style="margin-bottom:10px;">
           <label>وصف الفرش والأثاث *</label>
           <select id="h-furniture" onchange="toggleFurnitureDeficiencies()">${furnOpts}</select>
@@ -535,7 +707,6 @@
       `;
     }
 
-    const showPrev = window.currentStep > 1 && !(window.currentStep === 6 && window.formData.interventionType !== 'تجهيز عروسة (أجهزة كهربائية / مفروشات)');
     const prevTargetStep = (window.currentStep === 6 && window.formData.interventionType !== 'تجهيز عروسة (أجهزة كهربائية / مفروشات)') ? 4 : (window.currentStep - 1);
 
     html += `
@@ -563,37 +734,71 @@
     }
   };
 
-  // بناء بلوك الحالة الصحية بحيث تظهر الجراحة قبل التقرير والبحث الاجتماعي
+  window.toggleChildHealthDetails = function(childIndex) {
+    const row = document.querySelectorAll('#children-list > div')[childIndex];
+    if (!row) return;
+    const healthVal = row.querySelector('.c-health')?.value || 'سليم';
+    const box = row.querySelector('.c-health-details');
+    if (box) {
+      box.classList.toggle('hidden', healthVal === 'سليم');
+    }
+  };
+
+  // بناء بلوك الحالة الصحية بحيث يشمل: مريض / من ذوي الإعاقة + الإعاقات الأربع + كارت الخدمات المتكاملة + التكلفة الشهرية
   window.renderPersonHealthBlockHtml = function(prefix, labelName) {
     const pData = prefix === 'h' ? window.formData.husband : window.formData.wife;
+    const currentHealth = pData.health || 'سليم';
+    const currentCard = pData.hasServiceCard || 'لا';
+    const currentIns = pData.insuranceCoverage || 'غير محدد';
+
     return `
       <div style="background:#f1f5f9; padding:12px; border-radius:8px; margin-top:10px; border:1px solid #e2e8f0;">
-        <div class="grid-2">
+        <div class="grid-3">
           <div>
             <label>الحالة الصحية (${labelName}) *</label>
             <select id="${prefix}-health" onchange="renderHealthSection('${prefix}')">
-              <option value="سليم" ${pData.health!=='مريض'?'selected':''}>سليم وبصحة جيدة</option>
-              <option value="مريض" ${pData.health==='مريض'?'selected':''}>مريض</option>
+              <option value="سليم" ${currentHealth==='سليم'?'selected':''}>سليم وبصحة جيدة</option>
+              <option value="مريض" ${currentHealth==='مريض'?'selected':''}>مريض</option>
+              <option value="من ذوي الإعاقة" ${currentHealth==='من ذوي الإعاقة'?'selected':''}>من ذوي الإعاقة</option>
             </select>
           </div>
-          <div id="${prefix}-illness-type-container" class="hidden">
-            <label>نوع المرض *</label>
+          <div id="${prefix}-illness-type-container" class="${currentHealth==='سليم'?'hidden':''}">
+            <label>نوع الحالة / المرض أو الإعاقة *</label>
             <select id="${prefix}-illness-type" onchange="renderHealthSection('${prefix}')">
-              <option value="مؤقت" ${pData.illnessType!=='مزمن'?'selected':''}>مؤقت</option>
-              <option value="مزمن" ${pData.illnessType==='مزمن'?'selected':''}>مزمن</option>
+              <option value="مؤقت" ${pData.illnessType==='مؤقت'?'selected':''}>مرض مؤقت</option>
+              <option value="مزمن" ${pData.illnessType==='مزمن'?'selected':''}>مرض مزمن</option>
+              <option value="إعاقة ذهنية" ${pData.illnessType==='إعاقة ذهنية'?'selected':''}>إعاقة ذهنية</option>
+              <option value="إعاقة حركية" ${pData.illnessType==='إعاقة حركية'?'selected':''}>إعاقة حركية</option>
+              <option value="إعاقة سمعية" ${pData.illnessType==='إعاقة سمعية'?'selected':''}>إعاقة سمعية</option>
+              <option value="إعاقة بصرية" ${pData.illnessType==='إعاقة بصرية'?'selected':''}>إعاقة بصرية</option>
+            </select>
+          </div>
+          <div id="${prefix}-service-card-container" class="${currentHealth==='سليم'?'hidden':''}">
+            <label>هل يوجد كارت خدمات متكاملة؟ *</label>
+            <select id="${prefix}-service-card" onchange="window.formData[prefix==='h'?'husband':'wife'].hasServiceCard=this.value">
+              ${SERVICE_CARD_OPTIONS.map(sc => `<option value="${sc}" ${currentCard===sc?'selected':''}>${sc}</option>`).join('')}
             </select>
           </div>
         </div>
 
-        <div id="${prefix}-health-box" class="hidden" style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
-          <div class="grid-2">
+        <div id="${prefix}-health-box" class="${currentHealth==='سليم'?'hidden':''}" style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+          <div class="grid-3">
             <div>
-              <label>تشخيص الحالة المرضية *</label>
+              <label>تشخيص الحالة المرضية أو نوع الإعاقة *</label>
               <select id="${prefix}-illness-name"></select>
             </div>
             <div>
               <label>الإجراء الطبي المطلوب (بالتفصيل الكامل) *</label>
               <select id="${prefix}-medical-need" onchange="renderDynamicMedicalFields('${prefix}')"></select>
+            </div>
+            <div>
+              <label>التغطية العلاجية / التأمين:</label>
+              <select id="${prefix}-insurance-cov">
+                <option value="غير محدد" ${currentIns==='غير محدد'?'selected':''}>غير محدد</option>
+                <option value="تأمين صحي" ${currentIns==='تأمين صحي'?'selected':''}>تأمين صحي</option>
+                <option value="علاج على نفقة الدولة" ${currentIns==='علاج على نفقة الدولة'?'selected':''}>علاج على نفقة الدولة</option>
+                <option value="تكافل وكرامة" ${currentIns==='تكافل وكرامة'?'selected':''}>تكافل وكرامة</option>
+              </select>
             </div>
           </div>
 
@@ -618,6 +823,7 @@
     const pData = type === 'h' ? window.formData.husband : window.formData.wife;
     const healthStatus = document.getElementById(type + '-health')?.value || 'سليم';
     const illnessContainer = document.getElementById(type + '-illness-type-container');
+    const cardContainer = document.getElementById(type + '-service-card-container');
     const healthBox = document.getElementById(type + '-health-box');
     const illnessSelect = document.getElementById(type + '-illness-name');
     const medicalNeedSelect = document.getElementById(type + '-medical-need');
@@ -626,21 +832,32 @@
 
     pData.health = healthStatus;
 
-    if (healthStatus === 'مريض') {
+    if (healthStatus !== 'سليم') {
       illnessContainer.classList.remove('hidden');
+      if (cardContainer) cardContainer.classList.remove('hidden');
       healthBox.classList.remove('hidden');
     } else {
       illnessContainer.classList.add('hidden');
+      if (cardContainer) cardContainer.classList.add('hidden');
       healthBox.classList.add('hidden');
       return;
     }
 
-    const illnessType = document.getElementById(type + '-illness-type')?.value || 'مؤقت';
+    const illnessTypeEl = document.getElementById(type + '-illness-type');
+    if (healthStatus === 'من ذوي الإعاقة' && illnessTypeEl && !DISABILITY_TYPES.includes(illnessTypeEl.value)) {
+      illnessTypeEl.value = DISABILITY_TYPES.includes(pData.illnessType) ? pData.illnessType : 'إعاقة حركية';
+    }
+    const illnessType = illnessTypeEl?.value || 'مؤقت';
     pData.illnessType = illnessType;
 
-    const illnesses = illnessType === 'مؤقت'
-      ? (window.TEMPORARY_ILLNESSES || [])
-      : (window.CHRONIC_ILLNESSES || []);
+    let illnesses = [];
+    if (illnessType === 'مؤقت') {
+      illnesses = window.TEMPORARY_ILLNESSES || ['إصابة / كسر مؤقت', 'التهاب حاد / عدوى', 'حالة مرضية مؤقتة أخرى'];
+    } else if (illnessType === 'مزمن') {
+      illnesses = window.CHRONIC_ILLNESSES || ['السكري', 'الضغط', 'أمراض القلب', 'أمراض الكلى', 'أمراض الكبد', 'الربو / الجهاز التنفسي'];
+    } else {
+      illnesses = [illnessType, ...DISABILITY_TYPES.filter(d => d !== illnessType), 'إعاقة متعددة'];
+    }
 
     illnessSelect.innerHTML = illnesses
       .map(ill => `<option value="${ill}" ${pData.illnessName===ill?'selected':''}>${ill}</option>`)
@@ -658,7 +875,7 @@
 
     const defaultNeed = illnessType === 'مؤقت'
       ? (procedures.includes(pData.medicalNeed) ? pData.medicalNeed : "إجراء عملية جراحية")
-      : (["دواء وعلاج شهري مزمن", "جلسات غسيل كلوي أو علاج كيماوي", "أشعة وتحاليل طبية وفحوصات"].includes(pData.medicalNeed) ? pData.medicalNeed : "دواء وعلاج شهري مزمن");
+      : (procedures.includes(pData.medicalNeed) ? pData.medicalNeed : "دواء وعلاج شهري مزمن");
 
     medicalNeedSelect.innerHTML = procedures
       .map(proc => `<option value="${proc}" ${defaultNeed===proc?'selected':''}>${proc}</option>`)
@@ -715,7 +932,7 @@
     container.innerHTML = html;
   };
 
-   window.loadCustomLocationsFromDB = async function() {
+  window.loadCustomLocationsFromDB = async function() {
     if (!window.supabaseClient) return;
     const { data } = await window.supabaseClient.from('custom_locations').select('*');
     window.CUSTOM_LOCATIONS_CACHE = {};
@@ -836,7 +1053,7 @@
       if (!isValidEgyptianPhone(phone)) return 'رقم التليفون الأساسي للزوج يجب أن يتكون من 11 رقماً يبدأ بـ 01.';
       if (whatsapp && !isValidEgyptianPhone(whatsapp)) return 'رقم الواتساب للزوج يجب أن يتكون من 11 رقماً صحيحاً.';
 
-      if (health === 'مريض') {
+      if (health !== 'سليم') {
         const need = document.getElementById('h-medical-need')?.value || '';
         const medDoc = document.getElementById('h-medical-doc')?.files?.length || (window.formData.documents?.hMedicalDoc ? 1 : 0);
         const socDoc = document.getElementById('h-social-doc')?.files?.length || (window.formData.documents?.hSocialDoc ? 1 : 0);
@@ -873,7 +1090,7 @@
       if (!window.parseEgyptianNationalId(nid).valid) return 'الرقم القومي للزوجة غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).';
       if (phone && !isValidEgyptianPhone(phone)) return 'رقم هاتف الزوجة يجب أن يتكون من 11 رقماً صحيحاً.';
 
-      if (health === 'مريض') {
+      if (health !== 'سليم') {
         const need = document.getElementById('w-medical-need')?.value || '';
         const medDoc = document.getElementById('w-medical-doc')?.files?.length || (window.formData.documents?.wMedicalDoc ? 1 : 0);
         const socDoc = document.getElementById('w-social-doc')?.files?.length || (window.formData.documents?.wSocialDoc ? 1 : 0);
@@ -896,7 +1113,6 @@
       return null;
     }
 
-    // الخطوة 4 (الأبناء): يسمح بالاستمرار حتى لو لم يوجد أبناء؛ وإذا تم إضافة ابن يجب استكمال بياناته
     if (step === 4) {
       const rows = document.querySelectorAll('#children-list > div');
       for (let i = 0; i < rows.length; i++) {
@@ -1031,7 +1247,11 @@
       birthDate: '',
       socialStatus: 'طالب / طالبة',
       edu: 'ابتدائي',
-      health: 'سليم'
+      health: 'سليم',
+      disabilityType: 'إعاقة حركية',
+      hasServiceCard: 'لا',
+      monthlyCost: '',
+      insuranceCoverage: 'غير محدد'
     });
     window.renderWizardStep();
   };
@@ -1121,9 +1341,13 @@
   function saveCurrentStepData() {
     if (window.currentStep === 1) {
       window.formData.interventionType = document.getElementById('intervention-type')?.value || 'كفالة أيتام شهرية';
+      window.formData.socialProfile = Object.assign(window.formData.socialProfile || {}, {
+        visitDate: document.getElementById('sp-visit-date')?.value || new Date().toISOString().slice(0, 10)
+      });
     } else if (window.currentStep === 2) {
       const nid = document.getElementById('h-nid')?.value || '';
       const parsed = window.parseEgyptianNationalId(nid);
+      const healthVal = document.getElementById('h-health')?.value || 'سليم';
       window.formData.husband = {
         name1: document.getElementById('h-name1')?.value || '',
         name2: document.getElementById('h-name2')?.value || '',
@@ -1136,12 +1360,18 @@
         gov: document.getElementById('h-gov')?.value || '',
         center: document.getElementById('h-center')?.value || '',
         village: document.getElementById('h-village')?.value || '',
+        newVillageName: document.getElementById('h-new-village-name')?.value || '',
         street: document.getElementById('h-street')?.value || '',
         phone: document.getElementById('h-phone')?.value || '',
         whatsapp: document.getElementById('h-whatsapp')?.value || '',
         job: document.getElementById('h-job')?.value || '',
-        health: document.getElementById('h-health')?.value || 'سليم',
+        health: healthVal,
         illnessType: document.getElementById('h-illness-type')?.value || '',
+        disabilityType: DISABILITY_TYPES.includes(document.getElementById('h-illness-type')?.value)
+          ? document.getElementById('h-illness-type')?.value
+          : (window.formData.husband?.disabilityType || ''),
+        hasServiceCard: document.getElementById('h-service-card')?.value || 'لا',
+        insuranceCoverage: document.getElementById('h-insurance-cov')?.value || 'غير محدد',
         illnessName: document.getElementById('h-illness-name')?.value || '',
         medicalNeed: document.getElementById('h-medical-need')?.value || '',
         subDetail: document.getElementById('h-sub-detail')?.value || '',
@@ -1163,6 +1393,11 @@
         edu: document.getElementById('w-edu')?.value || '',
         health: document.getElementById('w-health')?.value || 'سليم',
         illnessType: document.getElementById('w-illness-type')?.value || '',
+        disabilityType: DISABILITY_TYPES.includes(document.getElementById('w-illness-type')?.value)
+          ? document.getElementById('w-illness-type')?.value
+          : (window.formData.wife?.disabilityType || ''),
+        hasServiceCard: document.getElementById('w-service-card')?.value || 'لا',
+        insuranceCoverage: document.getElementById('w-insurance-cov')?.value || 'غير محدد',
         illnessName: document.getElementById('w-illness-name')?.value || '',
         medicalNeed: document.getElementById('w-medical-need')?.value || '',
         subDetail: document.getElementById('w-sub-detail')?.value || '',
@@ -1174,6 +1409,8 @@
       rows.forEach(r => {
         const nid = r.querySelector('.c-nid')?.value || '';
         const parsed = window.parseEgyptianNationalId(nid);
+        const cHealth = r.querySelector('.c-health')?.value || 'سليم';
+        const cDisType = r.querySelector('.c-disability-type')?.value || '';
         updatedChildren.push({
           name: r.querySelector('.c-name')?.value || '',
           nid,
@@ -1181,7 +1418,11 @@
           birthDate: parsed.valid ? parsed.birthDate : (r.querySelector('.c-birth-date')?.value || ''),
           socialStatus: r.querySelector('.c-social-status')?.value || '',
           edu: r.querySelector('.c-edu')?.value || '',
-          health: r.querySelector('.c-health')?.value || 'سليم'
+          health: cHealth,
+          disabilityType: cHealth === 'سليم' ? '' : cDisType,
+          hasServiceCard: cHealth === 'سليم' ? 'لا' : (r.querySelector('.c-service-card')?.value || 'لا'),
+          monthlyCost: cHealth === 'سليم' ? '' : (r.querySelector('.c-monthly-cost')?.value || ''),
+          insuranceCoverage: cHealth === 'سليم' ? 'غير محدد' : (r.querySelector('.c-insurance')?.value || 'غير محدد')
         });
       });
       window.formData.children = updatedChildren;
@@ -1210,6 +1451,15 @@
         food: parseFloat(document.getElementById('exp-food')?.value) || 0,
         debts: parseFloat(document.getElementById('exp-debts')?.value) || 0
       };
+      const otherAidVal = document.getElementById('sp-other-aid')?.value || 'لا';
+      const debtCredVal = (document.getElementById('sp-debt-creditor')?.value || '').trim();
+      window.formData.socialProfile = Object.assign(window.formData.socialProfile || {}, {
+        actualProvider: document.getElementById('sp-actual-provider')?.value || 'الزوج (رب الأسرة)',
+        receivesOtherAid: otherAidVal,
+        otherAidDetails: (document.getElementById('sp-other-aid-details')?.value || '').trim(),
+        hasLegalDebtIssue: debtCredVal ? 'نعم' : 'لا',
+        debtCreditorType: debtCredVal
+      });
     } else if (window.currentStep === 7) {
       window.formData.incomes = {
         husband: parseFloat(document.getElementById('inc-husband')?.value) || 0,
@@ -1225,6 +1475,9 @@
         roof: document.getElementById('h-roof')?.value || '',
         walls: document.getElementById('h-walls')?.value || '',
         floor: document.getElementById('h-floor')?.value || '',
+        electricityMeter: document.getElementById('h-elec-meter')?.value || 'عداد رسمي',
+        waterSource: document.getElementById('h-water-src')?.value || 'مياه حكومية / عمومية',
+        sanitationType: document.getElementById('h-sanitation')?.value || 'متصلة بالصرف الصحي',
         furniture: document.getElementById('h-furniture')?.value || '',
         deficiencies: defs,
         opinion: document.getElementById('researcher-opinion')?.value || ''
@@ -1253,6 +1506,8 @@
     saveCurrentStepData();
 
     const husbandData = window.formData.husband || {};
+    const wifeData = window.formData.wife || {};
+    const socialProfile = window.formData.socialProfile || {};
     let finalVillage = husbandData.village || '';
 
     if (finalVillage === '__NEW__') {
@@ -1335,20 +1590,29 @@
       return Number.isFinite(n) ? n : 0;
     };
 
+    const primaryFileName = computePrimaryApplicantName(husbandData, wifeData);
+
     const payload = {
       tracking_code: trackingCode,
+      applicant_name: primaryFileName,
       intervention_type: window.formData.interventionType || '',
       governorate: husbandData.gov || '',
       center_city: husbandData.center || '',
       village_hamlet: finalVillage,
       street_details: husbandData.street || '',
       husband_data: husbandData && typeof husbandData === 'object' ? husbandData : {},
-      wife_data: window.formData.wife && typeof window.formData.wife === 'object' ? window.formData.wife : {},
+      wife_data: wifeData && typeof wifeData === 'object' ? wifeData : {},
       children_data: Array.isArray(window.formData.children) ? window.formData.children : [],
       marriage_data: window.formData.marriage && typeof window.formData.marriage === 'object' ? window.formData.marriage : {},
       expenses_data: expensesObj && typeof expensesObj === 'object' ? expensesObj : {},
       incomes_data: incomesObj && typeof incomesObj === 'object' ? incomesObj : {},
-      housing_data: window.formData.housing && typeof window.formData.housing === 'object' ? window.formData.housing : {},
+      housing_data: Object.assign(
+        window.formData.housing && typeof window.formData.housing === 'object' ? window.formData.housing : {},
+        {
+          social_profile: socialProfile,
+          visit_date: socialProfile.visitDate || new Date().toISOString().slice(0, 10)
+        }
+      ),
       documents_data: uploadedDocs,
       total_income: safeNum(totalInc),
       total_expenses: safeNum(totalExp),
@@ -1359,13 +1623,12 @@
       eligibility_verdict: (window.formData.housing && window.formData.housing.opinion) || 'قيد المراجعة'
     };
 
-    const applicantName = [husbandData.name1, husbandData.name2, husbandData.name3].filter(Boolean).join(' ');
-    const targetPhone = husbandData.whatsapp || husbandData.phone || '01000880156';
+    const targetPhone = husbandData.whatsapp || husbandData.phone || wifeData.phone || '01000880156';
     const officialWhatsApp = (window.FOUNDATION_CONFIG && window.FOUNDATION_CONFIG.whatsappPhone) || '01000880156';
     const waMsg =
       `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: ${officialWhatsApp})\n` +
       `تم تسجيل طلب المساعدة بنجاح.\n` +
-      `الاسم: ${applicantName}\n` +
+      `الاسم: ${primaryFileName}\n` +
       `رقم الطلب: ${trackingCode}\n` +
       `الحالة: قيد المراجعة\n` +
       `يمكنكم متابعة حالة الطلب برقم المتابعة.`;
@@ -1413,7 +1676,7 @@
       localStorage.setItem('hf_local_families', JSON.stringify(localCases));
 
       window.triggerInstantWhatsApp(targetPhone, waMsg);
-      alert(`✅ تم تسجيل الحالة وحفظها بنجاح في قاعدة البيانات!\n\nرقم الطلب: ${trackingCode}\nيرجى الاحتفاظ به للمتابعة.`);
+      alert(`✅ تم تسجيل الحالة وحفظها بنجاح في قاعدة البيانات!\n\nاسم الملف: ${primaryFileName}\nرقم الطلب: ${trackingCode}\nيرجى الاحتفاظ به للمتابعة.`);
       window.currentStep = 1;
       if (typeof window.showSection === 'function') window.showSection('home');
       else location.reload();
