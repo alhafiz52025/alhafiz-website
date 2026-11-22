@@ -213,23 +213,138 @@
   }
 
   function getCaseAttachmentsAudit(caseObj) {
-    const docsObj = (caseObj && caseObj.documents_data && typeof caseObj.documents_data === 'object') ? caseObj.documents_data : {};
+    let docsObj = caseObj && caseObj.documents_data;
+    if (typeof docsObj === 'string') {
+      try {
+        docsObj = JSON.parse(docsObj);
+      } catch (_) {
+        docsObj = {};
+      }
+    }
+    if (!docsObj || typeof docsObj !== 'object') {
+      docsObj = {};
+    }
+
     const h = (caseObj && caseObj.husband_data && typeof caseObj.husband_data === 'object') ? caseObj.husband_data : {};
     const w = (caseObj && caseObj.wife_data && typeof caseObj.wife_data === 'object') ? caseObj.wife_data : {};
 
-    const items = [
-      { label: 'صورة بطاقة الزوج (وجه)', value: docsObj.husband_id_front || h.id_front },
-      { label: 'صورة بطاقة الزوج (ظهر)', value: docsObj.husband_id_back || h.id_back },
-      { label: 'صورة بطاقة الزوجة (وجه)', value: docsObj.wife_id_front || w.id_front },
-      { label: 'صورة بطاقة الزوجة (ظهر)', value: docsObj.wife_id_back || w.id_back },
-      { label: 'البحث الاجتماعي المعتمد', value: docsObj.social_research || caseObj.social_research_doc },
-      { label: 'عقد الإيجار / إثبات السكن', value: docsObj.lease_contract || caseObj.lease_doc },
-      { label: 'التقارير الطبية / مستندات إضافية', value: docsObj.medical_report || caseObj.medical_doc }
-    ].map((it, idx) => {
-      const attached = Boolean(it.value && String(it.value).trim().length > 0);
+    const hasValidAttachment = (val) => {
+      if (!val) return false;
+      if (typeof val === 'string') {
+        const s = val.trim();
+        return s.length > 0 && s !== 'null' && s !== 'undefined';
+      }
+      if (Array.isArray(val)) {
+        return val.some(v => hasValidAttachment(v));
+      }
+      if (typeof val === 'object') {
+        if (val.uploadError) return false;
+        const candidate =
+          val.path ||
+          val.url ||
+          val.publicUrl ||
+          val.dataUrl ||
+          val.base64 ||
+          val.fileName ||
+          val.name;
+        return Boolean(candidate && String(candidate).trim().length > 0);
+      }
+      return Boolean(val);
+    };
+
+    const pickFirstValid = (...candidates) => {
+      for (const c of candidates) {
+        if (hasValidAttachment(c)) return c;
+      }
+      return null;
+    };
+
+    const rawItems = [
+      {
+        label: 'صورة بطاقة الزوج (وجه)',
+        value: pickFirstValid(
+          docsObj.husband_id_front,
+          docsObj.hIdFront,
+          docsObj['h-id-front'],
+          h.id_front,
+          h.idFront
+        )
+      },
+      {
+        label: 'صورة بطاقة الزوج (ظهر)',
+        value: pickFirstValid(
+          docsObj.husband_id_back,
+          docsObj.hIdBack,
+          docsObj['h-id-back'],
+          h.id_back,
+          h.idBack
+        )
+      },
+      {
+        label: 'صورة بطاقة الزوجة (وجه)',
+        value: pickFirstValid(
+          docsObj.wife_id_front,
+          docsObj.wIdFront,
+          docsObj['w-id-front'],
+          w.id_front,
+          w.idFront
+        )
+      },
+      {
+        label: 'صورة بطاقة الزوجة (ظهر)',
+        value: pickFirstValid(
+          docsObj.wife_id_back,
+          docsObj.wIdBack,
+          docsObj['w-id-back'],
+          w.id_back,
+          w.idBack
+        )
+      },
+      {
+        label: 'البحث الاجتماعي المعتمد',
+        value: pickFirstValid(
+          docsObj.social_research,
+          docsObj.socialResearch,
+          docsObj['doc-social-research'],
+          docsObj.hSocialDoc,
+          docsObj.wSocialDoc,
+          caseObj && caseObj.social_research_doc
+        )
+      },
+      {
+        label: 'عقد الإيجار / إثبات السكن',
+        value: pickFirstValid(
+          docsObj.lease_contract,
+          docsObj.housing_lease,
+          docsObj.lease,
+          docsObj['doc-lease'],
+          caseObj && caseObj.lease_doc
+        )
+      },
+      {
+        label: 'التقارير الطبية / مستندات إضافية',
+        value: pickFirstValid(
+          docsObj.medical_report,
+          docsObj.hMedicalDoc,
+          docsObj.wMedicalDoc,
+          docsObj.mHealthDoc,
+          docsObj.mCertDoc,
+          docsObj.insuranceH,
+          docsObj.insuranceW,
+          docsObj.schoolEnroll,
+          docsObj['h-medical-doc'],
+          docsObj['w-medical-doc'],
+          caseObj && caseObj.medical_doc
+        )
+      }
+    ];
+
+    const items = rawItems.map((it, idx) => {
+      const attached = hasValidAttachment(it.value);
       return {
         index: idx + 1,
         label: it.label,
+        value: it.value,
         attached,
         statusText: attached ? '✅ مرفق' : '❌ غير مرفق (لم يتم رفعه)'
       };
