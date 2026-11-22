@@ -166,7 +166,22 @@
     }
     return window._wizardDraftFolder;
   }
-
+ 
+  // أضف الدالة هنا مباشرة 👇
+  function toSafeStorageKeyPart(rawName) {
+    const arabicDigits = '٠١٢٣٤٥٦٧٨٩';
+    const normalized = String(rawName || 'file')
+      .replace(/[٠-٩]/g, d => String(arabicDigits.indexOf(d)));
+    const parts = normalized.split('.');
+    const rawExt = parts.length > 1 ? parts.pop().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+    const ext = rawExt ? `.${rawExt}` : '';
+    const base = parts
+      .join('_')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return `${base || 'attachment'}${ext}`;
+  }
   function ensureStatusBox(inputEl, statusBoxId) {
     if (!inputEl) return null;
     if (statusBoxId) {
@@ -236,72 +251,85 @@
   }
 
   window.handleImmediateAttachmentPreview = async function(inputEl, explicitDocKey = '', statusBoxId = '') {
-    if (!inputEl) return null;
-    const docKey = getDocKeyForInput(inputEl, explicitDocKey);
-    const box = ensureStatusBox(inputEl, statusBoxId);
-    const file = inputEl.files && inputEl.files[0];
+  if (!inputEl) return null;
+  const docKey = getDocKeyForInput(inputEl, explicitDocKey);
+  const box = ensureStatusBox(inputEl, statusBoxId);
+  const file = inputEl.files && inputEl.files[0];
 
-    if (!file) {
-      const existing = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
-      if (existing && hasDocValue(existing)) {
-        renderAttachmentStatusBox(box, existing);
-        return existing;
-      }
-      renderAttachmentStatusBox(box, null);
-      return null;
+  if (!file) {
+    const existing = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
+    if (existing && hasDocValue(existing)) {
+      renderAttachmentStatusBox(box, existing);
+      return existing;
     }
+    renderAttachmentStatusBox(box, null);
+    return null;
+  }
 
-    if (box) {
-      box.style.borderColor = '#bfdbfe';
-      box.style.background = '#eff6ff';
-      box.innerHTML = `<span style="color:#1d4ed8; font-weight:700;">⏳ جارٍ رفع المرفق (${escapeSafeHtml(file.name)}) والتحقق من حفظه...</span>`;
+  if (box) {
+    box.style.borderColor = '#bfdbfe';
+    box.style.background = '#eff6ff';
+    box.innerHTML = `<span style="color:#1d4ed8; font-weight:700;">⏳ جارٍ رفع المرفق (${escapeSafeHtml(file.name)}) والتحقق من حفظه...</span>`;
+  }
+
+  const localDataUrl = await new Promise((resolve) => {
+    if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name)) {
+      return resolve('');
     }
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result || '');
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
 
-    const localDataUrl = await new Promise((resolve) => {
-      if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name)) {
-        return resolve('');
-      }
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result || '');
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(file);
-    });
+  const attachmentRecord = {
+    name: file.name,
+    fileName: file.name,
+    size: file.size,
+    mimeType: file.type || '',
+    dataUrl: localDataUrl,
+    path: '',
+    url: '',
+    publicUrl: '',
+    uploaded: false,
+    uploadError: ''
+  };
 
-    const attachmentRecord = {
-      name: file.name,
-      fileName: file.name,
-      size: file.size,
-      mimeType: file.type || '',
-      dataUrl: localDataUrl,
-      path: '',
-      url: '',
-      publicUrl: '',
-      uploaded: false,
-      uploadError: ''
-    };
+  if (window.supabaseClient && window.supabaseClient.storage) {
+    const folder = getFolderForDocKey(docKey, inputEl);
+    const draftFolder = getDraftTrackingFolder();
+    const safeName = typeof toSafeStorageKeyPart === 'function'
+      ? toSafeStorageKeyPart(file.name)
+      : file.name.replace(/[^\w.-]/g, '_');
+    const storagePath = `${draftFolder}/${folder}/${Date.now()}_${safeName}`;
 
-    if (window.supabaseClient && window.supabaseClient.storage) {
-      const folder = getFolderForDocKey(docKey, inputEl);
-      const draftFolder = getDraftTrackingFolder();
-      const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, '_');
-      const storagePath = `${draftFolder}/${folder}/${Date.now()}_${safeName}`;
+    const { error: upErr } = await window.supabaseClient.storage
+      .from('foundation-docs')
+      .upload(storagePath, file, { upsert: true });
 
-      const { error: upErr } = await window.supabaseClient.storage
+    if (!upErr) {
+      const { data: pubData } = window.supabaseClient.storage
         .from('foundation-docs')
-        .upload(storagePath, file, { upsert: true });
-
-      if (!upErr) {
-        const { data: pubData } = window.supabaseClient.storage
-          .from('foundation-docs')
-          .getPublicUrl(storagePath);
-        attachmentRecord.path = storagePath;
-        attachmentRecord.url = (pubData && pubData.publicUrl) || '';
-        attachmentRecord.publicUrl = (pubData && pubData.publicUrl) || '';
-        attachmentRecord.uploaded = true;
-      } else {
-        attachmentRecord.uploadError = upErr.message || 'تعذر الرفع إلى التخزين';
-      }
+        .getPublicUrl(storagePath);
+      attachmentRecord.path = storagePath;
+      attachmentRecord.url = (pubData && pubData.publicUrl) || '';
+      attachmentRecord.publicUrl = (pubData && pubData.publicUrl) || '';
+      attachmentRecord.uploaded = true;
+    } else {
+      attachmentRecord.uploadError = upErr.message || 'تعذر الرفع إلى التخزين';
     }
+  } else {
+    attachmentRecord.uploadError = 'تعذر الوصول إلى خدمة التخزين السحابي';
+  }
+
+  window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
+  window.formData.documents = Object.assign({}, window.formData.documents || {}, {
+    [docKey]: attachmentRecord
+  });
+
+  renderAttachmentStatusBox(box, attachmentRecord);
+  return attachmentRecord;
+};
 
     window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
     window.formData.documents = Object.assign({}, window.formData.documents || {}, {
@@ -1587,8 +1615,11 @@
       return existing || { name: file.name, fileName: file.name, size: file.size };
     }
 
-    const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF]/g, '_');
+    const safeName = typeof toSafeStorageKeyPart === 'function'
+      ? toSafeStorageKeyPart(file.name)
+      : file.name.replace(/[^\w.-]/g, '_');
     const filePath = `${trackingCode}/${folderName}/${Date.now()}_${safeName}`;
+
     const { error } = await window.supabaseClient.storage
       .from('foundation-docs')
       .upload(filePath, file, { upsert: true });
