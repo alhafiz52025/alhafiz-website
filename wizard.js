@@ -356,8 +356,7 @@ const box = ensureStatusBox(inputEl);
         renderAttachmentStatusBox(box, cached);
       }
     });
-  }
-
+ 
   function isHusbandLivingWithFamily(hObj) {
     const h = hObj || {};
     const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
