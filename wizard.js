@@ -1284,34 +1284,36 @@
       lease: await uploadSingleDoc('doc-lease', 'housing_docs', trackingCode),
       schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode)
     };
-    window.formData.documents = uploadedDocs;
+   window.formData.documents = uploadedDocs;
 
     const currentActor = window.currentUser || JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
+    const safeNum = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    };
 
     const payload = {
       tracking_code: trackingCode,
-      aid_type: window.formData.interventionType || '',
       intervention_type: window.formData.interventionType || '',
       governorate: husbandData.gov || '',
       center_city: husbandData.center || '',
       village_hamlet: finalVillage,
       street_details: husbandData.street || '',
-      husband_data: husbandData,
-      wife_data: window.formData.wife || {},
-      children_data: window.formData.children || [],
-      marriage_data: window.formData.marriage || {},
-      expenses_data: expensesObj,
-      incomes_data: incomesObj,
-      housing_data: window.formData.housing || {},
-      documents_data: uploadedDocs,
-      total_income: totalInc,
-      total_expenses: totalExp,
+      husband_data: husbandData && typeof husbandData === 'object' ? husbandData : {},
+      wife_data: window.formData.wife && typeof window.formData.wife === 'object' ? window.formData.wife : {},
+      children_data: Array.isArray(window.formData.children) ? window.formData.children : [],
+      marriage_data: window.formData.marriage && typeof window.formData.marriage === 'object' ? window.formData.marriage : {},
+      expenses_data: expensesObj && typeof expensesObj === 'object' ? expensesObj : {},
+      incomes_data: incomesObj && typeof incomesObj === 'object' ? incomesObj : {},
+      housing_data: window.formData.housing && typeof window.formData.housing === 'object' ? window.formData.housing : {},
+      documents_data: uploadedDocs ?? {},
+      total_income: safeNum(totalInc),
+      total_expenses: safeNum(totalExp),
       status: 'pending',
       source_type: currentActor ? `${currentActor.name || currentActor.email} (${currentActor.role || 'عضو'})` : 'مواطن (تسجيل مباشر)',
-      created_by: currentActor ? currentActor.email : null,
       created_by_email: currentActor ? currentActor.email : null,
       created_by_name: currentActor ? (currentActor.name || currentActor.email) : 'مواطن (تسجيل مباشر)',
-      eligibility_verdict: window.formData.housing?.opinion || 'قيد المراجعة'
+      eligibility_verdict: (window.formData.housing && window.formData.housing.opinion) || 'قيد المراجعة'
     };
 
     const applicantName = [husbandData.name1, husbandData.name2, husbandData.name3].filter(Boolean).join(' ');
