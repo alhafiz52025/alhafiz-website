@@ -2651,20 +2651,28 @@
   };
 
   window.saveOfficialDocumentRecord = async function(docType, docNumber, docDate, titleOrParty, payload) {
+    const cleanNumber = String(docNumber || '').trim() || window.generateNextOfficialDocNumber(docType);
+    const cleanDate = String(docDate || '').trim() || new Date().toISOString().slice(0, 10);
+    const cleanTitle = String(titleOrParty || '').trim();
+    const cleanPayload = (payload && typeof payload === 'object') ? { ...payload } : {};
+
     const record = {
       doc_type: docType,
-      doc_number: docNumber,
-      doc_date: docDate || new Date().toISOString().slice(0, 10),
-      title_or_party: titleOrParty || '',
-      payload: payload || {},
+      doc_code: cleanNumber,
+      doc_number: cleanNumber,
+      doc_title: cleanTitle,
+      title_or_party: cleanTitle,
+      doc_date: cleanDate,
+      payload: cleanPayload,
       created_by: (window.currentUser && (window.currentUser.name || window.currentUser.full_name || window.currentUser.email)) || 'admin',
       created_at: new Date().toISOString()
     };
 
     const localList = readLocalOfficialDocs();
-    const idx = localList.findIndex(x => x.doc_number === docNumber);
-    if (idx >= 0) localList[idx] = record;
-    else localList.unshift(record);
+    const idx = localList.findIndex(x => (x.doc_number === cleanNumber || x.doc_code === cleanNumber));
+    const savedLocal = { ...record, id: idx >= 0 ? localList[idx].id : undefined };
+    if (idx >= 0) localList[idx] = savedLocal;
+    else localList.unshift(savedLocal);
     writeLocalOfficialDocs(localList);
 
     if (window.supabaseClient) {
@@ -2678,7 +2686,7 @@
 
     await window.loadOfficialDocumentsList();
     window.renderOfficialDocsArchiveTable();
-    return record;
+    return savedLocal;
   };
 
   window.deleteOfficialDocumentRecord = async function(docNumber) {
