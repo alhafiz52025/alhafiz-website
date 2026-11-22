@@ -1967,4 +1967,3 @@
     }
   }; // <-- هذا السطر الناقص لإغلاق دالة submitFullWizardApplication
 })();
-
