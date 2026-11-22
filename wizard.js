@@ -331,15 +331,14 @@
   return attachmentRecord;
 };
 
-    window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
+   window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
     window.formData.documents = Object.assign({}, window.formData.documents || {}, {
       [docKey]: attachmentRecord
     });
 
     renderAttachmentStatusBox(box, attachmentRecord);
     return attachmentRecord;
-}; 
-
+  };
   function hydrateAttachmentPreviewsInCurrentStep() {
     const container = document.getElementById('wizard-container');
     if (!container) return;
