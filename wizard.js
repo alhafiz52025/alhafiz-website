@@ -338,7 +338,7 @@
 
     renderAttachmentStatusBox(box, attachmentRecord);
     return attachmentRecord;
-  };
+}; 
 
   function hydrateAttachmentPreviewsInCurrentStep() {
     const container = document.getElementById('wizard-container');
