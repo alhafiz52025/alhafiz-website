@@ -350,7 +350,7 @@
       }
     });
   }
-      const box = ensureStatusBox(inputEl);
+const box = ensureStatusBox(inputEl);
       const cached = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
       if (cached) {
         renderAttachmentStatusBox(box, cached);
