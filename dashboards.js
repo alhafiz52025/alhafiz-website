@@ -341,10 +341,10 @@
     w.document.close();
   }
 
-  window.getOfficialHeaderHtml = function(cfg) {
+ window.getOfficialHeaderHtml = function(cfg) {
     const c = cfg || {};
     return `
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:14px; font-size:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:14px; font-size:12px;">
         <div style="line-height:1.7;">
           <strong>مديرية التضامن الاجتماعي ببني سويف</strong><br>
           إدارة إهناسيا الاجتماعية<br>
@@ -352,7 +352,7 @@
           ${c.reg_no || 'مشهرة برقم 2202 لسنة 2025'}
         </div>
         <div style="text-align:left;">
-          <img src="logo.jpg" alt="شعار المؤسسة" style="height:56px; width:56px; border-radius:50%; border:1px solid #b45309; object-fit:cover;" onerror="this.style.display='none'">
+          <img src="logo.jpg?v=10" alt="شعار المؤسسة" style="width:auto; min-width:96px; max-width:165px; height:52px; border-radius:8px; border:1.5px solid #059669; object-fit:contain; background:#fff; padding:3px 8px;" onerror="this.style.display='none'">
         </div>
       </div>`;
   };
