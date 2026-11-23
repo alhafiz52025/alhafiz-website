@@ -1529,34 +1529,49 @@
     window.renderWizardStep();
   };
 
-  // حساب الفائض والعجز المالي وفق القاعدة: إجمالي المصروفات - إجمالي الدخل
+ // حساب الفائض والعجز المالي وفق القاعدة: إجمالي المصروفات - إجمالي الدخل
   window.calcTotals = function() {
-    const readNum = (id) => {
-      const val = parseFloat(document.getElementById(id)?.value);
-      return Number.isFinite(val) ? val : 0;
+    const expSaved = window.formData?.expenses || {};
+    const incSaved = window.formData?.incomes || {};
+
+    const readNumOrSaved = (id, savedVal) => {
+      const el = document.getElementById(id);
+      if (el && el.value !== '') {
+        const val = parseFloat(el.value);
+        return Number.isFinite(val) ? val : 0;
+      }
+      const fallback = parseFloat(savedVal);
+      return Number.isFinite(fallback) ? fallback : 0;
     };
 
-    const rent = readNum('exp-rent');
-    const water = readNum('exp-water');
-    const electric = readNum('exp-electric');
-    const gas = readNum('exp-gas');
-    const edu = readNum('exp-edu');
-    const health = readNum('exp-health');
-    const food = readNum('exp-food');
-    const debts = readNum('exp-debts');
+    const rent = readNumOrSaved('exp-rent', expSaved.rent);
+    const water = readNumOrSaved('exp-water', expSaved.water);
+    const electric = readNumOrSaved('exp-electric', expSaved.electric);
+    const gas = readNumOrSaved('exp-gas', expSaved.gas);
+    const edu = readNumOrSaved('exp-edu', expSaved.edu);
+    const health = readNumOrSaved('exp-health', expSaved.health);
+    const food = readNumOrSaved('exp-food', expSaved.food);
+    const debts = readNumOrSaved('exp-debts', expSaved.debts);
 
     const totalExp = rent + water + electric + gas + edu + health + food + debts;
+    if (window.formData && window.currentStep === 6) {
+      window.formData.expenses = { rent, water, electric, gas, edu, health, food, debts };
+    }
+
     const expDisplay = document.getElementById('total-exp-display');
     if (expDisplay) {
       expDisplay.innerText = `${totalExp} جنيه`;
     }
 
-    const incH = readNum('inc-husband');
-    const incO = readNum('inc-others');
-    const incP = readNum('inc-pension');
-    const incA = readNum('inc-aid');
+    const incH = readNumOrSaved('inc-husband', incSaved.husband);
+    const incO = readNumOrSaved('inc-others', incSaved.others);
+    const incP = readNumOrSaved('inc-pension', incSaved.pension);
+    const incA = readNumOrSaved('inc-aid', incSaved.aid);
 
     const totalInc = incH + incO + incP + incA;
+    if (window.formData && window.currentStep === 7) {
+      window.formData.incomes = { husband: incH, others: incO, pension: incP, aid: incA };
+    }
 
     // الحساب المعتمد: إجمالي المصروفات - إجمالي الدخل
     const expenseMinusIncome = totalExp - totalInc;
@@ -1565,11 +1580,9 @@
     let balanceHtml = '';
 
     if (expenseMinusIncome > 0) {
-      // المصروفات أكبر من الدخل => يوجد عجز
       statusBadge = `⚠️ يوجد عجز مالي شهري بقيمة: ${expenseMinusIncome} جنيه`;
       balanceHtml = `⚠️ يوجد عجز مالي شهري بقيمة: <span style="color:#b91c1c;font-weight:bold;">${expenseMinusIncome} جنيه</span>`;
     } else if (expenseMinusIncome < 0) {
-      // المصروفات أقل من الدخل => يوجد فائض
       const surplusAmount = Math.abs(expenseMinusIncome);
       statusBadge = `🟢 يوجد فائض مالي شهري بقيمة: ${surplusAmount} جنيه`;
       balanceHtml = `🟢 يوجد فائض مالي شهري بقيمة: <span style="color:#065f46;font-weight:bold;">${surplusAmount} جنيه</span>`;
@@ -1580,7 +1593,7 @@
 
     const incDisplay = document.getElementById('total-inc-display');
     if (incDisplay) {
-      incDisplay.innerHTML = `إجمالي الدخل الشهري: <strong>${totalInc} جنيه</strong> — ${statusBadge}`;
+      incDisplay.innerHTML = `المصروفات الشهرية: <strong>${totalExp} جنيه</strong> | إجمالي الدخل الشهري: <strong>${totalInc} جنيه</strong> — ${statusBadge}`;
     }
 
     const balDisplay = document.getElementById('balance-display');
@@ -1791,7 +1804,7 @@
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  window.submitFullWizardApplication = async function() {
+ window.submitFullWizardApplication = async function() {
     clearStepError();
     const err = validateStepCompletion(8);
     if (err) return showStepError(err);
@@ -1801,128 +1814,152 @@
       return showStepError('يجب الموافقة على إقرار صحة البيانات والمسؤولية القانونية قبل الرفع النهائي.');
     }
 
-    saveCurrentStepData();
-
-    const husbandData = window.formData.husband || {};
-    const wifeData = window.formData.wife || {};
-    const socialProfile = window.formData.socialProfile || {};
-    let finalVillage = husbandData.village || '';
-
-    if (finalVillage === '__NEW__') {
-      finalVillage = (document.getElementById('h-new-village-name')?.value || husbandData.newVillageName || '').trim();
-      if (!finalVillage) return showStepError('يرجى كتابة اسم القرية أو التابع الجديد.');
-
-      husbandData.village = finalVillage;
-      window.formData.husband = husbandData;
-
-      if (window.supabaseClient) {
-        const locRes = await window.supabaseClient
-          .from('custom_locations')
-          .upsert([{
-            governorate: husbandData.gov || '',
-            center_city: husbandData.center || '',
-            village_name: finalVillage,
-            added_by: window.currentUser?.email || 'مواطن'
-          }], { onConflict: 'governorate,center_city,village_name' });
-
-        if (locRes.error) {
-          console.warn('custom_locations upsert warning:', locRes.error.message);
-        } else if (typeof window.loadCustomLocationsFromDB === 'function') {
-          await window.loadCustomLocationsFromDB();
-        }
-      }
+    const submitBtn = Array.from(document.querySelectorAll('#wizard-container button')).find(
+      b => b.textContent && b.textContent.includes('تأكيد والرفع النهائي للحالة')
+    );
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '⏳ جارٍ رفع المستندات وحفظ الحالة...';
     }
 
-    const trackingCode = 'HF-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
-    const expensesObj = window.formData.expenses || {};
-    const incomesObj = window.formData.incomes || {};
-    const totalExp = Object.values(expensesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
-    const totalInc = Object.values(incomesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
-
-    const rawDocs = {
-      hIdFront: await uploadSingleDoc('h-id-front', 'husband', trackingCode, 'hIdFront'),
-      hIdBack: await uploadSingleDoc('h-id-back', 'husband', trackingCode, 'hIdBack'),
-      hMedicalDoc: await uploadSingleDoc('h-medical-doc', 'husband_medical', trackingCode, 'hMedicalDoc'),
-      hSocialDoc: await uploadSingleDoc('h-social-doc', 'husband_social', trackingCode, 'hSocialDoc'),
-      wIdFront: await uploadSingleDoc('w-id-front', 'wife', trackingCode, 'wIdFront'),
-      wIdBack: await uploadSingleDoc('w-id-back', 'wife', trackingCode, 'wIdBack'),
-      wMedicalDoc: await uploadSingleDoc('w-medical-doc', 'wife_medical', trackingCode, 'wMedicalDoc'),
-      wSocialDoc: await uploadSingleDoc('w-social-doc', 'wife_social', trackingCode, 'wSocialDoc'),
-      mCertDoc: await uploadSingleDoc('m-cert-doc', 'marriage', trackingCode, 'mCertDoc'),
-      mHealthDoc: await uploadSingleDoc('m-health-doc', 'marriage', trackingCode, 'mHealthDoc'),
-      socialResearch: await uploadSingleDoc('doc-social-research', 'housing_docs', trackingCode, 'socialResearch'),
-      insuranceH: await uploadSingleDoc('doc-insurance-h', 'housing_docs', trackingCode, 'insuranceH'),
-      insuranceW: await uploadSingleDoc('doc-insurance-w', 'housing_docs', trackingCode, 'insuranceW'),
-      lease: await uploadSingleDoc('doc-lease', 'housing_docs', trackingCode, 'lease'),
-      schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode, 'schoolEnroll')
-    };
-
-    const uploadedDocs = {};
-    Object.entries(rawDocs).forEach(([key, val]) => {
-      if (hasDocValue(val)) {
-        uploadedDocs[key] = val;
+    const restoreBtn = () => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml || '✅ تأكيد والرفع النهائي للحالة';
       }
-    });
-
-    if (uploadedDocs.hIdFront) uploadedDocs.husband_id_front = uploadedDocs.hIdFront;
-    if (uploadedDocs.hIdBack) uploadedDocs.husband_id_back = uploadedDocs.hIdBack;
-    if (uploadedDocs.wIdFront) uploadedDocs.wife_id_front = uploadedDocs.wIdFront;
-    if (uploadedDocs.wIdBack) uploadedDocs.wife_id_back = uploadedDocs.wIdBack;
-    if (uploadedDocs.socialResearch) uploadedDocs.social_research = uploadedDocs.socialResearch;
-    if (uploadedDocs.lease) uploadedDocs.housing_lease = uploadedDocs.lease;
-
-    window.formData.documents = uploadedDocs;
-
-    const currentActor = window.currentUser || JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
-    const safeNum = (v) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
     };
 
-    const primaryFileName = computePrimaryApplicantName(husbandData, wifeData);
+    try {
+      saveCurrentStepData();
 
-    const payload = {
-      tracking_code: trackingCode,
-      applicant_name: primaryFileName,
-      intervention_type: window.formData.interventionType || '',
-      governorate: husbandData.gov || '',
-      center_city: husbandData.center || '',
-      village_hamlet: finalVillage,
-      street_details: husbandData.street || '',
-      husband_data: husbandData && typeof husbandData === 'object' ? husbandData : {},
-      wife_data: wifeData && typeof wifeData === 'object' ? wifeData : {},
-      children_data: Array.isArray(window.formData.children) ? window.formData.children : [],
-      marriage_data: window.formData.marriage && typeof window.formData.marriage === 'object' ? window.formData.marriage : {},
-      expenses_data: expensesObj && typeof expensesObj === 'object' ? expensesObj : {},
-      incomes_data: incomesObj && typeof incomesObj === 'object' ? incomesObj : {},
-      housing_data: Object.assign(
-        window.formData.housing && typeof window.formData.housing === 'object' ? window.formData.housing : {},
-        {
-          social_profile: socialProfile,
-          visit_date: socialProfile.visitDate || new Date().toISOString().slice(0, 10)
+      const husbandData = window.formData.husband || {};
+      const wifeData = window.formData.wife || {};
+      const socialProfile = window.formData.socialProfile || {};
+      let finalVillage = husbandData.village || '';
+
+      if (finalVillage === '__NEW__') {
+        finalVillage = (document.getElementById('h-new-village-name')?.value || husbandData.newVillageName || '').trim();
+        if (!finalVillage) {
+          restoreBtn();
+          return showStepError('يرجى كتابة اسم القرية أو التابع الجديد.');
         }
-      ),
-      documents_data: uploadedDocs,
-      total_income: safeNum(totalInc),
-      total_expenses: safeNum(totalExp),
-      status: 'pending',
-      source_type: currentActor ? `${currentActor.name || currentActor.email} (${currentActor.role || 'عضو'})` : 'مواطن (تسجيل مباشر)',
-      created_by_email: currentActor ? currentActor.email : null,
-      created_by_name: currentActor ? (currentActor.name || currentActor.email) : 'مواطن (تسجيل مباشر)',
-      eligibility_verdict: (window.formData.housing && window.formData.housing.opinion) || 'قيد المراجعة'
-    };
 
-    const targetPhone = husbandData.whatsapp || husbandData.phone || wifeData.phone || '01000880156';
-    const officialWhatsApp = (window.FOUNDATION_CONFIG && window.FOUNDATION_CONFIG.whatsappPhone) || '01000880156';
-    const waMsg =
-      `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: ${officialWhatsApp})\n` +
-      `تم تسجيل طلب المساعدة بنجاح.\n` +
-      `الاسم: ${primaryFileName}\n` +
-      `رقم الطلب: ${trackingCode}\n` +
-      `الحالة: قيد المراجعة\n` +
-      `يمكنكم متابعة حالة الطلب برقم المتابعة.`;
+        husbandData.village = finalVillage;
+        window.formData.husband = husbandData;
 
-    if (window.supabaseClient) {
+        if (window.supabaseClient) {
+          const locRes = await window.supabaseClient
+            .from('custom_locations')
+            .upsert([{
+              governorate: husbandData.gov || '',
+              center_city: husbandData.center || '',
+              village_name: finalVillage,
+              added_by: window.currentUser?.email || 'مواطن'
+            }], { onConflict: 'governorate,center_city,village_name' });
+
+          if (locRes.error) {
+            console.warn('custom_locations upsert warning:', locRes.error.message);
+          } else if (typeof window.loadCustomLocationsFromDB === 'function') {
+            await window.loadCustomLocationsFromDB();
+          }
+        }
+      }
+
+      const trackingCode = 'HF-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+      const expensesObj = window.formData.expenses || {};
+      const incomesObj = window.formData.incomes || {};
+      const totalExp = Object.values(expensesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+      const totalInc = Object.values(incomesObj).reduce((a, b) => a + (parseFloat(b) || 0), 0);
+
+      const rawDocs = {
+        hIdFront: await uploadSingleDoc('h-id-front', 'husband', trackingCode, 'hIdFront'),
+        hIdBack: await uploadSingleDoc('h-id-back', 'husband', trackingCode, 'hIdBack'),
+        hMedicalDoc: await uploadSingleDoc('h-medical-doc', 'husband_medical', trackingCode, 'hMedicalDoc'),
+        hSocialDoc: await uploadSingleDoc('h-social-doc', 'husband_social', trackingCode, 'hSocialDoc'),
+        wIdFront: await uploadSingleDoc('w-id-front', 'wife', trackingCode, 'wIdFront'),
+        wIdBack: await uploadSingleDoc('w-id-back', 'wife', trackingCode, 'wIdBack'),
+        wMedicalDoc: await uploadSingleDoc('w-medical-doc', 'wife_medical', trackingCode, 'wMedicalDoc'),
+        wSocialDoc: await uploadSingleDoc('w-social-doc', 'wife_social', trackingCode, 'wSocialDoc'),
+        mCertDoc: await uploadSingleDoc('m-cert-doc', 'marriage', trackingCode, 'mCertDoc'),
+        mHealthDoc: await uploadSingleDoc('m-health-doc', 'marriage', trackingCode, 'mHealthDoc'),
+        socialResearch: await uploadSingleDoc('doc-social-research', 'housing_docs', trackingCode, 'socialResearch'),
+        insuranceH: await uploadSingleDoc('doc-insurance-h', 'housing_docs', trackingCode, 'insuranceH'),
+        insuranceW: await uploadSingleDoc('doc-insurance-w', 'housing_docs', trackingCode, 'insuranceW'),
+        lease: await uploadSingleDoc('doc-lease', 'housing_docs', trackingCode, 'lease'),
+        schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode, 'schoolEnroll')
+      };
+
+      const uploadedDocs = {};
+      Object.entries(rawDocs).forEach(([key, val]) => {
+        if (hasDocValue(val)) {
+          uploadedDocs[key] = val;
+        }
+      });
+
+      if (uploadedDocs.hIdFront) uploadedDocs.husband_id_front = uploadedDocs.hIdFront;
+      if (uploadedDocs.hIdBack) uploadedDocs.husband_id_back = uploadedDocs.hIdBack;
+      if (uploadedDocs.wIdFront) uploadedDocs.wife_id_front = uploadedDocs.wIdFront;
+      if (uploadedDocs.wIdBack) uploadedDocs.wife_id_back = uploadedDocs.wIdBack;
+      if (uploadedDocs.socialResearch) uploadedDocs.social_research = uploadedDocs.socialResearch;
+      if (uploadedDocs.lease) uploadedDocs.housing_lease = uploadedDocs.lease;
+
+      window.formData.documents = uploadedDocs;
+
+      const currentActor = window.currentUser || JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
+      const safeNum = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+      };
+
+      const primaryFileName = computePrimaryApplicantName(husbandData, wifeData);
+
+      const payload = {
+        tracking_code: trackingCode,
+        applicant_name: primaryFileName,
+        intervention_type: window.formData.interventionType || '',
+        governorate: husbandData.gov || '',
+        center_city: husbandData.center || '',
+        village_hamlet: finalVillage,
+        street_details: husbandData.street || '',
+        husband_data: husbandData && typeof husbandData === 'object' ? husbandData : {},
+        wife_data: wifeData && typeof wifeData === 'object' ? wifeData : {},
+        children_data: Array.isArray(window.formData.children) ? window.formData.children : [],
+        marriage_data: window.formData.marriage && typeof window.formData.marriage === 'object' ? window.formData.marriage : {},
+        expenses_data: expensesObj && typeof expensesObj === 'object' ? expensesObj : {},
+        incomes_data: incomesObj && typeof incomesObj === 'object' ? incomesObj : {},
+        housing_data: Object.assign(
+          window.formData.housing && typeof window.formData.housing === 'object' ? window.formData.housing : {},
+          {
+            social_profile: socialProfile,
+            visit_date: socialProfile.visitDate || new Date().toISOString().slice(0, 10)
+          }
+        ),
+        documents_data: uploadedDocs,
+        total_income: safeNum(totalInc),
+        total_expenses: safeNum(totalExp),
+        status: 'pending',
+        source_type: currentActor ? `${currentActor.name || currentActor.email} (${currentActor.role || 'عضو'})` : 'مواطن (تسجيل مباشر)',
+        created_by_email: currentActor ? currentActor.email : null,
+        created_by_name: currentActor ? (currentActor.name || currentActor.email) : 'مواطن (تسجيل مباشر)',
+        eligibility_verdict: (window.formData.housing && window.formData.housing.opinion) || 'قيد المراجعة'
+      };
+
+      const targetPhone = husbandData.whatsapp || husbandData.phone || wifeData.phone || '01000880156';
+      const officialWhatsApp = (window.FOUNDATION_CONFIG && window.FOUNDATION_CONFIG.whatsappPhone) || '01000880156';
+      const waMsg =
+        `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: ${officialWhatsApp})\n` +
+        `تم تسجيل طلب المساعدة بنجاح.\n` +
+        `الاسم: ${primaryFileName}\n` +
+        `رقم الطلب: ${trackingCode}\n` +
+        `الحالة: قيد المراجعة\n` +
+        `يمكنكم متابعة حالة الطلب برقم المتابعة.`;
+
+      if (!window.supabaseClient) {
+        restoreBtn();
+        return showStepError('تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.');
+      }
+
       const cleanPayload = { ...payload };
       if (!cleanPayload.intervention_type && cleanPayload.aid_type) {
         cleanPayload.intervention_type = cleanPayload.aid_type;
@@ -1953,6 +1990,7 @@
 
       if (res && res.error) {
         console.error('families insert failed:', res.error, attemptPayload);
+        restoreBtn();
         return showStepError(
           `حدث خطأ أثناء حفظ البيانات في قاعدة البيانات: ${res.error.message}` +
           (res.error.details ? ` | التفاصيل: ${res.error.details}` : '') +
@@ -1966,12 +2004,16 @@
 
       window.WIZARD_ATTACHMENTS_CACHE = {};
       window._wizardDraftFolder = null;
+      window.currentStep = 1;
 
-            window.currentStep = 1;
+      alert(`✅ تم تسجيل ورفع الحالة بنجاح!\nرقم المتابعة الخاص بالحالة: ${trackingCode}`);
+
       if (typeof window.showSection === 'function') window.showSection('home');
       else location.reload();
-    } else {
-      showStepError('تعذر الاتصال بقاعدة البيانات حالياً، يرجى تحديث الصفحة والمحاولة مرة أخرى.');
+    } catch (e) {
+      console.error('submitFullWizardApplication unexpected error:', e);
+      restoreBtn();
+      showStepError('حدث خطأ غير متوقع أثناء الرفع: ' + (e && e.message ? e.message : e));
     }
   };
 })();
