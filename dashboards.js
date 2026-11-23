@@ -614,7 +614,7 @@
     }
   };
 
-  window.openFullCaseDetailsModal = function(caseIdOrCode) {
+ window.openFullCaseDetailsModal = function(caseIdOrCode) {
     const allCases = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
     const f = allCases.find(c => String(c.id) === String(caseIdOrCode) || String(c.tracking_code) === String(caseIdOrCode));
     if (!f) return alert('⚠️ لم يتم العثور على بيانات الحالة.');
@@ -632,12 +632,170 @@
     const primaryName = getCasePrimaryDisplayName(f);
     const husbandName = getHusbandFullName(f) || '-';
     const wifeName = getWifeFullName(f) || '-';
-    const totalInc = Number(f.total_income ?? 0);
-    const totalExp = Number(f.total_expenses ?? 0);
-    const balance = totalInc - totalExp;
-    const balanceText = balance < 0
-      ? `عجز شهري: ${Math.abs(balance)} جنيه`
-      : (balance > 0 ? `فائض شهري: ${balance} جنيه` : 'متعادل (0 جنيه)');
+    const familyCount = Number(f.family_members_count) || (1 + (wifeName !== '-' ? 1 : 0) + children.length) || 1;
+    const createdDateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('ar-EG') : (sp.visitDate || '-');
+    const phoneStr = getCaseApplicantPhone(f) || '-';
+    const addressStr = [f.center_city, f.village_hamlet, f.street_details].filter(Boolean).join(' - ') || '-';
+    const housingDesc = [housing.case || housing.housing_status, housing.type || housing.housing_type].filter(Boolean).join(' / ') || 'غير محدد';
+    const jobStr = h.job || h.occupation || sp.actualProvider || 'غير محدد';
+    const reasonStr = f.intervention_type || sp.aidReason || 'دعم أسرة';
+    const sourceStr = f.source_entity || f.referral_source || 'مؤسسة الحافظ';
+    const locationStr = [f.governorate || 'بني سويف', f.center_city || 'إهناسيا'].filter(Boolean).join(' - ');
+    const nationalityStr = h.nationality || 'أسرة مصرية';
+
+    const allPersons = [h, w, ...children].filter(Boolean);
+    const sickPersons = allPersons.filter(p => {
+      const hs = String(p.health || '').trim();
+      return hs && hs !== 'سليم' && hs !== 'غير مريض' && hs !== 'غير مريضة';
+    });
+    const acceptedSickCount = (f.status === 'approved' || f.evaluation_decision === 'مستحق') ? sickPersons.length : 0;
+    const rejectedSickCount = (f.status === 'rejected' || f.evaluation_decision === 'غير مستحق' || f.evaluation_decision === 'مرفوض') ? sickPersons.length : 0;
+    const pendingSickCount = Math.max(0, sickPersons.length - acceptedSickCount - rejectedSickCount);
+
+    const rentExp = Number(expenses.rent ?? sp.rent ?? 0);
+    const waterExp = Number(expenses.water ?? sp.water ?? 0);
+    const clothingExp = Number(expenses.clothing ?? sp.clothing ?? 0);
+    const gasExp = Number(expenses.gas ?? sp.gas ?? 0);
+    const otherExp = Number(expenses.other ?? sp.otherExpenses ?? 0);
+    const elecExp = Number(expenses.electricity ?? sp.electricity ?? 0);
+
+    const calcTotalIncome = Number(f.total_income) || (
+      Number(incomes.salary || 0) +
+      Number(incomes.pension || 0) +
+      Number(incomes.takaful || 0) +
+      Number(incomes.other || 0)
+    );
+    const calcTotalExpenses = Number(f.total_expenses) || (
+      rentExp + waterExp + clothingExp + gasExp + otherExp + elecExp
+    );
+    const deficitAmount = Math.max(0, calcTotalExpenses - calcTotalIncome);
+    const incomePct = calcTotalExpenses > 0 ? Math.min(100, Math.round((calcTotalIncome / calcTotalExpenses) * 100)) : 100;
+
+    const findAttachmentForRole = (keywords) => {
+      for (const it of audit.items) {
+        if (!it.attached) continue;
+        const lbl = it.label.toLowerCase();
+        if (keywords.some(k => lbl.includes(k))) return it;
+      }
+      return null;
+    };
+
+    const renderPersonIdCardBox = (person, fallbackNid, labelTitle, barColor) => {
+      const nidVal = (person && (person.nid || person.national_id)) || fallbackNid || 'غير مسجل';
+      const att = labelTitle.includes('الأب')
+        ? findAttachmentForRole(['الزوج', 'بطاقة'])
+        : (labelTitle.includes('الأم')
+            ? findAttachmentForRole(['الزوجة', 'بطاقة'])
+            : findAttachmentForRole(['ميلاد', 'بطاقة', 'مستندات']));
+      const info = att ? getAttachmentDisplayInfo(att.value) : { fileName: '', href: '', isImage: false };
+
+      const mediaHtml = (att && info.isImage && info.href)
+        ? `<img src="${escapeAttr(info.href)}" alt="${escapeAttr(labelTitle)}" ${!canDownload ? 'draggable="false" oncontextmenu="return false;"' : ''} style="width:100%; max-height:135px; object-fit:contain; border-radius:6px; background:#f8fafc;">`
+        : `<div style="height:110px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f1f5f9; border-radius:6px; color:#475569; font-size:12px; padding:8px; text-align:center;">
+            <span>${att ? '📄 مستند مرفق' : 'لا توجد صورة مرفقة'}</span>
+            ${att && info.href ? `<a href="${escapeAttr(info.href)}" target="_blank" rel="noopener noreferrer" style="margin-top:6px; color:#0284c7; font-weight:700; font-size:11px;">فتح المستند</a>` : ''}
+          </div>`;
+
+      const dlBtn = (att && canDownload && info.href)
+        ? `<button type="button" onclick="downloadCaseAttachment('${escapeAttr(f.id)}', ${att.index})" class="no-print" style="margin-top:6px; width:100%; background:#065f46; color:#fff; border:none; border-radius:5px; padding:4px; font-size:11px; cursor:pointer; font-weight:700;">⬇️ تنزيل المرفق</button>`
+        : '';
+
+      return `
+        <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; background:#fff;">
+          <div style="background:#f8fafc; padding:7px 10px; border-bottom:1px solid #e2e8f0; font-weight:800; font-size:12px; color:#1e293b;">${window.escapeHtml(labelTitle)}</div>
+          <div style="padding:8px;">
+            ${mediaHtml}
+            ${dlBtn}
+          </div>
+          <div style="background:${barColor}; color:#fff; padding:6px 10px; font-size:12px; font-weight:800; text-align:center;">
+            الرقم القومي : ${window.escapeHtml(nidVal)}
+          </div>
+        </div>`;
+    };
+
+    const renderPersonProfileBlock = ({ roleHeading, person, fullNameText, phoneText, birthDateText, eduText, healthText, genderText, serviceText, nidVal, idCardLabel, barColor, badgeBg }) => {
+      return `
+        <div style="display:grid; grid-template-columns:280px 1fr; gap:14px; align-items:start; margin-top:12px;" class="hf-person-grid">
+          ${renderPersonIdCardBox(person, nidVal, idCardLabel, barColor)}
+          <div style="border:1px solid #cbd5e1; border-radius:8px; overflow:hidden; background:#fff;">
+            <div style="background:${badgeBg}; color:#fff; padding:8px 12px; font-weight:800; font-size:13px;">
+              ${window.escapeHtml(roleHeading)}
+            </div>
+            <table style="margin:0; border:none; width:100%;">
+              <tbody>
+                <tr><th style="width:170px; background:#f8fafc; color:#0f172a;">الاسم بالكامل</th><td>${window.escapeHtml(fullNameText || '-')}</td></tr>
+                <tr><th style="background:#f8fafc; color:#0f172a;">رقم الهاتف</th><td>${window.escapeHtml(phoneText || '-')}</td></tr>
+                <tr><th style="background:#f8fafc; color:#0f172a;">تاريخ الميلاد</th><td>${window.escapeHtml(birthDateText || '-')}</td></tr>
+                <tr><th style="background:#f8fafc; color:#0f172a;">المستوى التعليمي</th><td>${window.escapeHtml(eduText || '-')}</td></tr>
+                <tr><th style="background:#f8fafc; color:#0f172a;">الحالة الصحية</th><td>${window.escapeHtml(healthText || '-')}</td></tr>
+                ${genderText ? `<tr><th style="background:#f8fafc; color:#0f172a;">النوع</th><td>${window.escapeHtml(genderText)}</td></tr>` : ''}
+                ${serviceText ? `<tr><th style="background:#f8fafc; color:#0f172a;">الخدمة المطلوبة</th><td>${window.escapeHtml(serviceText)}</td></tr>` : ''}
+                <tr><th style="background:#f8fafc; color:#0f172a;">ملاحظات</th><td>${window.escapeHtml((person && (person.notes || person.illnessName)) || '-')}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    };
+
+    const fatherBlockHtml = renderPersonProfileBlock({
+      roleHeading: `بيانات الأب : ${husbandName}`,
+      person: h,
+      fullNameText: husbandName,
+      phoneText: h.phone || h.whatsapp || phoneStr,
+      birthDateText: h.birthDate || h.birth_date || '-',
+      eduText: h.education || '-',
+      healthText: h.health || 'غير محدد',
+      genderText: '',
+      serviceText: '',
+      nidVal: h.nid || '-',
+      idCardLabel: 'صورة بطاقة الرقم القومي',
+      barColor: '#84cc16',
+      badgeBg: '#0f766e'
+    });
+
+    const motherBlockHtml = renderPersonProfileBlock({
+      roleHeading: `بيانات الأم : ${wifeName}`,
+      person: w,
+      fullNameText: wifeName,
+      phoneText: w.phone || phoneStr,
+      birthDateText: w.birthDate || w.birth_date || '-',
+      eduText: w.education || '-',
+      healthText: w.health || 'غير محدد',
+      genderText: '',
+      serviceText: '',
+      nidVal: w.nid || '-',
+      idCardLabel: 'صورة بطاقة الرقم القومي',
+      barColor: '#ec4899',
+      badgeBg: '#9d174d'
+    });
+
+    const childrenBlocksHtml = children.length === 0
+      ? '<p style="font-size:12px; color:#64748b; margin:8px 0; text-align:center;">لا يوجد أبناء مسجلون في هذا الملف.</p>'
+      : children.map((c, idx) => renderPersonProfileBlock({
+          roleHeading: `بيانات الابن/الابنة (${idx + 1}) : ${c.name || '-'}`,
+          person: c,
+          fullNameText: c.name || '-',
+          phoneText: c.phone || phoneStr,
+          birthDateText: c.birthDate || c.birth_date || '-',
+          eduText: c.education || '-',
+          healthText: c.health || 'سليم',
+          genderText: c.gender || '-',
+          serviceText: c.medicalNeed || c.serviceNeed || '',
+          nidVal: c.nid || c.national_id || c.birthCertNo || '-',
+          idCardLabel: 'صورة البطاقة / شهادة الميلاد',
+          barColor: '#78350f',
+          badgeBg: '#1e3a8a'
+        })).join('');
+
+    const sickListHtml = sickPersons.length === 0
+      ? '<div style="background:#f1f5f9; color:#475569; padding:10px 14px; border-radius:8px; font-size:13px; font-weight:700;">لا توجد حالات مرضية مسجلة ضمن أفراد الأسرة.</div>'
+      : sickPersons.map(p => {
+          const pName = p.name || [p.name1, p.name2, p.name3].filter(Boolean).join(' ') || 'فرد من الأسرة';
+          const pDetail = formatPersonHealthDetailed(p);
+          return `<div style="background:#15803d; color:#fff; padding:9px 14px; border-radius:8px; font-size:13px; font-weight:700; margin-bottom:6px;">
+            👤 اسم الحالة : ${window.escapeHtml(pName)} — ${window.escapeHtml(pDetail)} / تاريخ الإنشاء: ${window.escapeHtml(createdDateStr)}
+          </div>`;
+        }).join('');
 
     let modal = document.getElementById('hf-case-detail-modal');
     if (!modal) {
@@ -648,89 +806,120 @@
     }
     modal.classList.remove('hidden');
 
-    const attachRowsHtml = audit.items.map(it => {
-      const info = it.attached ? getAttachmentDisplayInfo(it.value) : { fileName: '', href: '', isImage: false };
-      let actionsHtml = '<span style="color:#94a3b8; font-size:11px;">لا يوجد ملف</span>';
-      if (it.attached) {
-        const previewBtn = info.href
-          ? `<a href="${escapeAttr(info.href)}" target="_blank" rel="noopener noreferrer" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 8px; font-size:11px; text-decoration:none;">👁️ معاينة</a>`
-          : `<span style="font-size:11px; color:#475569;">مرفق مسجل</span>`;
-        const downloadBtn = canDownload
-          ? `<button type="button" onclick="downloadCaseAttachment('${escapeAttr(f.id)}', ${it.index})" class="nav-btn" style="background:#065f46; color:#fff; padding:3px 8px; font-size:11px;">⬇️ تنزيل</button>`
-          : `<span style="font-size:11px; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:6px;">اطلاع فقط (التنزيل للأدمن)</span>`;
-        actionsHtml = `<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">${previewBtn}${downloadBtn}</div>`;
-      }
-
-      const imgThumb = (it.attached && info.isImage && info.href)
-        ? `<div style="margin-top:6px;"><img src="${escapeAttr(info.href)}" alt="${escapeAttr(it.label)}" ${!canDownload ? 'draggable="false" oncontextmenu="return false;"' : ''} style="max-height:95px; max-width:150px; border-radius:6px; border:1px solid #cbd5e1; object-fit:cover;"></div>`
-        : '';
-
-      return `
-        <tr>
-          <td style="text-align:center;">${it.index}</td>
-          <td><strong>${window.escapeHtml(it.label)}</strong></td>
-          <td style="font-weight:700; color:${it.attached ? '#166534' : '#991b1b'};">${window.escapeHtml(it.statusText)}</td>
-          <td>
-            <div style="font-size:12px;">${window.escapeHtml(info.fileName || '-')}</div>
-            ${imgThumb}
-          </td>
-          <td>${actionsHtml}</td>
-        </tr>`;
-    }).join('');
-
-    const childrenHtml = children.length === 0
-      ? '<p style="font-size:12px; color:#64748b; margin:4px 0;">لا يوجد أبناء مسجلون.</p>'
-      : `<table style="margin-top:6px;">
-          <thead><tr><th>#</th><th>الاسم</th><th>السن / النوع</th><th>الحالة الصحية والإعاقة وكارت الخدمات والتكلفة</th></tr></thead>
-          <tbody>
-            ${children.map((c, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${window.escapeHtml(c.name || '-')}</td>
-                <td>${window.escapeHtml((c.gender || '-') + (c.birthDate ? ' | ' + c.birthDate : ''))}</td>
-                <td>${window.escapeHtml(formatPersonHealthDetailed(c))}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
-
     modal.innerHTML = `
-      <div style="background:#fff; color:#0f172a; max-width:880px; width:100%; border-radius:14px; padding:20px; max-height:92vh; overflow-y:auto;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px; gap:10px; flex-wrap:wrap;">
+      <style>
+        @media (max-width: 720px) {
+          .hf-person-grid { grid-template-columns: 1fr !important; }
+        }
+      </style>
+      <div style="background:#f1f5f9; color:#0f172a; max-width:1040px; width:100%; border-radius:14px; padding:20px; max-height:92vh; overflow-y:auto;">
+        <!-- رأس الملف والأزرار -->
+        <div class="no-print" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; background:#fff; padding:14px 18px; border-radius:12px; border:1px solid #cbd5e1; margin-bottom:14px;">
           <div>
-            <h3 style="margin:0; color:#064e3b;">📂 ملف الحالة الكامل: ${window.escapeHtml(primaryName)}</h3>
+            <h3 style="margin:0; color:#0f172a; font-size:20px; font-weight:800;">عائلة ${window.escapeHtml(primaryName)}</h3>
             <small style="color:#475569;">كود المتابعة: <strong>${window.escapeHtml(f.tracking_code || '-')}</strong> | الحالة: <strong>${window.escapeHtml(formatCaseStatusArabic(f.status))}</strong></small>
           </div>
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <button type="button" onclick="printFullCaseFiles(['${escapeAttr(f.id)}'])" class="nav-btn btn-gold" style="padding:5px 10px; font-size:12px;">🖨️ طباعة تقرير الحالة</button>
-            <button type="button" onclick="document.getElementById('hf-case-detail-modal').classList.add('hidden')" class="nav-btn" style="background:#dc2626; color:#fff; padding:5px 10px; font-size:12px;">إغلاق</button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" onclick="printFullCaseFiles(['${escapeAttr(f.id)}'])" class="action-btn" style="background:#0284c7; padding:7px 14px; font-size:12px;">🖨️ طباعة ملف الأسرة (بيانات وجداول)</button>
+            <button type="button" onclick="document.getElementById('hf-case-detail-modal').classList.add('hidden')" class="nav-btn" style="background:#dc2626; color:#fff; padding:7px 14px; font-size:12px;">✕ إغلاق</button>
           </div>
         </div>
 
-        <table style="margin-top:12px;">
-          <tbody>
-            <tr><th>الاسم الظاهر للملف</th><td><strong>${window.escapeHtml(primaryName)}</strong></td><th>نوع المساعدة</th><td>${window.escapeHtml(f.intervention_type || '-')}</td></tr>
-            <tr><th>الزوج (الأب) وحالته</th><td>${window.escapeHtml(husbandName)} (${window.escapeHtml(h.status || 'غير محدد')})</td><th>الزوجة (الأم)</th><td>${window.escapeHtml(wifeName)}</td></tr>
-            <tr><th>الرقم القومي للزوج</th><td>${window.escapeHtml(h.nid || '-')}</td><th>رقم الهاتف / واتساب</th><td>${window.escapeHtml(h.whatsapp || h.phone || w.phone || '-')}</td></tr>
-            <tr><th>العنوان</th><td>${window.escapeHtml((f.center_city || '-') + ' - ' + (f.village_hamlet || '-') + (f.street_details ? ' - ' + f.street_details : ''))}</td><th>التقييم / القرار</th><td>${window.escapeHtml(formatEvaluationDecisionArabic(f.evaluation_decision || f.eligibility_verdict || f.status))}</td></tr>
-            <tr><th>صحة الزوج</th><td colspan="3">${window.escapeHtml(formatPersonHealthDetailed(h))}</td></tr>
-            <tr><th>صحة الزوجة</th><td colspan="3">${window.escapeHtml(formatPersonHealthDetailed(w))}</td></tr>
-            <tr><th>القائم بالإنفاق / مساعدة أخرى</th><td>${window.escapeHtml((sp.actualProvider || '-') + ' | جهة أخرى: ' + (sp.receivesOtherAid || 'لا'))}</td><th>ديون / تاريخ الزيارة</th><td>${window.escapeHtml((sp.debtCreditorType || 'لا يوجد') + ' | زيارة: ' + (sp.visitDate || housing.visit_date || '-'))}</td></tr>
-            <tr><th>إجمالي الدخل</th><td>${totalInc} جنيه (${window.escapeHtml(JSON.stringify(incomes || {}))})</td><th>إجمالي المصروفات</th><td>${totalExp} جنيه (${window.escapeHtml(balanceText)})</td></tr>
-            <tr><th>بيانات السكن والمرافق</th><td colspan="3">${window.escapeHtml((housing.case || '-') + ' / ' + (housing.type || '-') + ' | كهرباء: ' + (housing.electricityMeter || '-') + ' | مياه: ' + (housing.waterSource || '-') + ' | صرف: ' + (housing.sanitationType || '-'))}</td></tr>
-            <tr><th>ملاحظات الباحث</th><td colspan="3">${window.escapeHtml(f.researcher_notes || f.evaluation_notes || housing.opinion || '-')}</td></tr>
-          </tbody>
-        </table>
+        <!-- 8 بطاقات إحصائية ملونة في 4 أعمدة -->
+        <div class="grid-4" style="margin-bottom:14px;">
+          <div style="background:#06b6d4; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">كود الأسرة</div><div style="font-size:20px; font-weight:800;">${window.escapeHtml(f.tracking_code || f.id || '-')}</div></div>
+            <span style="font-size:22px;">🪪</span>
+          </div>
+          <div style="background:#84cc16; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">عدد الأفراد</div><div style="font-size:20px; font-weight:800;">${familyCount} فرد</div></div>
+            <span style="font-size:22px;">👨‍👩‍👧‍👦</span>
+          </div>
+          <div style="background:#f59e0b; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">المحافظة</div><div style="font-size:18px; font-weight:800;">${window.escapeHtml(f.governorate || 'بني سويف')}</div></div>
+            <span style="font-size:22px;">🌍</span>
+          </div>
+          <div style="background:#0d9488; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">تاريخ إنشاء الأسرة</div><div style="font-size:17px; font-weight:800;">${window.escapeHtml(createdDateStr)}</div></div>
+            <span style="font-size:22px;">📅</span>
+          </div>
 
-        <h4 style="margin:14px 0 6px; color:#064e3b;">👶 بيانات الأبناء (${children.length})</h4>
-        ${childrenHtml}
+          <div style="background:#0f766e; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">عدد المرضى</div><div style="font-size:20px; font-weight:800;">${sickPersons.length} مريض</div></div>
+            <span style="font-size:22px;">🩺</span>
+          </div>
+          <div style="background:#64748b; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">المرضى المقبولين</div><div style="font-size:20px; font-weight:800;">${acceptedSickCount} مريض</div></div>
+            <span style="font-size:22px;">✔️</span>
+          </div>
+          <div style="background:#7e22ce; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">المرضى غير المقبولين</div><div style="font-size:20px; font-weight:800;">${rejectedSickCount} مريض</div></div>
+            <span style="font-size:22px;">🚫</span>
+          </div>
+          <div style="background:#78350f; color:#fff; padding:12px 14px; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+            <div><div style="font-size:11px; opacity:0.95;">مرضى في الانتظار</div><div style="font-size:20px; font-weight:800;">${pendingSickCount} مريض</div></div>
+            <span style="font-size:22px;">⏳</span>
+          </div>
+        </div>
 
-        <h4 style="margin:14px 0 6px; color:#064e3b;">📎 المرفقات والمستندات (${audit.attachedCount}/${audit.totalCount}) — ${canDownload ? 'صلاحية الإدارة: معاينة وتنزيل' : 'صلاحية العضو/الباحث: معاينة واطلاع فقط'}</h4>
-        <table>
-          <thead>
-            <tr><th>#</th><th>المستند</th><th>الحالة</th><th>اسم الملف / معاينة</th><th>الإجراء</th></tr>
-          </thead>
-          <tbody>${attachRowsHtml}</tbody>
-        </table>
+        <!-- 8 أشرطة بيانات ملونة في عمودين -->
+        <div class="grid-2" style="gap:10px; margin-bottom:16px;">
+          <div style="background:#0284c7; color:#fff; padding:10px 14px; border-radius:5px; font-weight:700; font-size:13px;">📍 عنوان الأسرة : ${window.escapeHtml(addressStr)}</div>
+          <div style="background:#16a34a; color:#fff; padding:10px 14px; border-radius:5px; font-weight:700; font-size:13px;">📞 رقم الهاتف : ${window.escapeHtml(phoneStr)}</div>
+
+          <div style="background:#dc2626; color:#fff; padding:10px 14px; border-radius:5px; font-weight:700; font-size:13px;">🗂️ جهة الورود : ${window.escapeHtml(sourceStr)}</div>
+          <div style="background:#eab308; color:#0f172a; padding:10px 14px; border-radius:5px; font-weight:800; font-size:13px;">🤝 سبب طلب الإعانة : ${window.escapeHtml(reasonStr)}</div>
+
+          <div style="background:#1e293b; color:#fff; padding:10px 14px; border-radius:5px; font-weight:700; font-size:13px;">🏠 حالة السكن : ${window.escapeHtml(housingDesc)}</div>
+          <div style="background:#7e22ce; color:#fff; padding:10px 14px; border-radius:5px; font-weight:700; font-size:13px;">🛠️ حرفة الأسرة : ${window.escapeHtml(jobStr)}</div>
+
+          <div style="background:#facc15; color:#0f172a; padding:10px 14px; border-radius:5px; font-weight:800; font-size:13px;">🏳️ جنسية الأسرة : ${window.escapeHtml(nationalityStr)}</div>
+          <div style="background:#475569; color:#fff; padding:10px 14px; border-radius:5px; font-weight:700; font-size:13px;">🌐 موقع الأسرة : ${window.escapeHtml(locationStr)}</div>
+        </div>
+
+        <!-- بيانات الأب والأم -->
+        ${fatherBlockHtml}
+        ${motherBlockHtml}
+
+        <!-- بيانات الأبناء -->
+        <h4 style="text-align:center; color:#1d4ed8; font-size:18px; font-weight:800; margin:18px 0 6px;">بيانات الأبناء</h4>
+        ${childrenBlocksHtml}
+
+        <!-- المصروفات الشهرية والعجز المالي -->
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-top:18px;">
+          <h4 style="margin:0 0 12px; color:#334155; font-size:15px; font-weight:800;">المصروفات الشهرية</h4>
+          <div style="display:grid; grid-template-columns:240px 1fr; gap:14px; align-items:center;" class="hf-person-grid">
+            <div style="text-align:center; padding:10px;">
+              <div style="font-size:32px; margin-bottom:6px;">🪙</div>
+              <div style="color:#dc2626; font-weight:800; font-size:13px;">
+                ${calcTotalExpenses > calcTotalIncome
+                  ? `تعاني الأسرة من عجز قدرة ${deficitAmount} جنيها مصريا`
+                  : 'لا يوجد عجز مالي شهري مسجل'}
+              </div>
+              <div style="background:#e2e8f0; height:8px; border-radius:6px; overflow:hidden; margin-top:8px;">
+                <div style="background:#0284c7; height:100%; width:${incomePct}%;"></div>
+              </div>
+              <div style="font-size:11px; color:#475569; margin-top:4px; font-weight:700;">نسبة الدخل من المصروفات هي ${incomePct}%</div>
+            </div>
+
+            <div class="grid-2" style="gap:8px;">
+              <div style="background:#a3e635; color:#0f172a; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">🏠 مصروفات الإيجار : ${rentExp} ج.م</div>
+              <div style="background:#06b6d4; color:#fff; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">💧 مصروفات المياه : ${waterExp} ج.م</div>
+              <div style="background:#f59e0b; color:#fff; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">🔥 مصروفات الغاز : ${gasExp} ج.م</div>
+              <div style="background:#78350f; color:#fff; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">👕 مصروفات الكساء : ${clothingExp} ج.م</div>
+              <div style="background:#facc15; color:#0f172a; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">⚡ مصروفات الكهرباء : ${elecExp} ج.م</div>
+              <div style="background:#2563eb; color:#fff; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">📦 مصاريف أخرى : ${otherExp} ج.م</div>
+              <div style="background:#475569; color:#fff; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">🧾 إجمالي المصروفات : ${calcTotalExpenses} ج.م</div>
+              <div style="background:#9333ea; color:#fff; padding:10px 12px; border-radius:4px; font-weight:800; font-size:13px;">💵 دخل الأسرة : ${calcTotalIncome} ج.م</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- الحالات المرضية -->
+        <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-top:14px;">
+          <h4 style="margin:0 0 10px; color:#334155; font-size:15px; font-weight:800;">الحالات المرضية</h4>
+          ${sickListHtml}
+        </div>
       </div>`;
   };
 
