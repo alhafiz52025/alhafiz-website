@@ -1891,11 +1891,18 @@
       };
 
       const uploadedDocs = {};
-      Object.entries(rawDocs).forEach(([key, val]) => {
-        if (hasDocValue(val)) {
-          uploadedDocs[key] = val;
-        }
-      });
+Object.entries(rawDocs).forEach(([key, val]) => {
+  if (hasDocValue(val)) {
+    if (val && typeof val === 'object') {
+      const cleanDoc = { ...val };
+      delete cleanDoc.dataUrl;
+      delete cleanDoc.base64;
+      uploadedDocs[key] = cleanDoc;
+    } else {
+      uploadedDocs[key] = val;
+    }
+  }
+});
 
       if (uploadedDocs.hIdFront) uploadedDocs.husband_id_front = uploadedDocs.hIdFront;
       if (uploadedDocs.hIdBack) uploadedDocs.husband_id_back = uploadedDocs.hIdBack;
