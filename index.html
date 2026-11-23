@@ -8,51 +8,7 @@
   <meta name="description" content="مؤسسة الحافظ للتنمية والخدمات - مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي. مركز إهناسيا - محافظة بني سويف.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://azurewebsites.net" />
-  <link rel="stylesheet" href="style.css">
-  <style>
-    :root { --bg-color: #f8fafc; --text-color: #1e293b; --card-bg: #ffffff; --primary: #047857; --primary-dark: #064e3b; --accent: #b45309; --border: #e2e8f0; }
-    .dark-mode { --bg-color: #0f172a; --text-color: #f1f5f9; --card-bg: #1e293b; --primary: #10b981; --primary-dark: #065f46; --accent: #f59e0b; --border: #334155; }
-    .hidden { display: none !important; }
-    body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; margin: 0; background: var(--bg-color); color: var(--text-color); line-height: 1.6; }
-    .top-bar { background: var(--primary-dark); color: #fef3c7; padding: 8px 20px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .top-bar a { color: #fde68a; text-decoration: none; font-weight: 700; margin-right: 12px; }
-    .accessibility-bar { background: #0f172a; color: #fff; padding: 6px 20px; font-size: 12px; display: flex; justify-content: flex-end; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .accessibility-bar button { background: #334155; color: #fff; border: 1px solid #64748b; padding: 2px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
-    nav { background: var(--card-bg); border-bottom: 3px solid var(--accent); padding: 12px 20px; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-    .nav-container { max-width: 1240px; margin: auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-    .brand img { height: 50px; width: 50px; border-radius: 50%; border: 2px solid var(--accent); object-fit: cover; }
-    .brand h1 { margin: 0; font-size: 19px; color: var(--primary-dark); }
-    .brand p { margin: 0; font-size: 11px; color: var(--accent); font-weight: 700; }
-    .nav-links { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .nav-btn { background: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; padding: 7px 11px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-    .nav-btn:hover { background: #e2e8f0; }
-    .btn-primary { background: var(--primary); color: #fff; border: none; }
-    .btn-gold { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
-    .btn-dark { background: #0f172a; color: #fff; border: none; }
-    .container { max-width: 1160px; margin: 20px auto; padding: 0 14px; }
-    .card { background: var(--card-bg); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid var(--border); margin-bottom: 18px; }
-    .action-btn { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-    input, select, textarea { width: 100%; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; font-size: 13px; background: var(--card-bg); color: var(--text-color); }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #cbd5e1; padding: 7px 10px; text-align: right; font-size: 12px; }
-    th { background: var(--primary-dark); color: #fff; }
-    .guidance-banner { background: #ecfdf5; border: 1px solid #a7f3d0; border-right: 5px solid var(--primary); color: #064e3b; padding: 12px 14px; border-radius: 10px; margin-top: 14px; font-size: 13px; font-weight: 700; }
-    .faq-item { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--bg-color); }
-    .faq-item summary { font-weight: 700; cursor: pointer; color: var(--primary-dark); font-size: 14px; }
-    .faq-answer { margin-top: 8px; font-size: 13px; line-height: 1.85; }
-    .faq-answer ul { margin: 6px 0 8px; padding-right: 20px; }
-    .policy-modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 14px; }
-    .policy-modal-card { background: var(--card-bg); color: var(--text-color); max-width: 780px; width: 100%; max-height: 88vh; overflow-y: auto; border-radius: 14px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 20px 45px rgba(0,0,0,0.25); }
-    .policy-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
-    footer { background: var(--primary-dark); color: #ecfdf5; padding: 28px 18px; margin-top: 36px; font-size: 13px; }
-    footer a { color: #fde68a; display: inline-block; margin-bottom: 6px; text-decoration: none; cursor: pointer; }
-    footer a:hover { text-decoration: underline; }
-    @media print { .top-bar, .accessibility-bar, nav, footer, .no-print, .policy-modal-backdrop { display: none !important; } body { background: #fff !important; color: #000 !important; } }
-  </style>
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body id="body-font-size">
   <div class="accessibility-bar">
@@ -60,17 +16,21 @@
     <span>🔤 <span data-i18n="fontSizeLabel">حجم الخط:</span> <button type="button" onclick="adjustFontSize(1)">A+</button> <button type="button" onclick="adjustFontSize(-1)">A-</button></span>
     <span>🌓 <span data-i18n="themeLabel">المظهر:</span> <button type="button" onclick="toggleDarkMode()" data-i18n="darkModeBtn">الوضع الليلي</button></span>
   </div>
+
   <div class="top-bar">
-    <span data-i18n="topBarReg">🏛️ مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025 (بني سويف)</span>
-    <div>
-      <a id="top-wa-link" href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%83%D9%85." target="_blank" rel="noopener noreferrer" data-i18n="whatsappLink">💬 واتساب: 01000880156</a>
-      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" data-i18n="facebookLink">📘 فيسبوك</a>
+    <div class="top-bar-inner">
+      <span data-i18n="topBarReg">🏛️ مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025 (بني سويف)</span>
+      <div>
+        <a id="top-wa-link" href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%A7%D8%B3%D8%AA%D9%81%D8%B3%D8%A7%D8%B1%20%D8%B9%D9%86%20%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D9%83%D9%85." target="_blank" rel="noopener noreferrer" data-i18n="whatsappLink">💬 واتساب: 01000880156</a>
+        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" data-i18n="facebookLink">📘 فيسبوك</a>
+      </div>
     </div>
   </div>
-  <nav>
-    <div class="nav-container">
+
+  <nav class="main-nav">
+    <div class="nav-inner">
       <div class="brand" onclick="showSection('home')">
-        <img src="logo.jpg" alt="شعار مؤسسة الحافظ" onerror="this.style.display='none'">
+        <img src="logo.jpg?v=10" alt="شعار مؤسسة الحافظ للتنمية والخدمات" class="brand-logo" onerror="this.style.display='none'">
         <div>
           <h1 data-i18n="brandName">مؤسسة الحافظ</h1>
           <p data-i18n="brandSub">للتنمية والخدمات - مركز إهناسيا</p>
@@ -90,21 +50,22 @@
       </div>
     </div>
   </nav>
+
   <div class="container">
     <!-- 1. الرئيسية -->
     <section id="section-home">
       <div class="card" style="background: linear-gradient(135deg, #064e3b 0%, #047857 100%); color: #fff; text-align: center; padding: 36px 18px;">
         <span style="background: #b45309; color: #fff; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;" data-i18n="heroBadge">
-          منظومة حوكمة وشفافية رقمية لخدمة مركز إهناسيا وجميع المحافظات
+          مؤسسة أهلية مشهرة برقم 2202 لسنة 2025 - مركز إهناسيا، بني سويف
         </span>
-        <h2 style="font-size: 26px; margin: 14px 0 10px;" data-i18n="heroTitle">معاً.. نصنع أثراً يمتد ويبقى</h2>
-        <p style="max-width: 680px; margin: 0 auto 18px; color: #d1fae5;" data-i18n="heroDesc">
+        <h2 style="font-size: 28px; margin: 14px 0 10px;" data-i18n="heroTitle">معاً.. نصنع أثراً يمتد ويبقى</h2>
+        <p style="max-width: 700px; margin: 0 auto 20px; color: #d1fae5;" data-i18n="heroDesc">
           نعمل كمظلة تنموية تربط كبرى المؤسسات المانحة بالجمعيات القاعدية، بنظام إلكتروني دقيق يمنع الازدواجية ويضمن وصول الدعم لمستحقيه.
         </p>
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-          <button type="button" onclick="showSection('apply')" class="action-btn" style="background: #d97706; color: #0f172a;" data-i18n="heroCtaCase">+ تسجيل حالة مستحقة</button>
-          <button type="button" onclick="showSection('announcements')" class="action-btn" style="background: #fef3c7; color: #92400e;" data-i18n="navAnnouncements">📢 المنح والمبادرات المفتوحة</button>
-          <a href="#donate-box" class="action-btn" style="background: #fff; color: #064e3b; text-decoration: none;" data-i18n="heroCtaDonate">حسابات التبرع الرسمية</a>
+          <button type="button" onclick="showSection('apply')" class="action-btn" style="background: #d97706; color: #0f172a;" data-i18n="heroCtaCase">+ تقديم طلب مساعدة</button>
+          <button type="button" onclick="showSection('track')" class="action-btn" style="background: #fef3c7; color: #92400e;" data-i18n="navTrack">🔍 استعلام عن طلب</button>
+          <a href="#donate-box" class="action-btn" style="background: #fff; color: #064e3b; text-decoration: none;" data-i18n="heroCtaDonate">بوابة التبرع الرسمية</a>
           <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA%D8%8C%20%D8%A3%D8%B1%D8%BA%D8%A8%20%D9%81%D9%8A%20%D8%A7%D9%84%D8%AA%D9%88%D8%A7%D8%B5%D9%84%20%D9%85%D8%B9%D9%83%D9%85." target="_blank" rel="noopener noreferrer" class="action-btn" style="background: #15803d; color: #fff; text-decoration: none;">💬 تواصل واتساب مباشر</a>
         </div>
       </div>
@@ -115,7 +76,7 @@
         <div class="grid-4" style="text-align: center; margin-top: 12px;">
           <div style="background: var(--bg-color); padding: 14px; border-radius: 10px; border: 1px solid #dcfce7;">
             <strong id="stat-food" style="font-size: 24px; color: #047857;">+450</strong>
-            <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700;" data-i18n="impactFood">حقيبة مساعدات غذائية</p>
+            <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700;" data-i18n="impactFood">حقيبة غذائية</p>
           </div>
           <div style="background: var(--bg-color); padding: 14px; border-radius: 10px; border: 1px solid #dcfce7;">
             <strong id="stat-cash" style="font-size: 24px; color: #047857;">+112</strong>
@@ -123,17 +84,49 @@
           </div>
           <div style="background: var(--bg-color); padding: 14px; border-radius: 10px; border: 1px solid #dcfce7;">
             <strong id="stat-blankets" style="font-size: 24px; color: #047857;">+100</strong>
-            <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700;" data-i18n="impactBlankets">بطانية شتاء وأغطية</p>
+            <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700;" data-i18n="impactBlankets">بطانية شتاء</p>
           </div>
           <div style="background: var(--bg-color); padding: 14px; border-radius: 10px; border: 1px solid #dcfce7;">
             <strong id="stat-villages" style="font-size: 24px; color: #047857;">14</strong>
-            <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700;" data-i18n="impactVillages">قرية وعزبة مستفيدة</p>
+            <p style="margin: 4px 0 0; font-size: 13px; font-weight: 700;" data-i18n="impactVillages">قرية وعزبة</p>
           </div>
         </div>
       </div>
 
+      <!-- مجالات عملنا (شبكة 3x2 بدون تكرار) -->
+      <div class="card">
+        <h3 class="section-title" style="margin-bottom: 16px;">مجالات عملنا</h3>
+        <div class="grid-3">
+          <div class="work-card">
+            <h4>الإغاثة الإنسانية</h4>
+            <p>مساعدات غذائية وعاجلة للأسر الأولى بالرعاية ومبادرات الدعم الموسمي.</p>
+          </div>
+          <div class="work-card">
+            <h4>سكن ومياه نظيفة</h4>
+            <p>رفع كفاءة المنازل، تركيب الأسقف، وتوصيل المياه النقية للأسر الأكثر احتياجاً.</p>
+          </div>
+          <div class="work-card">
+            <h4>الكفالات والرعاية</h4>
+            <p>كفالة الأيتام والأرامل والمسنين وذوي الهمم وتقديم الرعاية الاجتماعية الشاملة.</p>
+          </div>
+          <div class="work-card">
+            <h4>التمكين الاقتصادي</h4>
+            <p>دعم المشروعات الصغيرة ومتناهية الصغر وتدريب الأسر لتحويلها إلى أسر منتجة.</p>
+          </div>
+          <div class="work-card">
+            <h4>الرعاية الصحية</h4>
+            <p>تنظيم القوافل الطبية المجانية والمساهمة في العلاج والعمليات والأجهزة التعويضية.</p>
+          </div>
+          <div class="work-card">
+            <h4>التعليم وبناء الإنسان</h4>
+            <p>دعم الطلاب غير القادرين بالمستلزمات والمصروفات وبرامج التوعية المجتمعية.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- بوابة التبرع الرسمية -->
       <div id="donate-box" class="card" style="border-top: 4px solid #b45309;">
-        <h3 style="color: var(--primary-dark); margin-top: 0;" data-i18n="donateTitle">حسابات التبرع الرسمية المعتمدة</h3>
+        <h3 style="color: var(--primary-dark); margin-top: 0;" data-i18n="donateTitle">بوابة التبرع الرسمية</h3>
         <p style="font-size: 13px; color: #64748b;" data-i18n="donateSub">تحت إشراف وزارة التضامن الاجتماعي - إشهار رقم 2202 لسنة 2025</p>
         <div class="grid-2">
           <div style="background: #ecfdf5; padding: 14px; border-radius: 12px; border: 1px solid #a7f3d0;">
@@ -142,7 +135,7 @@
             <button type="button" onclick="copyText('10010395839201011')" class="nav-btn" data-i18n="copyBtn">📋 نسخ رقم الحساب</button>
           </div>
           <div style="background: #fffbeb; padding: 14px; border-radius: 12px; border: 1px solid #fde68a;">
-            <p style="font-weight: 800; color: #92400e; margin: 0 0 6px;" data-i18n="walletTitle">محفظة فودافون كاش المعتمدة</p>
+            <p style="font-weight: 800; color: #92400e; margin: 0 0 6px;" data-i18n="walletTitle">فودافون كاش</p>
             <p style="font-size: 17px; font-weight: 800; margin: 0 0 10px; color:#0f172a;">01000880156</p>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <button type="button" onclick="copyText('01000880156')" class="nav-btn" data-i18n="copyBtn">📋 نسخ رقم المحفظة</button>
@@ -153,7 +146,7 @@
       </div>
     </section>
 
-    <!-- 2. من نحن والهيكل التنظيمي (بدون تكديس السياسات الطويلة في الصفحة الرئيسية) -->
+    <!-- 2. من نحن والهيكل التنظيمي -->
     <section id="section-about" class="hidden">
       <div class="card">
         <h3 style="color: var(--primary-dark); margin-top: 0;">1. من نحن</h3>
@@ -182,46 +175,16 @@
         </ul>
       </div>
 
-      <div class="card">
-        <h3 style="color: var(--primary-dark); margin-top: 0;">5. مجالات العمل والمحاور الاستراتيجية</h3>
-        <div class="grid-2">
-          <div style="background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
-            <strong>1. محور الإغاثة والمساعدات الإنسانية:</strong>
-            <p style="font-size: 13px; margin: 6px 0 0;">تقديم المساعدات العينية والمالية الفورية للأسر المتضررة والأكثر احتياجًا، والتدخل السريع في الأزمات والمواسم (الشتاء، رمضان، الأعياد).</p>
-          </div>
-          <div style="background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
-            <strong>2. محور الكفالات والرعاية الاجتماعية:</strong>
-            <p style="font-size: 13px; margin: 6px 0 0;">كفالة الأيتام، والأرامل، والمسنين، وذوي الهمم، وتقديم الدعم النفسي والاجتماعي المصاحب للكفالات المادية.</p>
-          </div>
-          <div style="background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
-            <strong>3. محور تحسين البيئة والبنية التحتية (سكن كريم ومياه نظيفة):</strong>
-            <p style="font-size: 13px; margin: 6px 0 0;">مد وصلات المياه النظيفة للأسر المحرومة، وتركيب الأسقف ورفع كفاءة المنازل المتهالكة لحماية الأسر من تقلبات الطقس.</p>
-          </div>
-          <div style="background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
-            <strong>4. محور التمكين الاقتصادي وتنمية المشروعات:</strong>
-            <p style="font-size: 13px; margin: 6px 0 0;">تمويل وتأسيس المشروعات الصغيرة ومتناهية الصغر للأسر المعيلة والشباب، وتقديم التدريب المهني لتحويلهم إلى أسر منتجة.</p>
-          </div>
-          <div style="background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
-            <strong>5. محور الرعاية الصحية:</strong>
-            <p style="font-size: 13px; margin: 6px 0 0;">تنظيم القوافل الطبية المجانية في القرى والنجوع، والمساهمة في تكاليف العلاج، والعمليات الجراحية، والأجهزة التعويضية.</p>
-          </div>
-          <div style="background: var(--bg-color); padding: 12px; border-radius: 10px; border: 1px solid var(--border);">
-            <strong>6. محور التعليم وبناء الإنسان:</strong>
-            <p style="font-size: 13px; margin: 6px 0 0;">دعم الطلاب غير القادرين بالمستلزمات الدراسية وسداد المصروفات لمنع التسرب من التعليم، وإطلاق برامج محو الأمية والتوعية المجتمعية.</p>
-          </div>
-        </div>
-      </div>
-
       <div class="grid-2">
         <div class="card">
-          <h3 style="color: var(--primary-dark); margin-top: 0;">6. النطاق الجغرافي</h3>
+          <h3 style="color: var(--primary-dark); margin-top: 0;">5. النطاق الجغرافي</h3>
           <ul style="font-size: 14px; line-height: 1.9; padding-right: 18px; margin: 0;">
             <li><strong>نطاق التركيز الرئيسي:</strong> محافظة بني سويف، وتحديدًا مركز إهناسيا والقرى والنجوع والضواحي التابعة له.</li>
             <li><strong>النطاق العام:</strong> تمتد مظلة خدمات ومبادرات المؤسسة لتشمل كافة محافظات جمهورية مصر العربية.</li>
           </ul>
         </div>
         <div class="card">
-          <h3 style="color: var(--primary-dark); margin-top: 0;">7. مجلس الأمناء والهيكل الإداري</h3>
+          <h3 style="color: var(--primary-dark); margin-top: 0;">6. مجلس الأمناء والهيكل الإداري</h3>
           <ul style="font-size: 14px; line-height: 1.9; padding-right: 18px; margin: 0;">
             <li><strong>رئيس مجلس الأمناء:</strong> أ. نجم حسين إبراهيم</li>
             <li><strong>السكرتير (الأمين العام):</strong> امال ابراهيم ذكى</li>
@@ -235,7 +198,6 @@
 
       <div class="card">
         <h3 style="color: var(--primary-dark); margin-top: 0;">📜 الوثائق المؤسسية والسياسات</h3>
-        <p style="font-size: 13px; color: #64748b; margin-top: 0;">يمكنك الاطلاع على السياسات واللوائح التفصيلية في نافذة مستقلة لسهولة التصفح:</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button type="button" onclick="openPolicyModal('governance')" class="nav-btn btn-gold">إطار الحوكمة المؤسسية</button>
           <button type="button" onclick="openPolicyModal('donations')" class="nav-btn btn-gold">سياسة قبول التبرعات</button>
@@ -356,7 +318,6 @@
       <div id="partner-register-box" class="card hidden" style="max-width: 540px; margin: 20px auto;"></div>
       <div id="dashboard-area" class="hidden"></div>
     </section>
-
   </div>
 
   <!-- نافذة منبثقة للسياسات والحوكمة -->
@@ -377,28 +338,28 @@
   </div>
 
   <footer>
-    <div style="max-width: 1100px; margin: auto;" class="grid-3">
+    <div style="max-width: 1180px; margin: auto;" class="grid-3">
       <div>
-        <h4 style="color: #fde68a; margin-top: 0;">مؤسسة الحافظ للتنمية والخدمات</h4>
-        <p>مؤسسة أهلية تنموية مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي.</p>
+        <h4>مؤسسة الحافظ للتنمية والخدمات</h4>
+        <p style="margin-bottom: 10px;">مؤسسة أهلية تنموية مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي - منشأة عبد الصمد، مركز إهناسيا، بني سويف.</p>
         <a href="https://wa.me/201000880156?text=%D9%85%D8%B1%D8%AD%D8%A8%D8%A7%D9%8B%20%D8%A8%D9%85%D8%A4%D8%B3%D8%B3%D8%A9%20%D8%A7%D9%84%D8%AD%D8%A7%D9%81%D8%B8%20%D9%84%D9%84%D8%AA%D9%86%D9%85%D9%8A%D8%A9%20%D9%88%D8%A7%D9%84%D8%AE%D8%AF%D9%85%D8%A7%D8%AA." target="_blank" rel="noopener noreferrer">💬 واتساب رسمي: 01000880156</a>
       </div>
       <div>
-        <h4 style="color: #fde68a; margin-top: 0;">الشفافية والسياسات</h4>
+        <h4>إطار الحوكمة والسياسات</h4>
         <a onclick="openPolicyModal('governance')">• إطار الحوكمة المؤسسية</a><br>
         <a onclick="openPolicyModal('donations')">• سياسة قبول التبرعات والشفافية المالية</a><br>
         <a onclick="openPolicyModal('conflict')">• سياسة منع تضارب المصالح</a><br>
-        <a onclick="openPolicyModal('privacy')">• سياسة الخصوصية وحماية البيانات</a>
+        <a onclick="openPolicyModal('privacy')">• الخصوصية وحماية البيانات</a>
       </div>
       <div>
-        <h4 style="color: #fde68a; margin-top: 0;">روابط سريعة</h4>
+        <h4>روابط سريعة</h4>
         <a onclick="showSection('faq')">• الأسئلة الشائعة والأوراق المطلوبة</a><br>
         <a onclick="showSection('apply')">• تقديم طلب مساعدة</a><br>
         <a onclick="showSection('track')">• الاستعلام عن حالة طلب</a><br>
         <a onclick="showSection('contact')">• اتصل بنا والتظلمات</a>
       </div>
     </div>
-    <p style="text-align: center; border-top: 1px solid var(--primary); padding-top: 14px; margin-top: 16px;">
+    <p style="text-align: center; border-top: 1px solid rgba(255,255,255,0.18); padding-top: 14px; margin-top: 18px;">
       © 2026 جميع الحقوق محفوظة لمؤسسة الحافظ للتنمية والخدمات
     </p>
   </footer>
@@ -538,11 +499,11 @@
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=7"></script>
-  <script src="egypt-data.js?v=7"></script>
-  <script src="i18n.js?v=7"></script>
-  <script src="app-core.js?v=7"></script>
-  <script src="wizard.js?v=9"></script>
-  <script src="dashboards.js?v=7"></script>
+  <script src="config.js?v=10"></script>
+  <script src="egypt-data.js?v=10"></script>
+  <script src="i18n.js?v=10"></script>
+  <script src="app-core.js?v=10"></script>
+  <script src="wizard.js?v=10"></script>
+  <script src="dashboards.js?v=10"></script>
 </body>
 </html>
