@@ -166,6 +166,67 @@
     }
     return window._wizardDraftFolder;
   }
+  window.WIZARD_COMPRESSED_FILES = window.WIZARD_COMPRESSED_FILES || {};
+
+  async function compressImageFileIfNeeded(file, maxWidth = 1200, maxHeight = 1200, quality = 0.72, minBytesToCompress = 250 * 1024) {
+    if (!file || !file.type || !file.type.startsWith('image/')) {
+      return file;
+    }
+    if (/svg|gif/i.test(file.type) || file.size <= minBytesToCompress) {
+      return file;
+    }
+
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = dataUrl;
+      });
+
+      let targetW = img.width || maxWidth;
+      let targetH = img.height || maxHeight;
+
+      if (targetW > maxWidth || targetH > maxHeight) {
+        const ratio = Math.min(maxWidth / targetW, maxHeight / targetH);
+        targetW = Math.round(targetW * ratio);
+        targetH = Math.round(targetH * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return file;
+
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+
+      const compressedBlob = await new Promise((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+      });
+
+      if (!compressedBlob || compressedBlob.size >= file.size) {
+        return file;
+      }
+
+      const baseName = String(file.name || 'doc').replace(/\.[^.]+$/, '');
+      return new File([compressedBlob], `${baseName}.jpg`, {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+      });
+    } catch (err) {
+      console.warn('Image compression skipped:', err);
+      return file;
+    }
+  }
  
   // أضف الدالة هنا مباشرة 👇
   function toSafeStorageKeyPart(rawName) {
@@ -254,9 +315,9 @@
   if (!inputEl) return null;
   const docKey = getDocKeyForInput(inputEl, explicitDocKey);
   const box = ensureStatusBox(inputEl, statusBoxId);
-  const file = inputEl.files && inputEl.files[0];
+  const rawFile = inputEl.files && inputEl.files[0];
 
-  if (!file) {
+  if (!rawFile) {
     const existing = window.formData.documents?.[docKey] || window.WIZARD_ATTACHMENTS_CACHE[docKey];
     if (existing && hasDocValue(existing)) {
       renderAttachmentStatusBox(box, existing);
@@ -269,11 +330,25 @@
   if (box) {
     box.style.borderColor = '#bfdbfe';
     box.style.background = '#eff6ff';
-    box.innerHTML = `<span style="color:#1d4ed8; font-weight:700;">⏳ جارٍ رفع المرفق (${escapeSafeHtml(file.name)}) والتحقق من حفظه...</span>`;
+    box.innerHTML = `<span style="color:#1d4ed8; font-weight:700;">⏳ جارٍ ضغط ورفع المرفق (${escapeSafeHtml(rawFile.name)}) والتحقق من حفظه...</span>`;
   }
 
+  const file = typeof compressImageFileIfNeeded === 'function'
+    ? await compressImageFileIfNeeded(rawFile)
+    : rawFile;
+
+  window.WIZARD_COMPRESSED_FILES = window.WIZARD_COMPRESSED_FILES || {};
+  if (inputEl.id) {
+    window.WIZARD_COMPRESSED_FILES[inputEl.id] = file;
+  }
+
+  const isImage = Boolean(
+    (file.type && file.type.startsWith('image/')) ||
+    /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name)
+  );
+
   const localDataUrl = await new Promise((resolve) => {
-    if (!file.type.startsWith('image/') && !/\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name)) {
+    if (!isImage) {
       return resolve('');
     }
     const reader = new FileReader();
@@ -321,7 +396,6 @@
   } else {
     attachmentRecord.uploadError = 'تعذر الوصول إلى خدمة التخزين السحابي';
   }
-
  window.WIZARD_ATTACHMENTS_CACHE[docKey] = attachmentRecord;
     window.formData.documents = Object.assign({}, window.formData.documents || {}, {
       [docKey]: attachmentRecord
@@ -1602,14 +1676,32 @@
     }
   };
 
-  async function uploadSingleDoc(inputId, folderName, trackingCode, docKey = '') {
-    const resolvedKey = getDocKeyForInput(document.getElementById(inputId), docKey);
-    const fileInput = document.getElementById(inputId);
-    const file = fileInput?.files?.[0];
+ async function uploadSingleDoc(inputId, folderName, trackingCode, docKey = '') {
+    const inputEl = document.getElementById(inputId);
+    const resolvedKey = getDocKeyForInput(inputEl, docKey);
+    const rawFile = inputEl?.files?.[0];
     const existing = window.formData.documents?.[resolvedKey] || window.WIZARD_ATTACHMENTS_CACHE[resolvedKey];
 
-    if (!file) {
+    if (!rawFile) {
       return hasDocValue(existing) ? existing : null;
+    }
+
+    const cachedCompressed = window.WIZARD_COMPRESSED_FILES && window.WIZARD_COMPRESSED_FILES[inputId];
+    const sameRawAsCached =
+      cachedCompressed &&
+      cachedCompressed._sourceName === rawFile.name &&
+      cachedCompressed._sourceSize === rawFile.size &&
+      cachedCompressed._sourceLastModified === rawFile.lastModified;
+
+    let file = sameRawAsCached ? cachedCompressed : rawFile;
+
+    if (!sameRawAsCached && typeof compressImageFileIfNeeded === 'function') {
+      file = await compressImageFileIfNeeded(rawFile);
+      file._sourceName = rawFile.name;
+      file._sourceSize = rawFile.size;
+      file._sourceLastModified = rawFile.lastModified;
+      window.WIZARD_COMPRESSED_FILES = window.WIZARD_COMPRESSED_FILES || {};
+      window.WIZARD_COMPRESSED_FILES[inputId] = file;
     }
 
     if (existing && existing.uploaded && existing.path && existing.fileName === file.name && existing.size === file.size) {
@@ -1630,7 +1722,7 @@
       .upload(filePath, file, { upsert: true });
 
     if (error) {
-      return { name: file.name, fileName: file.name, uploadError: error.message };
+      return { name: file.name, fileName: file.name, size: file.size, uploadError: error.message };
     }
 
     const { data: pubData } = window.supabaseClient.storage
@@ -1640,13 +1732,13 @@
     return {
       name: file.name,
       fileName: file.name,
+      size: file.size,
       path: filePath,
       url: (pubData && pubData.publicUrl) || '',
       publicUrl: (pubData && pubData.publicUrl) || '',
       uploaded: true
     };
   }
-
   function saveCurrentStepData() {
     if (window.currentStep === 1) {
       window.formData.interventionType = document.getElementById('intervention-type')?.value || 'كفالة أيتام شهرية';
