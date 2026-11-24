@@ -1,6 +1,6 @@
 // projects-and-installments.js
 (function() {
-  const PROJECT_INTERVENTION_LABEL = 'مشروعات صغيرة وتمكين اقتصادي (قرض حسن)';
+  const PROJECT_INTERVENTION_LABEL = 'مشروع تمكين اقتصادي صغير';
 
   function ensureProjectAidType() {
     if (!Array.isArray(window.AID_TYPES)) window.AID_TYPES = [];
@@ -204,8 +204,8 @@
       container.appendChild(extraBox);
     }
   };
-     // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
-  window.submitInitialSmallProject = async function() {
+      // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
+  window.submitInitialSmallProject = async function(btnEl) {
     try {
       const name = (document.getElementById('prj-init-name')?.value || '').trim();
       const phone = (document.getElementById('prj-init-phone')?.value || '').trim();
@@ -218,12 +218,12 @@
       const idFile = (idInput && idInput.files && idInput.files.length > 0) ? idInput.files.item(0) : null;
 
       if (!name) return alert('⚠️ يرجى إدخال الاسم ثلاثي بالكامل.');
-      if (!/^01\d{8}$/.test(phone)) return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
+      if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
       if (!village) return alert('⚠️ يرجى إدخال اسم القرية أو العزبة.');
       if (!projectType) return alert('⚠️ يرجى اختيار أو كتابة نوع المشروع المطلوب.');
       if (!idFile) return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية.');
 
-      const btn = event?.target || document.querySelector('#wizard-container button.action-btn');
+      const btn = btnEl || document.querySelector('#wizard-container button.action-btn');
       const oldText = btn ? btn.textContent : '';
       if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع البطاقة وإصدار الرقم الأولي...'; }
 
@@ -236,13 +236,15 @@
         folder: 'initial_id'
       });
 
+      const selectedIntervention = document.getElementById('intervention-type')?.value || PROJECT_INTERVENTION_LABEL;
+
       const payload = {
         tracking_code: initialCode,
         initial_tracking_code: initialCode,
         is_completion_active: false,
         allow_edit: false,
         applicant_name: name,
-        intervention_type: PROJECT_INTERVENTION_LABEL,
+        intervention_type: selectedIntervention,
         governorate: 'بني سويف',
         center_city: 'إهناسيا',
         village_hamlet: village,
@@ -271,7 +273,6 @@
       alert('❌ حدث خطأ غير متوقع: ' + (err.message || err));
     }
   };
-
   // 6. التحقق من رقم الطلب الأولي وفتح نموذج الاستكمال الكامل
   window.verifyAndOpenProjectCompletion = async function() {
     const code = (document.getElementById('prj-completion-code-input')?.value || '').trim().toUpperCase();
