@@ -218,7 +218,10 @@
       const idFile = (idInput && idInput.files && idInput.files.length > 0) ? idInput.files.item(0) : null;
 
       if (!name) return alert('⚠️ يرجى إدخال الاسم ثلاثي بالكامل.');
-      if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length !== 11 || !cleanPhone.startsWith('01')) {
+       return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
+     }
       if (!village) return alert('⚠️ يرجى إدخال اسم القرية أو العزبة.');
       if (!projectType) return alert('⚠️ يرجى اختيار أو كتابة نوع المشروع المطلوب.');
       if (!idFile) return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية.');
