@@ -1,9 +1,7 @@
-// projects-and-installments.js (الجزء 1 من 5)
-// تحديثات المشروعات الصغيرة، Google Drive، السماح بالتعديل العام، وأقساط الـ 20 شهراً
+// projects-and-installments.js
 (function() {
   const PROJECT_INTERVENTION_LABEL = 'مشروعات صغيرة وتمكين اقتصادي (قرض حسن)';
 
-  // 1. إضافة خيار المشروعات الصغيرة لقائمة المساعدات
   function ensureProjectAidType() {
     if (!Array.isArray(window.AID_TYPES)) window.AID_TYPES = [];
     const exists = window.AID_TYPES.some(t => String(t).includes('مشروع') || String(t).includes('تمكين اقتصادي'));
@@ -17,17 +15,21 @@
     return s.includes('مشروع') || s.includes('تمكين اقتصادي') || s.includes('قرض حسن');
   }
 
-  // 2. دالة رفع المرفقات المضغوطة وملفات PDF إلى Google Drive (15 جيجابايت) بالمسار المطلوب
+  // دالة الرفع إلى Google Drive (15 جيجابايت) مع احتياطي Supabase
   window.uploadFileToDriveOrStorage = async function(file, meta = {}) {
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
     if (driveUrl && file) {
       try {
-     const base64Data = await new Promise((resolve, reject) => {
-         reader.onload = () => {
-     const resStr = String(reader.result || '');
-     const idx = resStr.indexOf(',');
-     resolve(idx >= 0 ? resStr.slice(idx + 1) : resStr);
-        };
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const str = String(reader.result || '');
+            const idx = str.indexOf(',');
+            resolve(idx >= 0 ? str.slice(idx + 1) : str);
+          };
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
 
         const payload = {
           year: meta.year || new Date().getFullYear().toString(),
@@ -59,6 +61,32 @@
             uploaded: true
           };
         }
+      } catch (driveErr) {
+        console.warn('Google Drive fallback to Supabase:', driveErr);
+      }
+    }
+
+    if (window.supabaseClient && window.supabaseClient.storage && file) {
+      const safeName = String(file.name || 'file').replace(/[^\w.-]/g, '_');
+      const path = `${meta.trackingCode || 'DRAFT'}/${meta.folder || 'docs'}/${Date.now()}_${safeName}`;
+      const { error } = await window.supabaseClient.storage.from('foundation-docs').upload(path, file, { upsert: true });
+      if (!error) {
+        const { data: pubData } = window.supabaseClient.storage.from('foundation-docs').getPublicUrl(path);
+        return {
+          name: file.name,
+          fileName: file.name,
+          size: file.size,
+          mimeType: file.type || '',
+          path,
+          url: pubData?.publicUrl || '',
+          publicUrl: pubData?.publicUrl || '',
+          storageProvider: 'supabase',
+          uploaded: true
+        };
+      }
+    }
+    return { name: file?.name || 'file', uploaded: false, uploadError: 'تعذر رفع الملف' };
+  };
       } catch (driveErr) {
         console.warn('Google Drive fallback to Supabase:', driveErr);
       }
