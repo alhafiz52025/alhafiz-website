@@ -411,11 +411,11 @@
       };
 
       const prevDocs = existingCase.documents_data || {};
-      const fFeasibility = document.getElementById('cmp-doc-feasibility')?.files?;
-      const fPlace = document.getElementById('cmp-doc-place-photo')?.files?;
-      const fCriminal = document.getElementById('cmp-doc-criminal-record')?.files?;
-      const fResearch = document.getElementById('cmp-doc-field-research')?.files?;
-      const fOther = document.getElementById('cmp-doc-other-docs')?.files?;
+      const fFeasibility = document.getElementById('cmp-doc-feasibility')?.files?.item(0);
+      const fPlace = document.getElementById('cmp-doc-place-photo')?.files?.item(0);
+      const fCriminal = document.getElementById('cmp-doc-criminal-record')?.files?.item(0);
+      const fResearch = document.getElementById('cmp-doc-field-research')?.files?.item(0);
+      const fOther = document.getElementById('cmp-doc-other-docs')?.files?.item(0);
 
       if (!isAlreadyCompleted && (!fFeasibility || !fPlace || !fCriminal || !fResearch)) {
         if (btn) { btn.disabled = false; btn.textContent = '✅ اعتماد الإرسال النهائي وإصدار رقم المتابعة الجديد'; }
