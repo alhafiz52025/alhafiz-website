@@ -23,11 +23,11 @@
     if (driveUrl && file) {
       try {
         const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || '').split(',') || '');
-          reader.onerror = (err) => reject(err);
-          reader.readAsDataURL(file);
-        });
+          reader.onload = () => {
+  const res = String(reader.result || '');
+  const idx = res.indexOf(',');
+  resolve(idx >= 0 ? res.slice(idx + 1) : res);
+};
 
         const payload = {
           year: meta.year || new Date().getFullYear().toString(),
