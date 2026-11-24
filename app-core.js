@@ -1,33 +1,97 @@
-// app-core.js - المحرك الأساسي الموحد لمؤسسة الحافظ للتنمية والخدمات
+// app-core.js - المحرك الأساسي الموحد لمؤسسة الحافظ للتنمية والخدمات (الجزء 1)
 (function() {
   window.currentUser = JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
   let currentLang = 'ar';
   let currentFontScale = 100;
 
-  const sbUrl = window.SB_URL || window.SUPABASE_URL || 'https://supabase.co';
-  const sbKey = window.SB_KEY || window.SUPABASE_ANON_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
+  const sbUrl = window.SB_URL || 'https://supabase.co';
+  const sbKey = window.SB_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
   if (!window.supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
     window.supabaseClient = window.supabase.createClient(sbUrl, sbKey);
   }
+
   window.escapeHtml = function(str) {
     return String(str ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
+
   window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const clean = String(rawPhone || '').replace(/\D/g, '');
     if (!clean) return;
     const intl = clean.startsWith('20') ? clean : ('20' + clean.replace(/^0/, ''));
-    const waUrl = 'https://whatsapp.com' + intl + '&text=' + encodeURIComponent(messageText);
-    const a = document.createElement('a');
-    a.href = waUrl;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const waUrl = `https://wa.me{intl}?text=${encodeURIComponent(messageText || '')}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
+  // دالة الرفع الموحدة إلى Google Drive (السنة / القرية / نوع التقديم / كود التتبع) مع احتياطي Supabase
+  window.uploadFileToDriveOrStorage = async function(file, meta = {}) {
+    const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
+    if (driveUrl && file) {
+      try {
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || '').split(',') || '');
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+
+        const payload = {
+          year: meta.year || new Date().getFullYear().toString(),
+          village: meta.village || 'غير_محدد',
+          submissionType: meta.submissionType || 'عام',
+          trackingCode: meta.trackingCode || ('TRK-' + Date.now()),
+          fileName: file.name || ('doc_' + Date.now()),
+          mimeType: file.type || 'application/octet-stream',
+          fileBase64: base64Data
+        };
+
+        const res = await fetch(driveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        if (json && json.status === 'success' && json.fileUrl) {
+          return {
+            name: file.name,
+            fileName: file.name,
+            size: file.size,
+            mimeType: file.type || '',
+            url: json.fileUrl,
+            publicUrl: json.fileUrl,
+            folderUrl: json.folderUrl || '',
+            fileId: json.fileId || '',
+            storageProvider: 'google_drive',
+            uploaded: true
+          };
+        }
+      } catch (driveErr) {
+        console.warn('Google Drive upload fallback to Supabase:', driveErr);
+      }
+    }
+
+    if (window.supabaseClient && window.supabaseClient.storage && file) {
+      const safeName = String(file.name || 'file').replace(/[^\w.-]/g, '_');
+      const path = `${meta.trackingCode || 'DRAFT'}/${meta.folder || 'docs'}/${Date.now()}_${safeName}`;
+      const { error } = await window.supabaseClient.storage.from('foundation-docs').upload(path, file, { upsert: true });
+      if (!error) {
+        const { data: pubData } = window.supabaseClient.storage.from('foundation-docs').getPublicUrl(path);
+        return {
+          name: file.name,
+          fileName: file.name,
+          size: file.size,
+          mimeType: file.type || '',
+          path,
+          url: pubData?.publicUrl || '',
+          publicUrl: pubData?.publicUrl || '',
+          storageProvider: 'supabase',
+          uploaded: true
+        };
+      }
+    }
+    return { name: file?.name || 'file', uploaded: false, uploadError: 'تعذر رفع الملف' };
+  };
   window.getFoundationSettings = async function() {
     const defaults = {
       org_name: 'مؤسسة الحافظ للتنمية والخدمات',
@@ -77,7 +141,7 @@
       <div style="background:var(--bg-color); border:1px solid #f59e0b; border-radius:12px; overflow:hidden; padding:14px;">
         <span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${window.escapeHtml(item.category || 'مبادرة مفتوحة')}</span>
         <h4 style="color:var(--primary-dark); margin:8px 0 6px;">${window.escapeHtml(item.title)}</h4>
-        <p style="font-size:13px; margin:0 0 10px;">${window.escapeHtml(item.description)}</p>
+        <p style="font-size:13px; margin:0 0 10px;">${window.escapeHtml(item.description || item.body || '')}</p>
         <button type="button" onclick="showSection('apply')" class="action-btn" style="width:100%; font-size:12px;">+ التقديم الآن</button>
       </div>
     `).join('');
@@ -101,16 +165,15 @@
       </div>
     `).join('');
   };
+
   window.addEventListener('DOMContentLoaded', () => {
     applyDynamicSiteStats();
-    renderFaqList();
     window.renderPublicAnnouncements();
     window.renderPublicAchievements();
     if (window.currentUser && typeof window.routeLoggedInUser === 'function') {
       window.routeLoggedInUser(window.currentUser);
     }
   });
-
   window.showSection = function(sectionName) {
     document.querySelectorAll('.container > section').forEach(sec => sec.classList.add('hidden'));
     const target = document.getElementById('section-' + sectionName);
@@ -118,27 +181,17 @@
       target.classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    if (sectionName === 'apply' && typeof window.renderWizardStep === 'function') {
-      window.renderWizardStep();
-    } else if (sectionName === 'announcements') {
-      window.renderPublicAnnouncements();
-    } else if (sectionName === 'achievements') {
-      window.renderPublicAchievements();
-    } else if (sectionName === 'login' && window.currentUser && typeof window.routeLoggedInUser === 'function') {
-      window.routeLoggedInUser(window.currentUser);
-    }
+    if (sectionName === 'apply' && typeof window.renderWizardStep === 'function') window.renderWizardStep();
+    else if (sectionName === 'announcements') window.renderPublicAnnouncements();
+    else if (sectionName === 'achievements') window.renderPublicAchievements();
+    else if (sectionName === 'login' && window.currentUser && typeof window.routeLoggedInUser === 'function') window.routeLoggedInUser(window.currentUser);
   };
 
   window.toggleLanguage = function() {
     currentLang = currentLang === 'ar' ? 'en' : 'ar';
     const root = document.getElementById('html-root') || document.documentElement;
-    if (root) {
-      root.lang = currentLang;
-      root.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
-    }
-    if (typeof window.applyLanguageDictionary === 'function') {
-      window.applyLanguageDictionary(currentLang);
-    }
+    if (root) { root.lang = currentLang; root.dir = currentLang === 'ar' ? 'rtl' : 'ltr'; }
+    if (typeof window.applyLanguageDictionary === 'function') window.applyLanguageDictionary(currentLang);
   };
 
   window.adjustFontSize = function(delta) {
@@ -146,29 +199,13 @@
     document.body.style.fontSize = currentFontScale + '%';
   };
 
-  window.toggleDarkMode = function() {
-    document.body.classList.toggle('dark-mode');
-  };
+  window.toggleDarkMode = function() { document.body.classList.toggle('dark-mode'); };
 
   window.copyText = function(txt) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(txt).then(() => alert('✅ تم النسخ: ' + txt));
-    } else {
-      prompt('انسخ الرقم:', txt);
-    }
+    } else { prompt('انسخ الرقم:', txt); }
   };
-
-  function renderFaqList() {
-    const box = document.getElementById('faq-dynamic-list');
-    if (!box) return;
-    const items = window.FAQ_ITEMS || [];
-    box.innerHTML = items.map((item, idx) => `
-      <div style="background: var(--bg-color); padding: 14px; border-radius: 10px; border: 1px solid var(--border);">
-        <h4 style="color: var(--primary); margin: 0 0 6px;">${idx + 1}. ${window.escapeHtml(item.q)}</h4>
-        <p style="margin: 0; font-size: 13px;">${window.escapeHtml(item.a)}</p>
-      </div>
-    `).join('');
-  }
 
   window.saveDraft = function() {
     localStorage.setItem('hf_wizard_draft', JSON.stringify({ step: window.currentStep || 1, data: window.formData || {} }));
@@ -181,9 +218,8 @@
     const phone = (document.getElementById('grievance-phone')?.value || '').trim();
     const details = (document.getElementById('grievance-details')?.value || '').trim();
 
-    if (!fullName || !/^01[0125]\d{8}$/.test(phone) || !details) {
-      alert('⚠️ يرجى إدخال الاسم كاملاً، رقم هاتف صحيح (11 رقماً)، وتفاصيل الرسالة.');
-      return;
+    if (!fullName || !/^01\d{8}$/.test(phone) || !details) {
+      return alert('⚠️ يرجى إدخال الاسم كاملاً، رقم هاتف صحيح (11 رقماً)، وتفاصيل الرسالة.');
     }
 
     const code = 'GRV-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
@@ -195,13 +231,10 @@
       if (error) return alert('❌ خطأ أثناء الإرسال: ' + error.message);
     }
 
-    const msg = `مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\nتم استلام تظلمكم بنجاح.\nرقم التظلم: ${code}`;
-    if (typeof window.triggerInstantWhatsApp === 'function') window.triggerInstantWhatsApp(phone, msg);
-
+    window.triggerInstantWhatsApp(phone, `مؤسسة الحافظ للتنمية والخدمات\nتم استلام تظلمكم بنجاح.\nرقم التظلم: ${code}`);
     alert(`✅ تم إرسال رسالتكم بسرية تامة!\nرقم التظلم: ${code}`);
     ['grievance-name', 'grievance-phone', 'grievance-details'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
+      const el = document.getElementById(id); if (el) el.value = '';
     });
   };
 
@@ -220,17 +253,25 @@
 
     if (q.startsWith('GRV-')) {
       const { data } = await window.supabaseClient.from('grievances').select('*').eq('tracking_code', q).maybeSingle();
-      if (!data) {
-        resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على تظلم بهذا الرقم.</div>';
-        return;
-      }
-      resBox.innerHTML = `<div style="background:#f8fafc; border:1px solid #cbd5e1; padding:14px; border-radius:10px;"><strong>رقم التظلم:</strong> ${window.escapeHtml(data.tracking_code)}<br><strong>الحالة:</strong> ${data.status === 'resolved' ? 'تم الرد' : 'قيد المراجعة'}</div>`;
+      if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على تظلم بهذا الرقم.</div>'; return; }
+      resBox.innerHTML = `<div style="background:#f8fafc; border:1px solid #cbd5e1; padding:14px; border-radius:10px;"><strong>رقم التظلم:</strong> ${window.escapeHtml(data.tracking_code)}<br><strong>الحالة:</strong> ${data.status === 'resolved' || data.status === 'تم الرد' ? 'تم الرد' : 'قيد المراجعة'}</div>`;
       return;
     }
 
-    const { data } = await window.supabaseClient.from('families').select('*').eq('tracking_code', q).maybeSingle();
-    if (!data) {
-      resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على طلب مطابق.</div>';
+    const { data } = await window.supabaseClient.from('families').select('*').or(`tracking_code.eq.${q},initial_tracking_code.eq.${q}`).maybeSingle();
+    if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على طلب مطابق.</div>'; return; }
+
+    const pData = data.project_data || {};
+    const isProject = String(data.intervention_type || '').includes('مشروع') || Boolean(pData.projectType);
+
+    if (isProject && data.initial_tracking_code === q && data.tracking_code !== q) {
+      if (data.is_completion_active) {
+        resBox.innerHTML = `<div style="background:#fffbeb; border:1px solid #f59e0b; padding:16px; border-radius:12px;"><strong>رقم الطلب الأولي:</strong> ${window.escapeHtml(q)}<br><strong>الحالة:</strong> ✅ تمت الموافقة المبدئية — متاح الآن استكمال أوراق المشروع.<br><button type="button" onclick="showSection('apply')" class="action-btn" style="margin-top:8px; font-size:12px;">+ الانتقال لاستكمال أوراق المشروع</button></div>`;
+      } else if (pData.completionSubmitted) {
+        resBox.innerHTML = `<div style="background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:12px;"><strong>تنبيه:</strong> تم استكمال أوراق هذا الطلب مسبقاً وأصبح الرقم الأولي غير نشط.<br><strong>رقم المتابعة الجديد:</strong> <span style="color:#1d4ed8; font-weight:800;">${window.escapeHtml(data.tracking_code)}</span></div>`;
+      } else {
+        resBox.innerHTML = `<div style="background:#f8fafc; border:1px solid #cbd5e1; padding:16px; border-radius:12px;"><strong>رقم الطلب الأولي:</strong> ${window.escapeHtml(q)}<br><strong>الحالة:</strong> 🔍 طلب المشروع المبدئي قيد المراجعة الإدارية.</div>`;
+      }
       return;
     }
 
