@@ -22,12 +22,12 @@
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
     if (driveUrl && file) {
       try {
-        const base64Data = await new Promise((resolve, reject) => {
-          reader.onload = () => {
-  const res = String(reader.result || '');
-  const idx = res.indexOf(',');
-  resolve(idx >= 0 ? res.slice(idx + 1) : res);
-};
+     const base64Data = await new Promise((resolve, reject) => {
+         reader.onload = () => {
+     const resStr = String(reader.result || '');
+     const idx = resStr.indexOf(',');
+     resolve(idx >= 0 ? resStr.slice(idx + 1) : resStr);
+        };
 
         const payload = {
           year: meta.year || new Date().getFullYear().toString(),
