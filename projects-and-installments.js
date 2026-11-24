@@ -204,11 +204,12 @@
       container.appendChild(extraBox);
     }
   };
-      // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
+  // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
   window.submitInitialSmallProject = async function(btnEl) {
     try {
       const name = (document.getElementById('prj-init-name')?.value || '').trim();
-      const phone = (document.getElementById('prj-init-phone')?.value || '').trim();
+      const rawPhone = (document.getElementById('prj-init-phone')?.value || '').trim();
+      const phone = rawPhone.replace(/\D/g, '');
       const village = (document.getElementById('prj-init-village')?.value || '').trim();
       let projectType = (document.getElementById('prj-init-type')?.value || '').trim();
       if (projectType === 'إضافة مشروع غير موجود في القائمة') {
@@ -218,22 +219,24 @@
       const idFile = (idInput && idInput.files && idInput.files.length > 0) ? idInput.files.item(0) : null;
 
       if (!name) return alert('⚠️ يرجى إدخال الاسم ثلاثي بالكامل.');
-      const cleanPhone = phone.replace(/\D/g, '');
-      if (cleanPhone.length !== 11 || !cleanPhone.startsWith('01')) {
-       return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
-     }
+      if (phone.length !== 11 || !phone.startsWith('01')) {
+        return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
+      }
       if (!village) return alert('⚠️ يرجى إدخال اسم القرية أو العزبة.');
       if (!projectType) return alert('⚠️ يرجى اختيار أو كتابة نوع المشروع المطلوب.');
       if (!idFile) return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية.');
 
       const btn = btnEl || document.querySelector('#wizard-container button.action-btn');
       const oldText = btn ? btn.textContent : '';
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع البطاقة وإصدار الرقم الأولي...'; }
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ جارٍ رفع البطاقة وإصدار الرقم الأولي...';
+      }
 
       const initialCode = 'HF-INIT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
       const uploadedId = await window.uploadFileToDriveOrStorage(idFile, {
         year: new Date().getFullYear().toString(),
-        village,
+        village: village,
         submissionType: 'مشروعات_صغيرة_مبدئي',
         trackingCode: initialCode,
         folder: 'initial_id'
@@ -251,9 +254,9 @@
         governorate: 'بني سويف',
         center_city: 'إهناسيا',
         village_hamlet: village,
-        husband_data: { name1: name, phone, whatsapp: phone },
+        husband_data: { name1: name, phone: phone, whatsapp: phone },
         documents_data: { initialIdCard: uploadedId, hIdFront: uploadedId },
-        project_data: { stage: 'initial', projectType, initialCode },
+        project_data: { stage: 'initial', projectType: projectType, initialCode: initialCode },
         status: 'pending',
         eligibility_verdict: 'طلب مشروع مبدئي - قيد المراجعة'
       };
@@ -263,19 +266,20 @@
         return alert('❌ تعذر الاتصال بقاعدة البيانات.');
       }
 
-      const { error } = await window.supabaseClient.from('families').insert([payload]);
-      if (error) {
+      const res = await window.supabaseClient.from('families').insert(payload);
+      if (res && res.error) {
         if (btn) { btn.disabled = false; btn.textContent = oldText; }
-        return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + error.message);
+        return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
       }
 
-      alert(`✅ تم تسجيل طلب المشروع المبدئي بنجاح!\nرقم الطلب الأولي الخاص بك هو:\n${initialCode}\n\nعند الموافقة المبدئية ستصلك رسالة لاستكمال باقي الأوراق.`);
+      alert('✅ تم تسجيل طلب المشروع المبدئي بنجاح!\nرقم الطلب الأولي الخاص بك هو:\n' + initialCode);
       if (typeof window.showSection === 'function') window.showSection('home');
     } catch (err) {
       console.error('submitInitialSmallProject error:', err);
-      alert('❌ حدث خطأ غير متوقع: ' + (err.message || err));
+      alert('❌ حدث خطأ: ' + (err && err.message ? err.message : err));
     }
   };
+
   // 6. التحقق من رقم الطلب الأولي وفتح نموذج الاستكمال الكامل
   window.verifyAndOpenProjectCompletion = async function() {
     const code = (document.getElementById('prj-completion-code-input')?.value || '').trim().toUpperCase();
