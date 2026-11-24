@@ -714,8 +714,7 @@
         village,
         submissionType: subType,
         trackingCode: code
-      });
-      if (res && res.uploaded) {
+        if (res && res.uploaded) {
         const key = explicitDocKey || inputEl.id || 'doc';
         window.WIZARD_ATTACHMENTS_CACHE = window.WIZARD_ATTACHMENTS_CACHE || {};
         window.WIZARD_ATTACHMENTS_CACHE[key] = res;
