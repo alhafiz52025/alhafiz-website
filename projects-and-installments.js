@@ -272,10 +272,22 @@
         return alert('❌ تعذر الاتصال بقاعدة البيانات.');
       }
 
-      const res = await window.supabaseClient.from('families').insert(payload);
+            const res = await window.supabaseClient.from('families').insert(payload);
       if (res && res.error) {
         if (btn) { btn.disabled = false; btn.textContent = oldText; }
         return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
+      }
+
+      const initWaMsg =
+        'مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\n' +
+        'مرحباً أ/ ' + name + '\n' +
+        'تم تسجيل طلب المشروع الصغير المبدئي بنجاح.\n' +
+        '• رقم الطلب الأولي الخاص بك: ' + initialCode + '\n' +
+        '• المشروع المطلوب: ' + projectType + '\n' +
+        'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال دراسة الجدوى وباقي الأوراق.';
+
+      if (typeof window.triggerInstantWhatsApp === 'function') {
+        window.triggerInstantWhatsApp(phone, initWaMsg);
       }
 
       alert('✅ تم تسجيل طلب المشروع المبدئي بنجاح!\nرقم الطلب الأولي الخاص بك هو:\n' + initialCode);
