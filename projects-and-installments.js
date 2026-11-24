@@ -211,7 +211,7 @@
     if (projectType === 'إضافة مشروع غير موجود في القائمة') {
       projectType = (document.getElementById('prj-init-custom-type')?.value || '').trim();
     }
-    const idFile = document.getElementById('prj-init-id-card')?.files?.;
+    const idFile = document.getElementById('prj-init-id-card')?.files?.item(0);
 
     if (!name || !/^01\d{8}$/.test(phone) || !village || !projectType || !idFile) {
       return alert('⚠️ يرجى إدخال الاسم، رقم الهاتف الصحيح (11 رقماً)، القرية، نوع المشروع، وإرفاق صورة البطاقة.');
