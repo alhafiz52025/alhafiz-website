@@ -702,9 +702,20 @@
     const area = document.getElementById('dashboard-area');
     if (area?.firstElementChild) { area.firstElementChild.id = area.firstElementChild.id || 'member-portal-card'; loadUpcomingInstallmentsBanner(area.firstElementChild.id, user); }
       // 13. توجيه مرفقات الاستمارات العادية إلى Google Drive + إغلاق السماح بالتعديل بعد الحفظ
+    const origMemberPortal = window.renderMemberPortal;
+  window.renderMemberPortal = async function(user) {
+    if (origMemberPortal) await origMemberPortal.apply(this, arguments);
+    const area = document.getElementById('dashboard-area');
+    if (area?.firstElementChild) {
+      area.firstElementChild.id = area.firstElementChild.id || 'member-portal-card';
+      loadUpcomingInstallmentsBanner(area.firstElementChild.id, user);
+    }
+  };
+
+  // 13. توجيه مرفقات الاستمارات العادية إلى Google Drive + إغلاق السماح بالتعديل بعد الحفظ
   const origHandlePreview = window.handleImmediateAttachmentPreview;
   window.handleImmediateAttachmentPreview = async function(inputEl, explicitDocKey = '', statusBoxId = '') {
-    const rawFile = inputEl?.files?.[0];
+    const rawFile = inputEl?.files?.item(0);
     if (rawFile && window.GOOGLE_DRIVE_WEB_APP_URL && typeof window.uploadFileToDriveOrStorage === 'function') {
       const village = document.getElementById('h-village')?.value || window.formData?.husband?.village || 'إهناسيا';
       const subType = window.formData?.interventionType || 'مساعدات_اجتماعية';
@@ -714,7 +725,8 @@
         village,
         submissionType: subType,
         trackingCode: code
-        if (res && res.uploaded) {
+      });
+      if (res && res.uploaded) {
         const key = explicitDocKey || inputEl.id || 'doc';
         window.WIZARD_ATTACHMENTS_CACHE = window.WIZARD_ATTACHMENTS_CACHE || {};
         window.WIZARD_ATTACHMENTS_CACHE[key] = res;
@@ -759,7 +771,7 @@
     }
   };
 
-  // 14. زر الأرشفة الطارئة لسجلات Supabase إلى Google Drive (عند اقتراب امتلاء المساحة)
+  // 14. زر الأرشفة الطارئة لسجلات Supabase إلى Google Drive
   window.backupSupabaseFamiliesToGoogleDrive = async function() {
     if (!window.supabaseClient || !window.GOOGLE_DRIVE_WEB_APP_URL) return;
     if (!confirm('هل تريد تصدير نسخة احتياطية كاملة من سجلات الحالات (Supabase) وحفظها كملف أرشيف داخل Google Drive؟')) return;
