@@ -179,7 +179,7 @@
                 </select>
                 <input id="prj-init-custom-type" class="hidden" placeholder="اكتب اسم المشروع الجديد المطلوب بالتفصيل *" style="margin-top:6px;">
               </div>
-              <button type="button" onclick="submitInitialSmallProject()" class="action-btn" style="width:100%; margin-top:12px; background:#15803d;">✅ تسجيل الطلب المبدئي وإصدار الرقم الأولي</button>
+              <button type="button" onclick="submitInitialSmallProject(this)" class="action-btn" style="width:100%; margin-top:12px; background:#15803d;">✅ تسجيل الطلب المبدئي وإصدار الرقم الأولي</button>
             </div>
 
             <div style="background:#fffbeb; border:2px solid #f59e0b; padding:16px; border-radius:12px;">
@@ -411,12 +411,11 @@
       };
 
       const prevDocs = existingCase.documents_data || {};
-      const fFeasibility = document.getElementById('cmp-doc-feasibility')?.files?.[0];
-      const fPlace = document.getElementById('cmp-doc-place-photo')?.files?.[0];
-      const fCriminal = document.getElementById('cmp-doc-criminal-record')?.files?.[0];
-      const fResearch = document.getElementById('cmp-doc-field-research')?.files?.[0];
-      const fOther = document.getElementById('cmp-doc-other-docs')?.files?.[0];
-
+      const fFeasibility = document.getElementById('cmp-doc-feasibility')?.files?;
+      const fPlace = document.getElementById('cmp-doc-place-photo')?.files?;
+      const fCriminal = document.getElementById('cmp-doc-criminal-record')?.files?;
+      const fResearch = document.getElementById('cmp-doc-field-research')?.files?;
+      const fOther = document.getElementById('cmp-doc-other-docs')?.files?;
 
       if (!isAlreadyCompleted && (!fFeasibility || !fPlace || !fCriminal || !fResearch)) {
         if (btn) { btn.disabled = false; btn.textContent = '✅ اعتماد الإرسال النهائي وإصدار رقم المتابعة الجديد'; }
