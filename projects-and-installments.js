@@ -700,5 +700,87 @@
     if (origMemberPortal) await origMemberPortal.apply(this, arguments);
     const area = document.getElementById('dashboard-area');
     if (area?.firstElementChild) { area.firstElementChild.id = area.firstElementChild.id || 'member-portal-card'; loadUpcomingInstallmentsBanner(area.firstElementChild.id, user); }
+      // 13. توجيه مرفقات الاستمارات العادية إلى Google Drive + إغلاق السماح بالتعديل بعد الحفظ
+  const origHandlePreview = window.handleImmediateAttachmentPreview;
+  window.handleImmediateAttachmentPreview = async function(inputEl, explicitDocKey = '', statusBoxId = '') {
+    const rawFile = inputEl?.files?.[0];
+    if (rawFile && window.GOOGLE_DRIVE_WEB_APP_URL && typeof window.uploadFileToDriveOrStorage === 'function') {
+      const village = document.getElementById('h-village')?.value || window.formData?.husband?.village || 'إهناسيا';
+      const subType = window.formData?.interventionType || 'مساعدات_اجتماعية';
+      const code = window.ACTIVE_EDIT_CASE?.tracking_code || ('DRAFT-' + Date.now());
+      const res = await window.uploadFileToDriveOrStorage(rawFile, {
+        year: new Date().getFullYear().toString(),
+        village,
+        submissionType: subType,
+        trackingCode: code
+      });
+      if (res && res.uploaded) {
+        const key = explicitDocKey || inputEl.id || 'doc';
+        window.WIZARD_ATTACHMENTS_CACHE = window.WIZARD_ATTACHMENTS_CACHE || {};
+        window.WIZARD_ATTACHMENTS_CACHE[key] = res;
+        window.formData.documents = Object.assign({}, window.formData.documents || {}, { [key]: res });
+      }
+    }
+    if (typeof origHandlePreview === 'function') {
+      return origHandlePreview.apply(this, arguments);
+    }
+  };
+
+  // تحديث السجل الحالي وإغلاق allow_edit تلقائياً إذا كان المستخدم يعدل حالة مفتوحة
+  const origSubmitWizard = window.submitFullWizardApplication;
+  window.submitFullWizardApplication = async function() {
+    if (window.ACTIVE_EDIT_CASE && window.supabaseClient) {
+      const editId = window.ACTIVE_EDIT_CASE.id;
+      const h = window.formData.husband || {};
+      const w = window.formData.wife || {};
+      const { error } = await window.supabaseClient
+        .from('families')
+        .update({
+          husband_data: h,
+          wife_data: w,
+          children_data: window.formData.children || [],
+          expenses_data: window.formData.expenses || {},
+          incomes_data: window.formData.incomes || {},
+          housing_data: window.formData.housing || {},
+          documents_data: Object.assign({}, window.ACTIVE_EDIT_CASE.documents_data || {}, window.formData.documents || {}),
+          allow_edit: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editId);
+
+      if (error) return alert('❌ تعذر حفظ التعديلات: ' + error.message);
+      window.ACTIVE_EDIT_CASE = null;
+      alert('✅ تم حفظ التعديلات بنجاح وإغلاق صلاحية التعديل المؤقتة.');
+      if (typeof window.showSection === 'function') window.showSection('home');
+      return;
+    }
+    if (typeof origSubmitWizard === 'function') {
+      return origSubmitWizard.apply(this, arguments);
+    }
+  };
+
+  // 14. زر الأرشفة الطارئة لسجلات Supabase إلى Google Drive (عند اقتراب امتلاء المساحة)
+  window.backupSupabaseFamiliesToGoogleDrive = async function() {
+    if (!window.supabaseClient || !window.GOOGLE_DRIVE_WEB_APP_URL) return;
+    if (!confirm('هل تريد تصدير نسخة احتياطية كاملة من سجلات الحالات (Supabase) وحفظها كملف أرشيف داخل Google Drive؟')) return;
+
+    const { data, error } = await window.supabaseClient.from('families').select('*');
+    if (error || !data) return alert('❌ تعذر جلب البيانات من Supabase.');
+
+    const res = await fetch(window.GOOGLE_DRIVE_WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'archive_db',
+        fileName: `Supabase_Families_Backup_${new Date().toISOString().slice(0, 10)}.json`,
+        records: data
+      })
+    });
+    const json = await res.json();
+    if (json && json.status === 'success') {
+      alert(`✅ تم حفظ نسخة الأرشيف (${data.length} حالة) بنجاح في Google Drive!\nرابط الملف:\n${json.fileUrl}`);
+    } else {
+      alert('❌ تعذرت الأرشفة: ' + (json?.message || 'خطأ غير معروف'));
+    }
   };
 })();
