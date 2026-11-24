@@ -87,34 +87,8 @@
     }
     return { name: file?.name || 'file', uploaded: false, uploadError: 'تعذر رفع الملف' };
   };
-      } catch (driveErr) {
-        console.warn('Google Drive fallback to Supabase:', driveErr);
-      }
-    }
 
-    // احتياطي تلقائي لـ Supabase في حال تعذر الاتصال بـ Drive
-    if (window.supabaseClient && window.supabaseClient.storage && file) {
-      const safeName = String(file.name || 'file').replace(/[^\w.-]/g, '_');
-      const path = `${meta.trackingCode || 'DRAFT'}/${meta.folder || 'docs'}/${Date.now()}_${safeName}`;
-      const { error } = await window.supabaseClient.storage.from('foundation-docs').upload(path, file, { upsert: true });
-      if (!error) {
-        const { data: pubData } = window.supabaseClient.storage.from('foundation-docs').getPublicUrl(path);
-        return {
-          name: file.name,
-          fileName: file.name,
-          size: file.size,
-          mimeType: file.type || '',
-          path,
-          url: pubData?.publicUrl || '',
-          publicUrl: pubData?.publicUrl || '',
-          storageProvider: 'supabase',
-          uploaded: true
-        };
-      }
-    }
-    return { name: file?.name || 'file', uploaded: false, uploadError: 'تعذر رفع الملف' };
-  };
-  // 3. تحديث الاستعلام الفوري ليدعم الرقم الأولي والنهائي للمشروعات
+   // 3. تحديث الاستعلام الفوري ليدعم الرقم الأولي والنهائي للمشروعات
   const origTrackApplication = window.trackApplication;
   window.trackApplication = async function() {
     const q = (document.getElementById('track-input')?.value || '').trim().toUpperCase();
