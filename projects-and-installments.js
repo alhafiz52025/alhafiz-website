@@ -42,10 +42,12 @@
         };
 
         const res = await fetch(driveUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
+       method: 'POST',
+       redirect: 'follow',
+       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+       body: JSON.stringify(payload)
+     });
+
         const json = await res.json();
         if (json && json.status === 'success' && json.fileUrl) {
           return {
