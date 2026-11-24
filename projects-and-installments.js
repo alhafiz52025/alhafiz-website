@@ -696,12 +696,6 @@
   const origAdminCases = window.renderAdminCasesSection;
   window.renderAdminCasesSection = function() { if (origAdminCases) origAdminCases.apply(this, arguments); loadUpcomingInstallmentsBanner('admin-tab-cases', window.currentUser); };
 
-  const origMemberPortal = window.renderMemberPortal;
-  window.renderMemberPortal = async function(user) {
-    if (origMemberPortal) await origMemberPortal.apply(this, arguments);
-    const area = document.getElementById('dashboard-area');
-    if (area?.firstElementChild) { area.firstElementChild.id = area.firstElementChild.id || 'member-portal-card'; loadUpcomingInstallmentsBanner(area.firstElementChild.id, user); }
-      // 13. توجيه مرفقات الاستمارات العادية إلى Google Drive + إغلاق السماح بالتعديل بعد الحفظ
     const origMemberPortal = window.renderMemberPortal;
   window.renderMemberPortal = async function(user) {
     if (origMemberPortal) await origMemberPortal.apply(this, arguments);
@@ -788,7 +782,7 @@
         records: data
       })
     });
-        const json = await res.json();
+    const json = await res.json();
     if (json && json.status === 'success') {
       alert(`✅ تم حفظ نسخة الأرشيف (${data.length} حالة) بنجاح في Google Drive!\nرابط الملف:\n${json.fileUrl}`);
     } else {
