@@ -202,7 +202,7 @@
       container.appendChild(extraBox);
     }
   };
-  // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
+    // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
   window.submitInitialSmallProject = async function() {
     const name = (document.getElementById('prj-init-name')?.value || '').trim();
     const phone = (document.getElementById('prj-init-phone')?.value || '').trim();
@@ -211,10 +211,11 @@
     if (projectType === 'إضافة مشروع غير موجود في القائمة') {
       projectType = (document.getElementById('prj-init-custom-type')?.value || '').trim();
     }
-    const idFile = document.getElementById('prj-init-id-card')?.files?.item(0);
+    const idInput = document.getElementById('prj-init-id-card');
+    const idFile = idInput && idInput.files ? idInput.files.item(0) : null;
 
-    if (!name || !/^01\d{8}$/.test(phone) || !village || !projectType || !idFile) {
-      return alert('⚠️ يرجى إدخال الاسم، رقم الهاتف الصحيح (11 رقماً)، القرية، نوع المشروع، وإرفاق صورة البطاقة.');
+    if (!name || !/^01[0125]\d{8}$/.test(phone) || !village || !projectType || !idFile) {
+      return alert('⚠️ يرجى إدخال الاسم، رقم الهاتف الصحيح (11 رقماً يبدأ بـ 01)، القرية، نوع المشروع، وإرفاق صورة البطاقة.');
     }
 
     const initialCode = 'HF-INIT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
