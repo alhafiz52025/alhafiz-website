@@ -67,7 +67,7 @@
     });
   }
 
-  window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
+    window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) return { name: 'file', uploaded: false };
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
 
@@ -97,13 +97,14 @@
           fileBase64: base64Data
         };
 
-        fetch(driveUrl, {
+        const formBody = new URLSearchParams();
+        formBody.append('payload', JSON.stringify(payload));
+
+        await fetch(driveUrl, {
           method: 'POST',
           mode: 'no-cors',
-          keepalive: true,
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        }).catch(() => {});
+          body: formBody
+        });
 
         return {
           name: finalFileName,
