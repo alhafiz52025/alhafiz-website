@@ -18,8 +18,8 @@
     }
     const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0+/, ''));
     const text = window._HF_WA_MESSAGES[msgKey] || '';
-    const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(initWaMsg);
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (typeof window.triggerInstantWhatsApp !== 'function') {
@@ -67,19 +67,114 @@
     });
   }
 
-   window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
+  // دوال التحقق الآمن من روابط Google Drive ومنع الروابط الوهمية مثل google.com_
+  window.getSafeDriveDocumentUrl = function(doc = {}) {
+    if (!doc) return '';
+    if (typeof doc === 'string') {
+      const s = doc.trim();
+      const lower = s.toLowerCase();
+      if (!s || lower.includes('google.com_') || lower.endsWith('_')) return '';
+      if (lower.startsWith('https://') || lower.startsWith('http://')) return s;
+      return '';
+    }
+
+    const candidates = [doc.url, doc.publicUrl, doc.fileUrl, doc.directUrl]
+      .map(u => String(u || '').trim())
+      .filter(Boolean);
+
+    for (const candidate of candidates) {
+      const lower = candidate.toLowerCase();
+      if (lower.includes('google.com_') || lower.endsWith('_')) continue;
+      if (
+        lower.startsWith('https://drive.google.com/') ||
+        lower.startsWith('https://lh3.googleusercontent.com/') ||
+        lower.startsWith('https://docs.google.com/') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('http://')
+      ) {
+        return candidate;
+      }
+    }
+
+    if (doc.fileId) {
+      return `https://drive.google.com/file/d/${String(doc.fileId).trim()}/view`;
+    }
+
+    return '';
+  };
+
+  window.openDriveDocumentSafely = function(doc = {}) {
+    const safeUrl = window.getSafeDriveDocumentUrl(doc);
+    if (!safeUrl) {
+      alert('⚠️ هذا المرفق لا يملك رابط عرض صالحاً على Google Drive بعد (قد يكون مسجلاً قبل تحديث نظام الأرشفة).');
+      return;
+    }
+    window.open(safeUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  window.renderDriveDocumentsList = function(documents = []) {
+    const list = Array.isArray(documents)
+      ? documents
+      : (documents && typeof documents === 'object' ? Object.values(documents) : []);
+
+    if (!list.length) {
+      return '<div class="text-muted small">لا توجد مرفقات مسجلة لهذه الحالة.</div>';
+    }
+
+    return list.map((doc, idx) => {
+      const safeViewUrl = window.getSafeDriveDocumentUrl(doc);
+      const rawDirect = doc && typeof doc === 'object' ? String(doc.directUrl || '').trim() : '';
+      const previewImgUrl = rawDirect && !rawDirect.toLowerCase().includes('google.com_')
+        ? rawDirect
+        : safeViewUrl;
+      const docName = (doc && typeof doc === 'object')
+        ? (doc.label || doc.fileName || doc.name || `مرفق ${idx + 1}`)
+        : `مرفق ${idx + 1}`;
+      const mime = (doc && typeof doc === 'object') ? String(doc.mimeType || '') : '';
+      const isImage = Boolean(
+        mime.startsWith('image/') ||
+        /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(String(docName + ' ' + safeViewUrl)) ||
+        previewImgUrl.includes('lh3.googleusercontent.com/d/')
+      );
+
+      if (!safeViewUrl) {
+        return `
+          <div style="border:1px solid #e2e8f0; border-radius:8px; padding:8px 10px; margin-bottom:6px; background:#f8fafc; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span style="font-size:12px; color:#475569;">${window.escapeHtml ? window.escapeHtml(docName) : docName}</span>
+            <span style="font-size:11px; background:#fef3c7; color:#92400e; padding:2px 8px; border-radius:6px; font-weight:700;">الرابط غير متاح (سجل قديم)</span>
+          </div>
+        `;
+      }
+
+      return `
+        <div style="border:1px solid #cbd5e1; border-radius:8px; padding:8px 10px; margin-bottom:8px; background:#fff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:12px; font-weight:700; color:#0f172a;">${window.escapeHtml ? window.escapeHtml(docName) : docName}</span>
+            <a href="${safeViewUrl}" target="_blank" rel="noopener noreferrer" class="nav-btn" style="background:#0284c7; color:#fff; padding:4px 10px; font-size:11px; text-decoration:none;">
+              فتح / تنزيل
+            </a>
+          </div>
+          ${isImage && previewImgUrl ? `
+            <div style="margin-top:8px; text-align:center;">
+              <img src="${previewImgUrl}" alt="${window.escapeHtml ? window.escapeHtml(docName) : docName}" loading="lazy"
+                   style="max-height:180px; max-width:100%; object-fit:contain; border-radius:6px; border:1px solid #e2e8f0;"
+                   onerror="this.style.display='none';" />
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) {
       return { name: 'file', uploaded: false, url: '', publicUrl: '', directUrl: '' };
     }
 
-    const driveUrl = String(
-    window.GOOGLE_DRIVE_WEB_APP_URL ||
-    'https://google.com'
-    ).trim();
-
-   if (!driveUrl || !driveUrl.includes('://google.com')) {
-   throw new Error('رابط Google Apps Script غير مضبوط');
-   }
+    const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
+    if (!driveUrl || !driveUrl.includes('script.google.com/macros/s/')) {
+      throw new Error('رابط Google Apps Script غير مضبوط بشكل صحيح في ملف config.js');
+    }
 
     const file = await quickCompressImage(rawFile);
     const base64Data = await new Promise((resolve, reject) => {
@@ -127,10 +222,10 @@
 
     const fileId = String(result.fileId || '').trim();
     const viewUrl = String(
-      result.fileUrl || (fileId ? `https://google.com{fileId}/view` : '')
+      result.fileUrl || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '')
     ).trim();
     const directUrl = String(
-      result.directUrl || (fileId ? `https://googleusercontent.com{fileId}` : viewUrl)
+      result.directUrl || (fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : viewUrl)
     ).trim();
 
     return {
@@ -147,6 +242,7 @@
       uploaded: Boolean(viewUrl || fileId)
     };
   };
+
   window.updateProjInitCenters = function() {
     const gov = document.getElementById('prj-init-gov')?.value || '';
     const centerSel = document.getElementById('prj-init-center');
@@ -234,6 +330,7 @@
     }
     if (typeof origTrackApplication === 'function') return origTrackApplication.apply(this, arguments);
   };
+
   const origRenderWizardStep = window.renderWizardStep;
   window.renderWizardStep = function() {
     ensureProjectAidType();
@@ -344,6 +441,7 @@
       container.appendChild(extraBox);
       return;
     }
+
     const maritalSel = container.querySelector('#h-status, #h-marital, select[id*="status"]');
     if (maritalSel && window.currentStep === 2) {
       const hasSingle = Array.from(maritalSel.options).some(o => o.value.includes('أعزب'));
@@ -456,7 +554,10 @@
       }
     }
   };
+
   window.submitInitialSmallProject = async function(btnEl) {
+    const btn = btnEl || document.querySelector('#wizard-container button.action-btn');
+    const oldText = btn ? btn.textContent : '';
     try {
       const name = (document.getElementById('prj-init-name')?.value || '').trim();
       const phone = (document.getElementById('prj-init-phone')?.value || '').replace(/\D/g, '');
@@ -492,8 +593,6 @@
         return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية كاملة (الوجه الأمامي والوجه الخلفي).');
       }
 
-      const btn = btnEl || document.querySelector('#wizard-container button.action-btn');
-      const oldText = btn ? btn.textContent : '';
       if (btn) {
         btn.disabled = true;
         btn.textContent = '⏳ جارٍ التسجيل وإصدار الرقم الأولي...';
@@ -509,8 +608,7 @@
         'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
       const intlPhone = '20' + phone.replace(/^0+/, '');
-      const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(initWaMsg);
-      const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
+      const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
         await window.supabaseClient.from('custom_locations').upsert([{
@@ -559,10 +657,11 @@
 
       const res = await window.supabaseClient.from('families').insert(payload);
       if (res && res.error) {
-        if (waWin && !waWin.closed) waWin.close();
         if (btn) { btn.disabled = false; btn.textContent = oldText; }
         return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
       }
+
+      const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       const container = document.getElementById('wizard-container');
       if (container) {
@@ -579,9 +678,11 @@
           </div>`;
       }
     } catch (err) {
+      if (btn) { btn.disabled = false; btn.textContent = oldText; }
       alert('❌ حدث خطأ: ' + (err && err.message ? err.message : err));
     }
   };
+
   window.verifyAndOpenProjectCompletion = async function() {
     const code = (document.getElementById('prj-completion-code-input')?.value || '').trim().toUpperCase();
     if (!code) return alert('⚠️ أدخل رقم الطلب الأولي المرسل إليك.');
@@ -712,18 +813,18 @@
       alert('❌ حدث خطأ أثناء حفظ البيانات: ' + (err.message || err));
     }
   };
+
   async function deleteCaseFilesFromGoogleDrive(trackingCode, initialCode) {
     const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
-    if (!driveUrl || !driveUrl.includes('://google.com')) return;
+    if (!driveUrl || !driveUrl.includes('script.google.com/macros/s/')) return;
 
-    const codes = Array.from(new Set([trackingCode, initialCode].filter(Boolean)));
+    const codes = Array.from(new Set([trackingCode, initialCode].map(c => String(c || '').trim()).filter(Boolean)));
     for (const c of codes) {
       try {
         const formBody = new URLSearchParams();
         formBody.append('payload', JSON.stringify({ action: 'delete_case_files', trackingCode: c }));
         await fetch(driveUrl, {
           method: 'POST',
-          mode: 'no-cors',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
           body: formBody.toString()
         });
@@ -732,6 +833,17 @@
       }
     }
   }
+
+  // اعتراض النقر على أي رابط قديم يحمل google.com_ لمنع صفحة خطأ المتصفح
+  document.addEventListener('click', function(e) {
+    const anchor = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+    if (!anchor) return;
+    const href = String(anchor.getAttribute('href') || '').trim();
+    if (href.toLowerCase().includes('google.com_') || href.endsWith('_')) {
+      e.preventDefault();
+      alert('⚠️ هذا المرفق يملك رابطاً قديماً غير صالح (google.com_). يرجى حذف هذه الحالة التجريبية القديمة وتسجيل حالة جديدة ليظهر رابط Google Drive الصحيح.');
+    }
+  }, true);
 
   const origFilterAndRenderCasesTable = window.filterAndRenderCasesTable;
   window.filterAndRenderCasesTable = function() {
@@ -824,6 +936,7 @@
     const msg = `مؤسسة الحافظ للتنمية والخدمات\nمبروك أ/ ${item.applicant_name || 'صاحب الطلب'}، تمت الموافقة المبدئية على طلب المشروع.\nرقم الطلب الأولي: ${initCode}\nادخل على الموقع واختر (+ طلب مساعدة) ثم (مشروع تمكين اقتصادي صغير) وأدخل الرقم (${initCode}) في الخانة الجانبية لاستكمال بيانات الأسرة والمشروع والضامن.`;
     if (phone) window.triggerInstantWhatsApp(phone, msg);
   };
+
   window.openProjectInstallmentsModal = async function(familyId) {
     const pool = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
     const caseObj = pool.find(c => String(c.id) === String(familyId));
@@ -937,6 +1050,7 @@
     const w = window.open('', '_blank', 'width=900,height=900');
     if (w) { w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Tahoma;direction:rtl;padding:20px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:6px;text-align:right;font-size:12px;}</style></head><body>${clone.innerHTML}<script>window.onload=function(){window.print();};<\/script></body></html>`); w.document.close(); }
   };
+
   async function loadUpcomingInstallmentsBanner(targetId, userObj) {
     const host = document.getElementById(targetId);
     if (!host || !window.supabaseClient) return;
@@ -1078,10 +1192,10 @@
       records: data
     }));
     await fetch(window.GOOGLE_DRIVE_WEB_APP_URL, {
-      method: 'POST', mode: 'no-cors',
+      method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body: formBody.toString()
     });
-    alert(`✅ تم إرسال نسخة الأرشيف (${data.length} حالة) بنجاح إلى مجلد Database_Backups داخل Google Drive!`);
+    alert(`✅ تم إرسال نسخة الأرشيف (${data.length} حالة) بنجاح إلى مجلد Supabase_Backups داخل Google Drive!`);
   };
 })();
