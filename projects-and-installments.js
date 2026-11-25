@@ -682,18 +682,23 @@
   };
 
   async function deleteCaseFilesFromGoogleDrive(trackingCode, initialCode) {
-    const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
-    if (!driveUrl) return;
-    for (const c of [trackingCode, initialCode].filter(Boolean)) {
-      try {
-        await fetch(driveUrl, {
-          method: 'POST', mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'delete_case_files', trackingCode: c })
-        });
-      } catch (e) {}
+  const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
+  if (!driveUrl || !driveUrl.includes('script.google.com/macros/s/')) return;
+
+  const codes = Array.from(new Set([trackingCode, initialCode].filter(Boolean)));
+  for (const c of codes) {
+    try {
+      await fetch(driveUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'delete_case_files', trackingCode: c })
+      });
+    } catch (e) {
+      console.warn('Drive delete warning:', e);
     }
   }
+}
 
   const origFilterAndRenderCasesTable = window.filterAndRenderCasesTable;
   window.filterAndRenderCasesTable = function() {
