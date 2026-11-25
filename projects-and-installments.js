@@ -2,6 +2,33 @@
 (function() {
   const PROJECT_INTERVENTION_LABEL = 'مشروع تمكين اقتصادي صغير';
 
+  window._HF_WA_MESSAGES = window._HF_WA_MESSAGES || {};
+
+  function registerWaMessage(msgText) {
+    const key = 'wa_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    window._HF_WA_MESSAGES[key] = String(msgText || '');
+    return key;
+  }
+
+  window.openRegisteredWhatsApp = function(rawPhone, msgKey) {
+    const cleanPhone = String(rawPhone || '').replace(/\D/g, '');
+    if (!cleanPhone) {
+      alert('⚠️ لا يوجد رقم هاتف/واتساب مسجل لهذه الحالة.');
+      return;
+    }
+    const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0+/, ''));
+    const text = window._HF_WA_MESSAGES[msgKey] || '';
+    const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  if (typeof window.triggerInstantWhatsApp !== 'function') {
+    window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+      const key = registerWaMessage(messageText);
+      window.openRegisteredWhatsApp(rawPhone, key);
+    };
+  }
+
   function ensureProjectAidType() {
     if (!Array.isArray(window.AID_TYPES)) window.AID_TYPES = [];
     const exists = window.AID_TYPES.some(t => String(t).includes('مشروع') || String(t).includes('تمكين اقتصادي'));
@@ -15,32 +42,7 @@
     return s.includes('مشروع') || s.includes('تمكين اقتصادي') || s.includes('قرض حسن');
   }
 
-  function quickCompressImage(file, maxW = 1200, quality = 0.72) {
-    return new Promise((resolve) => {
-      if (!file || !file.type || !file.type.startsWith('image/')) return resolve(file);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let w = img.width, h = img.height;
-          if (w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          canvas.toBlob((blob) => {
-            if (!blob) return resolve(file);
-            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }));
-          }, 'image/jpeg', quality);
-        };
-        img.onerror = () => resolve(file);
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve(file);
-      reader.readAsDataURL(file);
-    });
-  }
-
-    function quickCompressImage(file, maxW = 900, quality = 0.65) {
+  function quickCompressImage(file, maxW = 900, quality = 0.65) {
     return new Promise((resolve) => {
       if (!file || !file.type || !file.type.startsWith('image/')) return resolve(file);
       const reader = new FileReader();
@@ -95,7 +97,6 @@
           fileBase64: base64Data
         };
 
-        // الإرسال الفوري في الخلفية بدون حجز المستخدم في الانتظار
         fetch(driveUrl, {
           method: 'POST',
           mode: 'no-cors',
@@ -121,7 +122,6 @@
     return { name: rawFile.name, uploaded: true, storageProvider: 'google_drive' };
   };
 
-  // تحديث الفلترة الجغرافية المتسلسلة لشاشة التقديم المبدئي للمشروع
   window.updateProjInitCenters = function() {
     const gov = document.getElementById('prj-init-gov')?.value || '';
     const centerSel = document.getElementById('prj-init-center');
@@ -199,7 +199,7 @@
     }
     if (typeof origTrackApplication === 'function') return origTrackApplication.apply(this, arguments);
   };
-  // إدارة خطوات المعالج + حالة أعزب + الفلترة الجغرافية + قسم المشروع والضامن
+
   const origRenderWizardStep = window.renderWizardStep;
   window.renderWizardStep = function() {
     ensureProjectAidType();
@@ -220,7 +220,6 @@
       container.prepend(banner);
     }
 
-    // الخطوة 1: التقديم المبدئي للمشروع (مع المحافظة -> المركز -> القرية + العنوان + البطاقة وش وظهر)
     if (window.currentStep === 1 && !window.ACTIVE_PROJECT_COMPLETION_CASE) {
       const sel = document.getElementById('intervention-type');
       if (sel) {
@@ -309,7 +308,7 @@
       container.appendChild(extraBox);
       return;
     }
-    // إضافة خيار "أعزب / عزباء" لقائمة الحالة الاجتماعية بقسم الأب/مقدم الطلب (الخطوة 2)
+
     const maritalSel = container.querySelector('#h-status, #h-marital, select[id*="status"]');
     if (maritalSel && window.currentStep === 2) {
       const hasSingle = Array.from(maritalSel.options).some(o => o.value.includes('أعزب'));
@@ -326,18 +325,16 @@
       });
     }
 
-    // تخطي قسم الزوجة (الخطوة 3) وقسم الأبناء (الخطوة 4) تلقائياً إذا كانت الحالة "أعزب / عزباء"
     const currentMarital = String(maritalSel?.value || window.formData?.husband?.status || '');
     const isSingle = currentMarital.includes('أعزب') || currentMarital.includes('عزباء');
     if (isSingle && (window.currentStep === 3 || window.currentStep === 4)) {
       window.formData.wife = {};
       window.formData.children = [];
-      window.currentStep = 6; // الانتقال مباشرة لقسم المصروفات
+      window.currentStep = 6;
       window.renderWizardStep();
       return;
     }
 
-    // في وضع استكمال المشروع: إخفاء حقول العنوان وبطاقة المتقدم في الخطوة 2 لأنها مسجلة مسبقاً
     if (window.ACTIVE_PROJECT_COMPLETION_CASE && window.currentStep === 2) {
       const streetInp = document.getElementById('h-street');
       const addrBox = streetInp?.closest('div[style*="background:#f8fafc"]');
@@ -349,7 +346,6 @@
       });
     }
 
-    // في الخطوة 8 (الأخيرة): إخفاء البحث الاجتماعي من عند المواطن وإضافة قسم المشروع والضامن
     if (window.ACTIVE_PROJECT_COMPLETION_CASE && window.currentStep === 8) {
       const socInp = document.getElementById('doc-social-research');
       if (socInp && socInp.parentElement) socInp.parentElement.style.display = 'none';
@@ -425,7 +421,8 @@
       }
     }
   };
-    // 4. حفظ التقديم المبدئي للمشروع الصغير (سريع جداً + فتح الواتساب بدون حظر المتصفح)
+
+  // 4. حفظ التقديم المبدئي للمشروع الصغير (سريع جداً + رابط واتساب صحيح)
   window.submitInitialSmallProject = async function(btnEl) {
     try {
       const name = (document.getElementById('prj-init-name')?.value || '').trim();
@@ -478,9 +475,8 @@
         '• المشروع المطلوب: ' + projectType + '\n' +
         'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
-      // فتح نافذة الواتساب فوراً لحظة الضغطة حتى لا يحظرها المتصفح
-      const intlPhone = '20' + phone.replace(/^0/, '');
-      const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(initWaMsg);
+      const intlPhone = '20' + phone.replace(/^0+/, '');
+      const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
       const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
@@ -535,14 +531,13 @@
         return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
       }
 
-      // عرض مربع نجاح واضح مع زر واتساب مباشر في حال كان الجهاز يمنع النوافذ المنبثقة
       const container = document.getElementById('wizard-container');
       if (container) {
         container.innerHTML = `
           <div style="background:#ecfdf5; border:2px solid #059669; border-radius:14px; padding:22px; text-align:center;">
             <h3 style="color:#065f46; margin-top:0;">✅ تم تسجيل طلب المشروع المبدئي بنجاح!</h3>
             <p style="font-size:15px;">رقم الطلب الأولي الخاص بك هو:</p>
-            <div style="background:#fff; border:2px dashed #059669; padding:12px; font-size:22px; font-weight:900; color:#047857; border-radius:10px; margin:10px auto; max-width:340px;">${initialCode}</div>
+            <div style="background:#fff; border:2px dashed #059669; padding:12px; font-size:22px; font-weight:900; color:#047857; border-radius:10px; margin:10px auto; max-width:340px;">${window.escapeHtml(initialCode)}</div>
             <p style="font-size:13px; color:#334155;">يرجى الاحتفاظ بهذا الرقم لاستكمال الأوراق ودراسة الجدوى فور الموافقة المبدئية.</p>
             <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px;">
               <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="action-btn" style="background:#16a34a; text-decoration:none;">💬 إرسال رقم الطلب على الواتساب</a>
@@ -555,8 +550,6 @@
     }
   };
 
-
-  // 5. فتح استكمال المشروع بدءاً من القسم الأول بالاستمارة مع تعبئة العنوان والبطاقة تلقائياً في الخلفية
   window.verifyAndOpenProjectCompletion = async function() {
     const code = (document.getElementById('prj-completion-code-input')?.value || '').trim().toUpperCase();
     if (!code) return alert('⚠️ أدخل رقم الطلب الأولي المرسل إليك.');
@@ -598,7 +591,7 @@
     window.currentStep = 2;
     window.renderWizardStep();
   };
-  // 6. اعتماد الاستكمال النهائي للمشروع ودمج بيانات الأسرة والضامن
+
   window.submitProjectCompletionForm = async function(caseId) {
     try {
       const { data: existingCase } = await window.supabaseClient.from('families').select('*').eq('id', caseId).single();
@@ -687,7 +680,7 @@
       alert('❌ حدث خطأ أثناء حفظ البيانات: ' + (err.message || err));
     }
   };
-  // 7. حذف الصور من Google Drive تلقائياً عند الرفض
+
   async function deleteCaseFilesFromGoogleDrive(trackingCode, initialCode) {
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
     if (!driveUrl) return;
@@ -702,7 +695,6 @@
     }
   }
 
-  // 8. أزرار الأدمن في الجدول (السماح بالتعديل + تفعيل الاستكمال + رفض وحذف الصور + الأقساط)
   const origFilterAndRenderCasesTable = window.filterAndRenderCasesTable;
   window.filterAndRenderCasesTable = function() {
     if (typeof origFilterAndRenderCasesTable === 'function') origFilterAndRenderCasesTable.apply(this, arguments);
@@ -794,7 +786,8 @@
     const msg = `مؤسسة الحافظ للتنمية والخدمات\nمبروك أ/ ${item.applicant_name || 'صاحب الطلب'}، تمت الموافقة المبدئية على طلب المشروع.\nرقم الطلب الأولي: ${initCode}\nادخل على الموقع واختر (+ طلب مساعدة) ثم (مشروع تمكين اقتصادي صغير) وأدخل الرقم (${initCode}) في الخانة الجانبية لاستكمال بيانات الأسرة والمشروع والضامن.`;
     if (phone) window.triggerInstantWhatsApp(phone, msg);
   };
-    // 11. شاشة الأقساط المنبثقة (20 شهراً)
+
+  // 11. شاشة الأقساط المنبثقة (20 شهراً) مع تمرير آمن لرسائل الواتساب
   window.openProjectInstallmentsModal = async function(familyId) {
     const pool = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
     const caseObj = pool.find(c => String(c.id) === String(familyId));
@@ -862,6 +855,7 @@
               const mLabel = new Date(inst.due_date + 'T00:00:00').toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
               const remCount = 20 - inst.installment_number;
               const waMsg = `مؤسسة الحافظ للتنمية والخدمات\nالسيد/ة: ${clientName}\nتم سداد قسط شهر (${mLabel}) — القسط رقم (${inst.installment_number} من 20) بقيمة (${inst.amount} جنيه).\nالمتبقي عليكم (${remCount} قسط) بإجمالي (${remCount * Number(inst.amount)} جنيه).`;
+              const msgKey = registerWaMessage(waMsg);
               return `<tr style="background:${inst.is_paid ? '#f0fdf4' : '#fff'};">
                 <td><strong>${inst.installment_number} / 20</strong></td>
                 <td>${window.escapeHtml(mLabel)}</td>
@@ -869,13 +863,14 @@
                 <td>${inst.is_paid ? '<span style="color:#15803d; font-weight:800;">✅ مسدد</span>' : '<span style="color:#b91c1c; font-weight:700;">⏳ غير مسدد</span>'}</td>
                 <td class="no-print" style="display:flex; gap:5px; flex-wrap:wrap;">
                   <button type="button" onclick="toggleInstallmentPayment('${window.escapeHtml(inst.id)}', '${window.escapeHtml(familyId)}', ${!inst.is_paid})" class="nav-btn" style="background:${inst.is_paid ? '#64748b' : '#15803d'}; color:#fff; padding:3px 8px; font-size:11px;">${inst.is_paid ? 'تراجع' : '✔️ سداد'}</button>
-                  <button type="button" onclick="window.triggerInstantWhatsApp('${window.escapeHtml(clientPhone)}', decodeURIComponent('${encodeURIComponent(waMsg)}'))" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 8px; font-size:11px;">💬 واتساب</button>
+                  <button type="button" onclick="window.openRegisteredWhatsApp('${window.escapeHtml(clientPhone)}', '${msgKey}')" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 8px; font-size:11px;">💬 واتساب</button>
                 </td></tr>`;
             }).join('')}
           </tbody>
         </table>
       </div>`;
   };
+
   window.generate20Installments = async function(familyId) {
     const totalLoan = parseFloat(document.getElementById('inst-total-loan')?.value || '0');
     const startDateStr = document.getElementById('inst-start-date')?.value || '';
@@ -907,7 +902,7 @@
     if (w) { w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><style>body{font-family:Tahoma;direction:rtl;padding:20px;}table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:6px;text-align:right;font-size:12px;}</style></head><body>${clone.innerHTML}<script>window.onload=function(){window.print();};<\/script></body></html>`); w.document.close(); }
   };
 
-  // 12. تنبيهات الأقساط قبل الميعاد بـ 5 أيام (للأدمن والباحث المسند له)
+  // 12. تنبيهات الأقساط قبل الميعاد بـ 5 أيام مع تمرير آمن لرسائل الواتساب
   async function loadUpcomingInstallmentsBanner(targetId, userObj) {
     const host = document.getElementById(targetId);
     if (!host || !window.supabaseClient) return;
@@ -928,10 +923,11 @@
       const nm = f.applicant_name || 'مستفيد';
       const ph = f.husband_data?.whatsapp || f.husband_data?.phone || '';
       const msg = `مؤسسة الحافظ للتنمية والخدمات\nتذكير للسيد/ة: ${nm}\nموعد استحقاق القسط رقم (${r.installment_number} من 20) بقيمة (${r.amount} جنيه) يحل بتاريخ (${r.due_date}).`;
+      const msgKey = registerWaMessage(msg);
       return `<div style="background:#fff; border:1px solid #fecaca; padding:6px 10px; border-radius:6px; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; font-size:12px;">
         <span><strong>${window.escapeHtml(nm)}</strong> — قسط #${r.installment_number} (${r.amount} ج.م) — استحقاق: <strong style="color:#b91c1c;">${r.due_date}</strong></span>
         <div style="display:flex; gap:5px;">
-          <button type="button" onclick="window.triggerInstantWhatsApp('${window.escapeHtml(ph)}', decodeURIComponent('${encodeURIComponent(msg)}'))" class="nav-btn" style="background:#16a34a; color:#fff; padding:3px 8px; font-size:11px;">💬 تذكير واتساب</button>
+          <button type="button" onclick="window.openRegisteredWhatsApp('${window.escapeHtml(ph)}', '${msgKey}')" class="nav-btn" style="background:#16a34a; color:#fff; padding:3px 8px; font-size:11px;">💬 تذكير واتساب</button>
           <button type="button" onclick="window.openProjectInstallmentsModal('${window.escapeHtml(f.id)}')" class="nav-btn" style="background:#7e22ce; color:#fff; padding:3px 8px; font-size:11px;">💳 الأقساط</button>
         </div></div>`;
     }).join('');
@@ -951,7 +947,6 @@
     }
   };
 
-  // 13. توجيه مرفقات الاستمارات العادية إلى Google Drive + إغلاق السماح بالتعديل بعد الحفظ
   const origHandlePreview = window.handleImmediateAttachmentPreview;
   window.handleImmediateAttachmentPreview = async function(inputEl, explicitDocKey = '', statusBoxId = '') {
     const rawFile = inputEl?.files?.item(0);
@@ -996,7 +991,6 @@
     if (typeof origSubmitWizard === 'function') return origSubmitWizard.apply(this, arguments);
   };
 
-  // 14. زر الأرشفة الطارئة لسجلات Supabase إلى Google Drive
   window.backupSupabaseFamiliesToGoogleDrive = async function() {
     if (!window.supabaseClient || !window.GOOGLE_DRIVE_WEB_APP_URL) return;
     if (!confirm('هل تريد تصدير نسخة احتياطية كاملة من سجلات الحالات (Supabase) وحفظها كملف أرشيف داخل Google Drive؟')) return;
@@ -1010,5 +1004,3 @@
     alert(`✅ تم إرسال نسخة الأرشيف (${data.length} حالة) بنجاح إلى مجلد Database_Backups داخل Google Drive!`);
   };
 })();
-
-
