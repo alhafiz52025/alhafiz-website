@@ -18,7 +18,7 @@
     }
     const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0+/, ''));
     const text = window._HF_WA_MESSAGES[msgKey] || '';
-    const url = `https://wa.me{intlPhone}?text=${encodeURIComponent(text)}`;
+    const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(initWaMsg);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -509,7 +509,7 @@
         'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
       const intlPhone = '20' + phone.replace(/^0+/, '');
-      const waUrl = `https://wa.me{intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
+      const url = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(text);
       const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
