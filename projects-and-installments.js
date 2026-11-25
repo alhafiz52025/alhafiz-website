@@ -655,13 +655,15 @@
         return alert('❌ تعذر الاتصال بقاعدة البيانات.');
       }
 
+      // فتح واتساب مباشرة أثناء تفاعل المستخدم (قبل await) حتى لا يحظره المتصفح (Popup Blocker)
+      const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
+
       const res = await window.supabaseClient.from('families').insert(payload);
       if (res && res.error) {
+        if (waWin && !waWin.closed) waWin.close();
         if (btn) { btn.disabled = false; btn.textContent = oldText; }
         return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
       }
-
-      const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       const container = document.getElementById('wizard-container');
       if (container) {
