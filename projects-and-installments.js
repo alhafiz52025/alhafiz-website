@@ -171,7 +171,7 @@
       return { name: 'file', uploaded: false, url: '', publicUrl: '', directUrl: '' };
     }
 
-    const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
+    const driveUrl = 'https://script.google.com/macros/s/AKfycbwefZy3JgwA9Cc4ZCxSGMEVdi-ZZAvn47Kk6I-RPDFXNpk0xLqJ65Z4qLx_WzWAiL2e/exec';
     if (!driveUrl || !driveUrl.includes('script.google.com/macros/s/')) {
       throw new Error('رابط Google Apps Script غير مضبوط بشكل صحيح في ملف config.js');
     }
@@ -817,7 +817,7 @@
   };
 
   async function deleteCaseFilesFromGoogleDrive(trackingCode, initialCode) {
-    const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
+    const driveUrl = 'https://script.google.com/macros/s/AKfycbwefZy3JgwA9Cc4ZCxSGMEVdi-ZZAvn47Kk6I-RPDFXNpk0xLqJ65Z4qLx_WzWAiL2e/exec';
     if (!driveUrl || !driveUrl.includes('script.google.com/macros/s/')) return;
 
     const codes = Array.from(new Set([trackingCode, initialCode].map(c => String(c || '').trim()).filter(Boolean)));
