@@ -509,7 +509,7 @@
         'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
       const intlPhone = '20' + phone.replace(/^0+/, '');
-      const url = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(text);
+      const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(initWaMsg);
       const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
