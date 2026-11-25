@@ -425,7 +425,7 @@
       }
     }
   };
-  // 4. حفظ التقديم المبدئي للمشروع الصغير (المحافظة -> المركز -> القرية + العنوان + بطاقة وش وظهر + واتساب)
+    // 4. حفظ التقديم المبدئي للمشروع الصغير (سريع جداً + فتح الواتساب بدون حظر المتصفح)
   window.submitInitialSmallProject = async function(btnEl) {
     try {
       const name = (document.getElementById('prj-init-name')?.value || '').trim();
@@ -466,18 +466,29 @@
       const oldText = btn ? btn.textContent : '';
       if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ جارٍ رفع البطاقة (وش وظهر) وإصدار الرقم الأولي...';
+        btn.textContent = '⏳ جارٍ التسجيل وإصدار الرقم الأولي...';
       }
 
-      // حفظ القرية الجديدة في قاعدة القرى المخصصة إن وجدت
+      const initialCode = 'HF-INIT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+      const initWaMsg =
+        'مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\n' +
+        'مرحباً أ/ ' + name + '\n' +
+        'تم تسجيل طلب المشروع الصغير المبدئي بنجاح.\n' +
+        '• رقم الطلب الأولي الخاص بك: ' + initialCode + '\n' +
+        '• المشروع المطلوب: ' + projectType + '\n' +
+        'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
+
+      // فتح نافذة الواتساب فوراً لحظة الضغطة حتى لا يحظرها المتصفح
+      const intlPhone = '20' + phone.replace(/^0/, '');
+      const waUrl = `https://wa.me{intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
+      const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
+
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
         await window.supabaseClient.from('custom_locations').upsert([{
           governorate: gov, center_city: center, village_name: village, added_by: 'مواطن'
         }], { onConflict: 'governorate,center_city,village_name' });
-        if (typeof window.loadCustomLocationsFromDB === 'function') await window.loadCustomLocationsFromDB();
       }
 
-      const initialCode = 'HF-INIT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
       const uploadMeta = {
         year: new Date().getFullYear().toString(),
         village: village,
@@ -519,28 +530,31 @@
 
       const res = await window.supabaseClient.from('families').insert(payload);
       if (res && res.error) {
+        if (waWin && !waWin.closed) waWin.close();
         if (btn) { btn.disabled = false; btn.textContent = oldText; }
         return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
       }
 
-      const initWaMsg =
-        'مؤسسة الحافظ للتنمية والخدمات (واتساب رسمي: 01000880156)\n' +
-        'مرحباً أ/ ' + name + '\n' +
-        'تم تسجيل طلب المشروع الصغير المبدئي بنجاح.\n' +
-        '• رقم الطلب الأولي الخاص بك: ' + initialCode + '\n' +
-        '• المشروع المطلوب: ' + projectType + '\n' +
-        'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
-
-      if (typeof window.triggerInstantWhatsApp === 'function') {
-        window.triggerInstantWhatsApp(phone, initWaMsg);
+      // عرض مربع نجاح واضح مع زر واتساب مباشر في حال كان الجهاز يمنع النوافذ المنبثقة
+      const container = document.getElementById('wizard-container');
+      if (container) {
+        container.innerHTML = `
+          <div style="background:#ecfdf5; border:2px solid #059669; border-radius:14px; padding:22px; text-align:center;">
+            <h3 style="color:#065f46; margin-top:0;">✅ تم تسجيل طلب المشروع المبدئي بنجاح!</h3>
+            <p style="font-size:15px;">رقم الطلب الأولي الخاص بك هو:</p>
+            <div style="background:#fff; border:2px dashed #059669; padding:12px; font-size:22px; font-weight:900; color:#047857; border-radius:10px; margin:10px auto; max-width:340px;">${initialCode}</div>
+            <p style="font-size:13px; color:#334155;">يرجى الاحتفاظ بهذا الرقم لاستكمال الأوراق ودراسة الجدوى فور الموافقة المبدئية.</p>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px;">
+              <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="action-btn" style="background:#16a34a; text-decoration:none;">💬 إرسال رقم الطلب على الواتساب</a>
+              <button type="button" onclick="showSection('home')" class="nav-btn">العودة للرئيسية</button>
+            </div>
+          </div>`;
       }
-
-      alert('✅ تم تسجيل طلب المشروع المبدئي بنجاح!\nرقم الطلب الأولي الخاص بك هو:\n' + initialCode);
-      if (typeof window.showSection === 'function') window.showSection('home');
     } catch (err) {
       alert('❌ حدث خطأ: ' + (err && err.message ? err.message : err));
     }
   };
+
 
   // 5. فتح استكمال المشروع بدءاً من القسم الأول بالاستمارة مع تعبئة العنوان والبطاقة تلقائياً في الخلفية
   window.verifyAndOpenProjectCompletion = async function() {
