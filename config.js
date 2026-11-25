@@ -3,7 +3,7 @@ window.SB_URL = window.SB_URL || 'https://fwyacpvbhwdlivzeiper.supabase.co';
 window.SB_KEY = window.SB_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
 
 // رابط Google Apps Script للأرشفة التلقائية للمرفقات وملفات PDF (15 جيجابايت)
-window.GOOGLE_DRIVE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbznDYMBCc80TRAf6hCkt3CLM25ji-yqXpmqs-Wwk6bv2J7uO284IpchLa4WUx5Gd1ff/exec';
+window.GOOGLE_DRIVE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwefZy3JgwA9Cc4ZCxSGMEVdi-ZZAvn47Kk6I-RPDFXNpk0xLqJ65Z4qLx_WzWAiL2e/exec';
 
 // القائمة الكاملة والشاملة للمشروعات الصغيرة (كل مشروع منفصل على حدة دون أي تجميع)
 window.SMALL_PROJECT_TYPES = [
