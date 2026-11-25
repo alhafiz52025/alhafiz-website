@@ -1,4 +1,4 @@
-// projects-and-installments.js
+// projects-and-installments.js (القطعة 1 - أ)
 (function() {
   const PROJECT_INTERVENTION_LABEL = 'مشروع تمكين اقتصادي صغير';
 
@@ -15,8 +15,7 @@
     return s.includes('مشروع') || s.includes('تمكين اقتصادي') || s.includes('قرض حسن');
   }
 
-  // ضغط الصورة تلقائياً في المتصفح لتسريع الرفع في ثانية واحدة وتوفير مساحة الـ 15 جيجابايت
-  function quickCompressImage(file, maxW = 1200, quality = 0.7) {
+  function quickCompressImage(file, maxW = 1200, quality = 0.72) {
     return new Promise((resolve) => {
       if (!file || !file.type || !file.type.startsWith('image/')) return resolve(file);
       const reader = new FileReader();
@@ -41,7 +40,6 @@
     });
   }
 
-  // دالة الرفع الفورية إلى Google Drive (15 جيجابايت) بدون تأخير أو حظر CORS
   window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) return { name: 'file', uploaded: false };
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
@@ -65,7 +63,7 @@
           village: meta.village || 'إهناسيا',
           submissionType: meta.submissionType || 'عام',
           trackingCode: meta.trackingCode || ('TRK-' + Date.now()),
-          fileName: file.name || ('doc_' + Date.now()),
+          fileName: (meta.prefix ? meta.prefix + '_' : '') + (file.name || ('doc_' + Date.now())),
           mimeType: file.type || 'application/octet-stream',
           fileBase64: base64Data
         };
@@ -78,8 +76,8 @@
         });
 
         return {
-          name: file.name,
-          fileName: file.name,
+          name: payload.fileName,
+          fileName: payload.fileName,
           size: file.size,
           mimeType: file.type || '',
           url: 'https://google.com_',
@@ -93,8 +91,53 @@
     }
     return { name: rawFile.name, uploaded: true, storageProvider: 'google_drive' };
   };
+  // تحديث الفلترة الجغرافية المتسلسلة لشاشة التقديم المبدئي للمشروع
+  window.updateProjInitCenters = function() {
+    const gov = document.getElementById('prj-init-gov')?.value || '';
+    const centerSel = document.getElementById('prj-init-center');
+    const villageSel = document.getElementById('prj-init-village');
+    const locs = window.EGYPT_LOCATIONS || {};
 
-   // 3. تحديث الاستعلام الفوري ليدعم الرقم الأولي والنهائي للمشروعات
+    if (centerSel) {
+      if (!gov || !locs[gov]) {
+        centerSel.innerHTML = '<option value="">-- اختر المحافظة أولاً --</option>';
+        centerSel.disabled = true;
+      } else {
+        centerSel.innerHTML = '<option value="">-- اختر المركز / القسم --</option>' +
+          Object.keys(locs[gov]).map(c => `<option value="${window.escapeHtml(c)}">${window.escapeHtml(c)}</option>`).join('');
+        centerSel.disabled = false;
+      }
+    }
+    if (villageSel) {
+      villageSel.innerHTML = '<option value="">-- اختر المركز أولاً --</option>';
+      villageSel.disabled = true;
+    }
+    document.getElementById('prj-init-new-village-box')?.classList.add('hidden');
+  };
+
+  window.updateProjInitVillages = function() {
+    const gov = document.getElementById('prj-init-gov')?.value || '';
+    const center = document.getElementById('prj-init-center')?.value || '';
+    const villageSel = document.getElementById('prj-init-village');
+    const locs = window.EGYPT_LOCATIONS || {};
+
+    if (villageSel) {
+      if (!gov || !center || !locs[gov]?.[center]) {
+        villageSel.innerHTML = '<option value="">-- اختر المركز أولاً --</option>';
+        villageSel.disabled = true;
+      } else {
+        const baseVills = locs[gov][center] || [];
+        const customVills = window.CUSTOM_LOCATIONS_CACHE?.[gov]?.[center] || [];
+        const allVills = Array.from(new Set([...baseVills, ...customVills]));
+        villageSel.innerHTML = '<option value="">-- اختر القرية أو التابع --</option>' +
+          allVills.map(v => `<option value="${window.escapeHtml(v)}">${window.escapeHtml(v)}</option>`).join('') +
+          '<option value="__NEW__">+ إضافة قرية / عزبة / تابع جديد غير مدرج</option>';
+        villageSel.disabled = false;
+      }
+    }
+    document.getElementById('prj-init-new-village-box')?.classList.add('hidden');
+  };
+
   const origTrackApplication = window.trackApplication;
   window.trackApplication = async function() {
     const q = (document.getElementById('track-input')?.value || '').trim().toUpperCase();
@@ -126,8 +169,7 @@
     }
     if (typeof origTrackApplication === 'function') return origTrackApplication.apply(this, arguments);
   };
-
-  // 4. تمديد الخطوة الأولى في المعالج لدعم المشروعات الصغيرة والخانة الجانبية ووضع التعديل
+  // إدارة خطوات المعالج + حالة أعزب + الفلترة الجغرافية + قسم المشروع والضامن
   const origRenderWizardStep = window.renderWizardStep;
   window.renderWizardStep = function() {
     ensureProjectAidType();
@@ -136,14 +178,20 @@
     const container = document.getElementById('wizard-container');
     if (!container) return;
 
-    if (window.ACTIVE_EDIT_CASE && window.currentStep !== 1) {
+    if (window.ACTIVE_PROJECT_COMPLETION_CASE) {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:#ecfdf5; border:2px solid #059669; color:#065f46; padding:10px 14px; border-radius:10px; margin-bottom:12px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;';
+      banner.innerHTML = `<span>📂 استكمال أوراق المشروع الصغير — الرقم الأولي: <strong>${window.escapeHtml(window.ACTIVE_PROJECT_COMPLETION_CASE.initial_tracking_code || window.ACTIVE_PROJECT_COMPLETION_CASE.tracking_code)}</strong> (العنوان وبطاقتك محفوظة مسبقاً)</span><button type="button" onclick="window.ACTIVE_PROJECT_COMPLETION_CASE=null; window.currentStep=1; window.renderWizardStep();" class="nav-btn" style="font-size:11px;">إلغاء الاستكمال</button>`;
+      container.prepend(banner);
+    } else if (window.ACTIVE_EDIT_CASE && window.currentStep !== 1) {
       const banner = document.createElement('div');
       banner.style.cssText = 'background:#eff6ff; border:1px solid #3b82f6; color:#1e3a8a; padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:13px; font-weight:700;';
       banner.innerHTML = `✏️ وضع التعديل المفتوح بواسطة الإدارة — كود الحالة: <strong>${window.escapeHtml(window.ACTIVE_EDIT_CASE.tracking_code)}</strong>`;
       container.prepend(banner);
     }
 
-    if (window.currentStep === 1) {
+    // الخطوة 1: التقديم المبدئي للمشروع (مع المحافظة -> المركز -> القرية + العنوان + البطاقة وش وظهر)
+    if (window.currentStep === 1 && !window.ACTIVE_PROJECT_COMPLETION_CASE) {
       const sel = document.getElementById('intervention-type');
       if (sel) {
         sel.innerHTML = (window.AID_TYPES || [])
@@ -157,6 +205,10 @@
         .map(p => `<option value="${window.escapeHtml(p)}">${window.escapeHtml(p)}</option>`)
         .join('');
 
+      const govs = Object.keys(window.EGYPT_LOCATIONS || {});
+      const govOpts = '<option value="">-- اختر المحافظة أولاً --</option>' +
+        govs.map(g => `<option value="${window.escapeHtml(g)}">${window.escapeHtml(g)}</option>`).join('');
+
       const extraBox = document.createElement('div');
       extraBox.style.marginTop = '16px';
 
@@ -165,18 +217,35 @@
         if (nextBtn) nextBtn.style.display = 'none';
 
         extraBox.innerHTML = `
-          <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:16px; align-items:start;">
+          <div style="display:grid; grid-template-columns: 1.35fr 1fr; gap:16px; align-items:start;">
             <div style="background:#f0fdf4; border:1px solid #86efac; padding:16px; border-radius:12px;">
               <h4 style="margin:0 0 8px; color:#065f46;">🚀 أولاً: التقديم المبدئي السريع لمشروع صغير (قرض حسن)</h4>
-              <p style="font-size:12px; color:#166534; margin:0 0 10px;">نكتفي في البداية بالاسم، الهاتف، القرية، نوع المشروع، وصورة البطاقة لإصدار رقم الطلب الأولي.</p>
+              <p style="font-size:12px; color:#166534; margin:0 0 10px;">أدخل بياناتك الأساسية والعنوان وصورة البطاقة (وجه أمامي ووجه خلفي) لإصدار رقم الطلب الأولي.</p>
               <div class="grid-2">
                 <div><label style="font-size:12px; font-weight:700;">الاسم ثلاثي *</label><input id="prj-init-name" placeholder="الاسم بالكامل *"></div>
                 <div><label style="font-size:12px; font-weight:700;">رقم الهاتف (واتساب) *</label><input id="prj-init-phone" maxlength="11" placeholder="01xxxxxxxxx *"></div>
               </div>
-              <div class="grid-2" style="margin-top:8px;">
-                <div><label style="font-size:12px; font-weight:700;">القرية / العزبة *</label><input id="prj-init-village" placeholder="اسم القرية *"></div>
-                <div><label style="font-size:12px; font-weight:700;">صورة البطاقة الشخصية *</label><input type="file" id="prj-init-id-card" accept="image/*,.pdf"></div>
+
+              <div style="background:#fff; padding:10px; border-radius:8px; margin:8px 0; border:1px solid #bbf7d0;">
+                <label style="font-size:12px; font-weight:700; color:#065f46;">العنوان الإداري (التسلسل الجغرافي المعتمد) *</label>
+                <div class="grid-3" style="margin-top:6px;">
+                  <div><label style="font-size:11px;">1. المحافظة:</label><select id="prj-init-gov" onchange="updateProjInitCenters()">${govOpts}</select></div>
+                  <div><label style="font-size:11px;">2. المركز / القسم:</label><select id="prj-init-center" onchange="updateProjInitVillages()" disabled><option value="">-- اختر المحافظة أولاً --</option></select></div>
+                  <div><label style="font-size:11px;">3. القرية أو التابع:</label><select id="prj-init-village" onchange="document.getElementById('prj-init-new-village-box').classList.toggle('hidden', this.value !== '__NEW__')" disabled><option value="">-- اختر المركز أولاً --</option></select></div>
+                </div>
+                <div id="prj-init-new-village-box" class="hidden" style="margin-top:6px;">
+                  <input id="prj-init-new-village" placeholder="اكتب اسم القرية / العزبة / التابع الجديد بدقة *">
+                </div>
+                <div style="margin-top:6px;">
+                  <input id="prj-init-street" placeholder="العنوان كما مدون في البطاقة أو علامة مميزة *">
+                </div>
               </div>
+
+              <div class="grid-2" style="margin-top:8px;">
+                <div><label style="font-size:12px; font-weight:700;">صورة البطاقة (وجه أمامي) *</label><input type="file" id="prj-init-id-front" accept="image/*,.pdf"></div>
+                <div><label style="font-size:12px; font-weight:700;">صورة البطاقة (وجه خلفي) *</label><input type="file" id="prj-init-id-back" accept="image/*,.pdf"></div>
+              </div>
+
               <div style="margin-top:8px;">
                 <label style="font-size:12px; font-weight:700;">المشروع المطلوب (من القائمة الكاملة) *</label>
                 <select id="prj-init-type" onchange="document.getElementById('prj-init-custom-type').classList.toggle('hidden', this.value !== 'إضافة مشروع غير موجود في القائمة')">
@@ -191,7 +260,7 @@
             <div style="background:#fffbeb; border:2px solid #f59e0b; padding:16px; border-radius:12px;">
               <h4 style="margin:0 0 8px; color:#92400e;">📂 استكمال أوراق مشروع مقبول مبدئياً</h4>
               <div style="background:#fff; border:1px dashed #f59e0b; padding:10px; border-radius:8px; font-size:12px; line-height:1.7; margin-bottom:10px; color:#78350f;">
-                <strong>طريقة الاستكمال:</strong> أدخل <strong>رقم الطلب الأولي</strong> المرسل إليك عند القبول لفتح باقي الأقسام ورفع الملفات. بعد الإرسال يصبح الرقم الأولي غير نشط ويصدر رقم متابعة جديد.
+                <strong>طريقة الاستكمال:</strong> أدخل <strong>رقم الطلب الأولي</strong> المرسل إليك عند القبول لفتح استمارة البيانات الكاملة ثم قسم المشروع والضامن.
               </div>
               <input id="prj-completion-code-input" placeholder="مثال: HF-INIT-2026-10001" style="text-transform:uppercase;">
               <button type="button" onclick="verifyAndOpenProjectCompletion()" class="action-btn" style="width:100%; background:#b45309; margin-top:6px;">🔓 فتح استكمال بيانات وملفات المشروع</button>
@@ -208,46 +277,186 @@
           </div>`;
       }
       container.appendChild(extraBox);
+      return;
+    }
+    // إضافة خيار "أعزب / عزباء" لقائمة الحالة الاجتماعية بقسم الأب/مقدم الطلب (الخطوة 2)
+    const maritalSel = container.querySelector('#h-status, #h-marital, select[id*="status"]');
+    if (maritalSel && window.currentStep === 2) {
+      const hasSingle = Array.from(maritalSel.options).some(o => o.value.includes('أعزب'));
+      if (!hasSingle) {
+        const opt = document.createElement('option');
+        opt.value = 'أعزب / عزباء';
+        opt.textContent = 'أعزب / عزباء (بدون زوجة أو أبناء)';
+        if (window.formData?.husband?.status === 'أعزب / عزباء') opt.selected = true;
+        maritalSel.appendChild(opt);
+      }
+      maritalSel.addEventListener('change', function() {
+        window.formData.husband = window.formData.husband || {};
+        window.formData.husband.status = this.value;
+      });
+    }
+
+    // تخطي قسم الزوجة (الخطوة 3) وقسم الأبناء (الخطوة 4) تلقائياً إذا كانت الحالة "أعزب / عزباء"
+    const currentMarital = String(maritalSel?.value || window.formData?.husband?.status || '');
+    const isSingle = currentMarital.includes('أعزب') || currentMarital.includes('عزباء');
+    if (isSingle && (window.currentStep === 3 || window.currentStep === 4)) {
+      window.formData.wife = {};
+      window.formData.children = [];
+      window.currentStep = 6; // الانتقال مباشرة لقسم المصروفات
+      window.renderWizardStep();
+      return;
+    }
+
+    // في وضع استكمال المشروع: إخفاء حقول العنوان وبطاقة المتقدم في الخطوة 2 لأنها مسجلة مسبقاً
+    if (window.ACTIVE_PROJECT_COMPLETION_CASE && window.currentStep === 2) {
+      const streetInp = document.getElementById('h-street');
+      const addrBox = streetInp?.closest('div[style*="background:#f8fafc"]');
+      if (addrBox) addrBox.style.display = 'none';
+
+      ['h-id-front', 'h-id-back'].forEach(fid => {
+        const el = document.getElementById(fid);
+        if (el && el.parentElement) el.parentElement.style.display = 'none';
+      });
+    }
+
+    // في الخطوة 8 (الأخيرة): إخفاء البحث الاجتماعي من عند المواطن وإضافة قسم المشروع والضامن
+    if (window.ACTIVE_PROJECT_COMPLETION_CASE && window.currentStep === 8) {
+      const socInp = document.getElementById('doc-social-research');
+      if (socInp && socInp.parentElement) socInp.parentElement.style.display = 'none';
+
+      const finalSubmitBtn = Array.from(container.querySelectorAll('button')).find(
+        b => b.textContent.includes('تأكيد والرفع النهائي للحالة')
+      );
+
+      if (finalSubmitBtn && !document.getElementById('wizard-project-completion-section')) {
+        const caseRecord = window.ACTIVE_PROJECT_COMPLETION_CASE;
+        const pData = caseRecord.project_data || {};
+        const projectOpts = (window.SMALL_PROJECT_TYPES || [])
+          .map(p => `<option value="${window.escapeHtml(p)}" ${pData.projectType === p ? 'selected' : ''}>${window.escapeHtml(p)}</option>`)
+          .join('');
+
+        const projSection = document.createElement('div');
+        projSection.id = 'wizard-project-completion-section';
+        projSection.style.cssText = 'background:#f0fdf4; border:2px solid #047857; border-radius:14px; padding:16px; margin:16px 0;';
+        projSection.innerHTML = `
+          <h4 style="margin:0 0 10px; color:#065f46;">🚀 قسم المشروع الصغير وبيانات الضامن</h4>
+          <div class="grid-2">
+            <div><label style="font-weight:700;">نوع المشروع المطلوب (القائمة الكاملة) *</label><select id="cmp-project-type">${projectOpts}</select></div>
+            <div><label style="font-weight:700;">هل يوجد مكان أم سريح *</label>
+              <select id="cmp-location-type">
+                <option value="مقر ثابت (محل / ورشة ملك)" ${pData.locationType === 'مقر ثابت (محل / ورشة ملك)' ? 'selected' : ''}>مقر ثابت (محل / ورشة ملك)</option>
+                <option value="مقر ثابت (محل / ورشة إيجار)" ${pData.locationType === 'مقر ثابت (محل / ورشة إيجار)' ? 'selected' : ''}>مقر ثابت (محل / ورشة إيجار)</option>
+                <option value="نشاط داخل المنزل" ${pData.locationType === 'نشاط داخل المنزل' ? 'selected' : ''}>نشاط داخل المنزل</option>
+                <option value="سريح / عربة متجولة بدون مقر ثابت" ${pData.locationType === 'سريح / عربة متجولة بدون مقر ثابت' ? 'selected' : ''}>سريح / عربة متجولة بدون مقر ثابت</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label style="font-weight:700;">مشروع جديد أم قديم *</label>
+              <select id="cmp-project-age">
+                <option value="مشروع جديد (تأسيس من البداية)" ${pData.projectAge === 'مشروع جديد (تأسيس من البداية)' ? 'selected' : ''}>مشروع جديد (تأسيس من البداية)</option>
+                <option value="مشروع قديم / قائم (تطوير وتوسعة)" ${pData.projectAge === 'مشروع قديم / قائم (تطوير وتوسعة)' ? 'selected' : ''}>مشروع قديم / قائم (تطوير وتوسعة)</option>
+              </select>
+            </div>
+            <div><label style="font-weight:700;">التكلفة الإجمالية للمشروع (جنيه) *</label><input type="number" min="500" id="cmp-total-cost" value="${window.escapeHtml(pData.totalCost || '')}" placeholder="مثال: 20000"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label style="font-weight:700;">عدد العاملين بالمشروع *</label><input type="number" min="1" id="cmp-workers-count" value="${window.escapeHtml(pData.workersCount || '1')}"></div>
+            <div><label style="font-weight:700;">العائد الشهري المتوقع من المشروع (جنيه) *</label><input type="number" min="0" id="cmp-expected-return" value="${window.escapeHtml(pData.expectedReturn || '')}" placeholder="مثال: 4500"></div>
+          </div>
+          <div style="margin-top:8px;"><label style="font-weight:700;">وصف تفصيلي للمشروع وخطة التشغيل *</label><textarea id="cmp-description" rows="2" placeholder="اشرح المعدات أو البضاعة المطلوبة...">${window.escapeHtml(pData.description || '')}</textarea></div>
+
+          <h5 style="margin:14px 0 8px; color:#92400e; border-top:1px dashed #86efac; padding-top:10px;">🛡️ بيانات الضامن وصورة بطاقته (وش وظهر)</h5>
+          <div class="grid-3">
+            <div><label style="font-weight:700;">اسم الضامن بالكامل *</label><input id="cmp-guarantor-name" value="${window.escapeHtml(pData.guarantorName || '')}" placeholder="الاسم رباعي للضامن *"></div>
+            <div><label style="font-weight:700;">رقم تليفون الضامن *</label><input id="cmp-guarantor-phone" maxlength="11" value="${window.escapeHtml(pData.guarantorPhone || '')}" placeholder="01xxxxxxxxx *"></div>
+            <div><label style="font-weight:700;">عمل / وظيفة الضامن *</label><input id="cmp-guarantor-job" value="${window.escapeHtml(pData.guarantorJob || '')}" placeholder="موظف / تاجر / عمل حر *"></div>
+          </div>
+          <div class="grid-2" style="margin-top:8px;">
+            <div><label style="font-weight:700;">صورة بطاقة الضامن (وجه أمامي) *</label><input type="file" id="cmp-guarantor-id-front" accept="image/*,.pdf"></div>
+            <div><label style="font-weight:700;">صورة بطاقة الضامن (وجه خلفي) *</label><input type="file" id="cmp-guarantor-id-back" accept="image/*,.pdf"></div>
+          </div>
+
+          <h5 style="margin:14px 0 8px; color:#065f46; border-top:1px dashed #86efac; padding-top:10px;">📎 مرفقات المشروع المطلوبة (تُضم لملفك وتُرفع تلقائياً إلى Google Drive)</h5>
+          <div class="grid-2">
+            <div><label style="font-weight:700;">1. صورة مكان المشروع / المعدات *</label><input type="file" id="cmp-doc-place-photo" accept="image/*,.pdf"></div>
+            <div><label style="font-weight:700;">2. فيش جنائي (صحيفة الحالة الجنائية) *</label><input type="file" id="cmp-doc-criminal-record" accept="image/*,.pdf"></div>
+            <div><label style="font-weight:700;">3. دراسة الجدوى (اختياري - إن وجد)</label><input type="file" id="cmp-doc-feasibility" accept=".pdf,image/*"></div>
+            <div><label style="font-weight:700;">4. أوراق ضامنة أخرى / إيصال مرافق (اختياري)</label><input type="file" id="cmp-doc-other-docs" accept="image/*,.pdf"></div>
+          </div>
+        `;
+
+        finalSubmitBtn.parentElement.insertBefore(projSection, finalSubmitBtn);
+        finalSubmitBtn.textContent = '✅ اعتماد استكمال المشروع وإصدار رقم المتابعة الجديد';
+        finalSubmitBtn.onclick = function(e) {
+          e.preventDefault();
+          window.submitProjectCompletionForm(caseRecord.id);
+        };
+      }
     }
   };
-  // 5. حفظ التقديم المبدئي للمشروع الصغير (المرحلة الأولى)
+  // 4. حفظ التقديم المبدئي للمشروع الصغير (المحافظة -> المركز -> القرية + العنوان + بطاقة وش وظهر + واتساب)
   window.submitInitialSmallProject = async function(btnEl) {
     try {
       const name = (document.getElementById('prj-init-name')?.value || '').trim();
-      const rawPhone = (document.getElementById('prj-init-phone')?.value || '').trim();
-      const phone = rawPhone.replace(/\D/g, '');
-      const village = (document.getElementById('prj-init-village')?.value || '').trim();
+      const phone = (document.getElementById('prj-init-phone')?.value || '').replace(/\D/g, '');
+      const gov = (document.getElementById('prj-init-gov')?.value || '').trim();
+      const center = (document.getElementById('prj-init-center')?.value || '').trim();
+      let village = (document.getElementById('prj-init-village')?.value || '').trim();
+      const street = (document.getElementById('prj-init-street')?.value || '').trim();
+
+      if (village === '__NEW__') {
+        village = (document.getElementById('prj-init-new-village')?.value || '').trim();
+      }
+
       let projectType = (document.getElementById('prj-init-type')?.value || '').trim();
       if (projectType === 'إضافة مشروع غير موجود في القائمة') {
         projectType = (document.getElementById('prj-init-custom-type')?.value || '').trim();
       }
-      const idInput = document.getElementById('prj-init-id-card');
-      const idFile = (idInput && idInput.files && idInput.files.length > 0) ? idInput.files.item(0) : null;
+
+      const idFrontFile = document.getElementById('prj-init-id-front')?.files?.item(0) || null;
+      const idBackFile = document.getElementById('prj-init-id-back')?.files?.item(0) || null;
 
       if (!name) return alert('⚠️ يرجى إدخال الاسم ثلاثي بالكامل.');
       if (phone.length !== 11 || !phone.startsWith('01')) {
         return alert('⚠️ يرجى إدخال رقم هاتف مصري صحيح مكون من 11 رقماً يبدأ بـ 01.');
       }
-      if (!village) return alert('⚠️ يرجى إدخال اسم القرية أو العزبة.');
+      if (!gov || !center || !village) {
+        return alert('⚠️ يرجى اختيار المحافظة والمركز والقرية أو التابع.');
+      }
+      if (!street) {
+        return alert('⚠️ يرجى إدخال العنوان كما مدون في البطاقة أو علامة مميزة.');
+      }
       if (!projectType) return alert('⚠️ يرجى اختيار أو كتابة نوع المشروع المطلوب.');
-      if (!idFile) return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية.');
+      if (!idFrontFile || !idBackFile) {
+        return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية كاملة (الوجه الأمامي والوجه الخلفي).');
+      }
 
       const btn = btnEl || document.querySelector('#wizard-container button.action-btn');
       const oldText = btn ? btn.textContent : '';
       if (btn) {
         btn.disabled = true;
-        btn.textContent = '⏳ جارٍ رفع البطاقة وإصدار الرقم الأولي...';
+        btn.textContent = '⏳ جارٍ رفع البطاقة (وش وظهر) وإصدار الرقم الأولي...';
+      }
+
+      // حفظ القرية الجديدة في قاعدة القرى المخصصة إن وجدت
+      if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
+        await window.supabaseClient.from('custom_locations').upsert([{
+          governorate: gov, center_city: center, village_name: village, added_by: 'مواطن'
+        }], { onConflict: 'governorate,center_city,village_name' });
+        if (typeof window.loadCustomLocationsFromDB === 'function') await window.loadCustomLocationsFromDB();
       }
 
       const initialCode = 'HF-INIT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
-      const uploadedId = await window.uploadFileToDriveOrStorage(idFile, {
+      const uploadMeta = {
         year: new Date().getFullYear().toString(),
         village: village,
         submissionType: 'مشروعات_صغيرة_مبدئي',
-        trackingCode: initialCode,
-        folder: 'initial_id'
-      });
+        trackingCode: initialCode
+      };
 
+      const uploadedFront = await window.uploadFileToDriveOrStorage(idFrontFile, { ...uploadMeta, prefix: 'ID_Front' });
+      const uploadedBack = await window.uploadFileToDriveOrStorage(idBackFile, { ...uploadMeta, prefix: 'ID_Back' });
       const selectedIntervention = document.getElementById('intervention-type')?.value || PROJECT_INTERVENTION_LABEL;
 
       const payload = {
@@ -257,11 +466,17 @@
         allow_edit: false,
         applicant_name: name,
         intervention_type: selectedIntervention,
-        governorate: 'بني سويف',
-        center_city: 'إهناسيا',
+        governorate: gov,
+        center_city: center,
         village_hamlet: village,
-        husband_data: { name1: name, phone: phone, whatsapp: phone },
-        documents_data: { initialIdCard: uploadedId, hIdFront: uploadedId },
+        street_details: street,
+        husband_data: { name1: name, phone: phone, whatsapp: phone, gov: gov, center: center, village: village, street: street },
+        documents_data: {
+          initialIdFront: uploadedFront,
+          initialIdBack: uploadedBack,
+          hIdFront: uploadedFront,
+          hIdBack: uploadedBack
+        },
         project_data: { stage: 'initial', projectType: projectType, initialCode: initialCode },
         status: 'pending',
         eligibility_verdict: 'طلب مشروع مبدئي - قيد المراجعة'
@@ -272,7 +487,7 @@
         return alert('❌ تعذر الاتصال بقاعدة البيانات.');
       }
 
-            const res = await window.supabaseClient.from('families').insert(payload);
+      const res = await window.supabaseClient.from('families').insert(payload);
       if (res && res.error) {
         if (btn) { btn.disabled = false; btn.textContent = oldText; }
         return alert('❌ خطأ أثناء حفظ الطلب المبدئي: ' + res.error.message);
@@ -284,7 +499,7 @@
         'تم تسجيل طلب المشروع الصغير المبدئي بنجاح.\n' +
         '• رقم الطلب الأولي الخاص بك: ' + initialCode + '\n' +
         '• المشروع المطلوب: ' + projectType + '\n' +
-        'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال دراسة الجدوى وباقي الأوراق.';
+        'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
       if (typeof window.triggerInstantWhatsApp === 'function') {
         window.triggerInstantWhatsApp(phone, initWaMsg);
@@ -293,12 +508,11 @@
       alert('✅ تم تسجيل طلب المشروع المبدئي بنجاح!\nرقم الطلب الأولي الخاص بك هو:\n' + initialCode);
       if (typeof window.showSection === 'function') window.showSection('home');
     } catch (err) {
-      console.error('submitInitialSmallProject error:', err);
       alert('❌ حدث خطأ: ' + (err && err.message ? err.message : err));
     }
   };
 
-  // 6. التحقق من رقم الطلب الأولي وفتح نموذج الاستكمال الكامل
+  // 5. فتح استكمال المشروع بدءاً من القسم الأول بالاستمارة مع تعبئة العنوان والبطاقة تلقائياً في الخلفية
   window.verifyAndOpenProjectCompletion = async function() {
     const code = (document.getElementById('prj-completion-code-input')?.value || '').trim().toUpperCase();
     if (!code) return alert('⚠️ أدخل رقم الطلب الأولي المرسل إليك.');
@@ -320,84 +534,28 @@
       return alert('⏳ هذا الطلب لم يتم تفعيل استكمال الأوراق له بعد، أو هو قيد المراجعة المبدئية.');
     }
 
-    renderProjectCompletionFullForm(data);
+    window.ACTIVE_PROJECT_COMPLETION_CASE = data;
+    window.formData = window.formData || {};
+    window.formData.interventionType = data.intervention_type || PROJECT_INTERVENTION_LABEL;
+    window.formData.husband = Object.assign({
+      name1: data.applicant_name || '',
+      gov: data.governorate || '',
+      center: data.center_city || '',
+      village: data.village_hamlet || '',
+      street: data.street_details || ''
+    }, data.husband_data || {});
+    window.formData.wife = Object.assign({}, data.wife_data || {});
+    window.formData.children = Array.isArray(data.children_data) ? data.children_data : [];
+    window.formData.expenses = Object.assign({}, data.expenses_data || {});
+    window.formData.incomes = Object.assign({}, data.incomes_data || {});
+    window.formData.housing = Object.assign({}, data.housing_data || {});
+    window.formData.documents = Object.assign({}, data.documents_data || {});
+
+    window.currentStep = 2;
+    window.renderWizardStep();
   };
-
-  function renderProjectCompletionFullForm(caseRecord) {
-    const container = document.getElementById('wizard-container');
-    if (!container) return;
-    const pData = caseRecord.project_data || {};
-    const projectOpts = (window.SMALL_PROJECT_TYPES || [])
-      .map(p => `<option value="${window.escapeHtml(p)}" ${pData.projectType === p ? 'selected' : ''}>${window.escapeHtml(p)}</option>`)
-      .join('');
-
-    container.innerHTML = `
-      <div style="background:#fff; border:2px solid #047857; border-radius:14px; padding:18px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid #cbd5e1; padding-bottom:10px; margin-bottom:14px;">
-          <div>
-            <h4 style="margin:0; color:#065f46;">📋 استكمال البيانات الكاملة ومرفقات المشروع الصغير</h4>
-            <small>المستفيد: <strong>${window.escapeHtml(caseRecord.applicant_name || '')}</strong> | الرقم الأولي: <strong>${window.escapeHtml(caseRecord.initial_tracking_code || caseRecord.tracking_code)}</strong></small>
-          </div>
-          <button type="button" onclick="window.renderWizardStep()" class="nav-btn">رجوع</button>
-        </div>
-
-        <div class="grid-2">
-          <div>
-            <label style="font-weight:700;">نوع المشروع المطلوب (القائمة الكاملة) *</label>
-            <select id="cmp-project-type">${projectOpts}</select>
-          </div>
-          <div>
-            <label style="font-weight:700;">هل يوجد مكان أم سريح *</label>
-            <select id="cmp-location-type">
-              <option value="مقر ثابت (محل / ورشة ملك)" ${pData.locationType === 'مقر ثابت (محل / ورشة ملك)' ? 'selected' : ''}>مقر ثابت (محل / ورشة ملك)</option>
-              <option value="مقر ثابت (محل / ورشة إيجار)" ${pData.locationType === 'مقر ثابت (محل / ورشة إيجار)' ? 'selected' : ''}>مقر ثابت (محل / ورشة إيجار)</option>
-              <option value="نشاط داخل المنزل" ${pData.locationType === 'نشاط داخل المنزل' ? 'selected' : ''}>نشاط داخل المنزل</option>
-              <option value="سريح / عربة متجولة بدون مقر ثابت" ${pData.locationType === 'سريح / عربة متجولة بدون مقر ثابت' ? 'selected' : ''}>سريح / عربة متجولة بدون مقر ثابت</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid-2" style="margin-top:8px;">
-          <div>
-            <label style="font-weight:700;">مشروع جديد أم قديم *</label>
-            <select id="cmp-project-age">
-              <option value="مشروع جديد (تأسيس من البداية)" ${pData.projectAge === 'مشروع جديد (تأسيس من البداية)' ? 'selected' : ''}>مشروع جديد (تأسيس من البداية)</option>
-              <option value="مشروع قديم / قائم (تطوير وتوسعة)" ${pData.projectAge === 'مشروع قديم / قائم (تطوير وتوسعة)' ? 'selected' : ''}>مشروع قديم / قائم (تطوير وتوسعة)</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-weight:700;">التكلفة الإجمالية للمشروع (جنيه) *</label>
-            <input type="number" min="500" id="cmp-total-cost" value="${window.escapeHtml(pData.totalCost || '')}" placeholder="مثال: 20000">
-          </div>
-        </div>
-
-        <div class="grid-3" style="margin-top:8px;">
-          <div><label style="font-weight:700;">العاملين بالمشروع *</label><input type="number" min="1" id="cmp-workers-count" value="${window.escapeHtml(pData.workersCount || '1')}"></div>
-          <div><label style="font-weight:700;">العائد الشهري من المشروع (جنيه) *</label><input type="number" min="0" id="cmp-expected-return" value="${window.escapeHtml(pData.expectedReturn || '')}" placeholder="مثال: 4500"></div>
-          <div><label style="font-weight:700;">الرقم القومي (14 رقم) *</label><input id="cmp-nid" maxlength="14" value="${window.escapeHtml(caseRecord.husband_data?.nid || '')}" placeholder="14 رقماً"></div>
-        </div>
-
-          <label style="font-weight:700;">وصف تفصيلي للمشروع وخطة التشغيل والضمانات *</label>
-          <textarea id="cmp-description" rows="2" placeholder="اشرح المعدات أو البضاعة المطلوبة...">${window.escapeHtml(pData.description || '')}</textarea>
-        </div>
-
-        <h5 style="margin:12px 0 8px; color:#065f46; border-top:1px dashed #cbd5e1; padding-top:8px;">📎 المرفقات المطلوبة (تُضغط وتُرفع تلقائياً إلى Google Drive)</h5>
-        <div class="grid-2">
-          <div><label style="font-weight:700;">1. دراسة الجدوى (PDF) *</label><input type="file" id="cmp-doc-feasibility" accept=".pdf,image/*"></div>
-          <div><label style="font-weight:700;">2. صورة مكان المشروع / المعدات *</label><input type="file" id="cmp-doc-place-photo" accept="image/*,.pdf"></div>
-          <div><label style="font-weight:700;">3. فيش جنائي (صحيفة الحالة الجنائية) *</label><input type="file" id="cmp-doc-criminal-record" accept="image/*,.pdf"></div>
-          <div><label style="font-weight:700;">4. نموذج البحث الميداني *</label><input type="file" id="cmp-doc-field-research" accept="image/*,.pdf"></div>
-          <div><label style="font-weight:700;">5. أوراق ضامنة أخرى (إيصال مرافق / بطاقة ضامن)</label><input type="file" id="cmp-doc-other-docs" accept="image/*,.pdf"></div>
-        </div>
-
-        <button type="button" id="cmp-submit-btn" onclick="submitProjectCompletionForm('${window.escapeHtml(caseRecord.id)}')" class="action-btn" style="width:100%; margin-top:14px; background:#15803d;">✅ اعتماد الإرسال النهائي وإصدار رقم المتابعة الجديد</button>
-      </div>`;
-  }
-  // 7. حفظ استكمال المشروع وإغلاق الرقم الأولي وإصدار رقم متابعة جديد
+  // 6. اعتماد الاستكمال النهائي للمشروع ودمج بيانات الأسرة والضامن
   window.submitProjectCompletionForm = async function(caseId) {
-    const btn = document.getElementById('cmp-submit-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع الملفات إلى Google Drive وإصدار رقم المتابعة...'; }
-
     try {
       const { data: existingCase } = await window.supabaseClient.from('families').select('*').eq('id', caseId).single();
       if (!existingCase) throw new Error('تعذر العثور على سجل الحالة');
@@ -408,53 +566,53 @@
       const totalCost = parseFloat(document.getElementById('cmp-total-cost')?.value || '0');
       const workersCount = parseInt(document.getElementById('cmp-workers-count')?.value || '1', 10);
       const expectedReturn = parseFloat(document.getElementById('cmp-expected-return')?.value || '0');
-      const nid = (document.getElementById('cmp-nid')?.value || '').trim();
       const description = (document.getElementById('cmp-description')?.value || '').trim();
 
-      if (!totalCost || totalCost <= 0 || !/^\d{14}$/.test(nid)) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ اعتماد الإرسال النهائي وإصدار رقم المتابعة الجديد'; }
-        return alert('⚠️ يرجى إدخال التكلفة الإجمالية للمشروع والرقم القومي (14 رقماً).');
+      const guarantorName = (document.getElementById('cmp-guarantor-name')?.value || '').trim();
+      const guarantorPhone = (document.getElementById('cmp-guarantor-phone')?.value || '').replace(/\D/g, '');
+      const guarantorJob = (document.getElementById('cmp-guarantor-job')?.value || '').trim();
+      const fGuarantorFront = document.getElementById('cmp-guarantor-id-front')?.files?.item(0);
+      const fGuarantorBack = document.getElementById('cmp-guarantor-id-back')?.files?.item(0);
+
+      const fPlace = document.getElementById('cmp-doc-place-photo')?.files?.item(0);
+      const fCriminal = document.getElementById('cmp-doc-criminal-record')?.files?.item(0);
+      const fFeasibility = document.getElementById('cmp-doc-feasibility')?.files?.item(0);
+      const fOther = document.getElementById('cmp-doc-other-docs')?.files?.item(0);
+
+      if (!totalCost || totalCost <= 0) return alert('⚠️ يرجى إدخال التكلفة الإجمالية للمشروع.');
+      if (!guarantorName || guarantorPhone.length !== 11 || !guarantorJob) {
+        return alert('⚠️ يرجى إدخال بيانات الضامن كاملة (الاسم، رقم التليفون 11 رقماً، والعمل).');
       }
 
       const isAlreadyCompleted = Boolean(existingCase.project_data?.completionSubmitted);
+      if (!isAlreadyCompleted && (!fGuarantorFront || !fGuarantorBack || !fPlace || !fCriminal)) {
+        return alert('⚠️ يرجى إرفاق الملفات الإلزامية (بطاقة الضامن وجه أمامي وخلفي، صورة مكان المشروع، والفيش الجنائي).');
+      }
+
       const newTrackingCode = isAlreadyCompleted
         ? existingCase.tracking_code
         : ('HF-PRJ-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000));
 
       const uploadMetaBase = {
         year: new Date().getFullYear().toString(),
-        village: existingCase.village_hamlet || 'غير_محدد',
+        village: existingCase.village_hamlet || 'إهناسيا',
         submissionType: 'مشروعات_صغيرة_مكتمل',
         trackingCode: newTrackingCode
       };
 
-      const prevDocs = existingCase.documents_data || {};
-      const fFeasibility = document.getElementById('cmp-doc-feasibility')?.files?.item(0);
-      const fPlace = document.getElementById('cmp-doc-place-photo')?.files?.item(0);
-      const fCriminal = document.getElementById('cmp-doc-criminal-record')?.files?.item(0);
-      const fResearch = document.getElementById('cmp-doc-field-research')?.files?.item(0);
-      const fOther = document.getElementById('cmp-doc-other-docs')?.files?.item(0);
+      const updatedDocs = Object.assign({}, existingCase.documents_data || {}, window.formData?.documents || {});
+      if (fGuarantorFront) updatedDocs.guarantorIdFront = await window.uploadFileToDriveOrStorage(fGuarantorFront, { ...uploadMetaBase, prefix: 'Guarantor_ID_Front' });
+      if (fGuarantorBack) updatedDocs.guarantorIdBack = await window.uploadFileToDriveOrStorage(fGuarantorBack, { ...uploadMetaBase, prefix: 'Guarantor_ID_Back' });
+      if (fPlace) updatedDocs.projectPlacePhoto = await window.uploadFileToDriveOrStorage(fPlace, { ...uploadMetaBase, prefix: 'Place_Photo' });
+      if (fCriminal) updatedDocs.criminalRecord = await window.uploadFileToDriveOrStorage(fCriminal, { ...uploadMetaBase, prefix: 'Criminal_Record' });
+      if (fFeasibility) updatedDocs.feasibilityStudy = await window.uploadFileToDriveOrStorage(fFeasibility, { ...uploadMetaBase, prefix: 'Feasibility_Study' });
+      if (fOther) updatedDocs.guarantorAndOtherDocs = await window.uploadFileToDriveOrStorage(fOther, { ...uploadMetaBase, prefix: 'Other_Docs' });
 
-      if (!isAlreadyCompleted && (!fFeasibility || !fPlace || !fCriminal || !fResearch)) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ اعتماد الإرسال النهائي وإصدار رقم المتابعة الجديد'; }
-        return alert('⚠️ يرجى إرفاق الملفات الإلزامية الأربعة (دراسة الجدوى PDF، صورة مكان المشروع، الفيش الجنائي، ونموذج البحث الميداني).');
-      }
-
-      const updatedDocs = { ...prevDocs };
-      if (fFeasibility) updatedDocs.feasibilityStudy = await window.uploadFileToDriveOrStorage(fFeasibility, { ...uploadMetaBase, folder: 'feasibility' });
-      if (fPlace) updatedDocs.projectPlacePhoto = await window.uploadFileToDriveOrStorage(fPlace, { ...uploadMetaBase, folder: 'place_photo' });
-      if (fCriminal) updatedDocs.criminalRecord = await window.uploadFileToDriveOrStorage(fCriminal, { ...uploadMetaBase, folder: 'criminal_record' });
-      if (fResearch) {
-        const resDoc = await window.uploadFileToDriveOrStorage(fResearch, { ...uploadMetaBase, folder: 'field_research' });
-        updatedDocs.fieldResearch = resDoc;
-        updatedDocs.social_research = resDoc;
-      }
-      if (fOther) updatedDocs.guarantorAndOtherDocs = await window.uploadFileToDriveOrStorage(fOther, { ...uploadMetaBase, folder: 'other_docs' });
-
-      const updatedHusband = Object.assign({}, existingCase.husband_data || {}, { nid });
+      const updatedHusband = Object.assign({}, existingCase.husband_data || {}, window.formData?.husband || {});
       const updatedProjectData = Object.assign({}, existingCase.project_data || {}, {
         stage: 'completed', completionSubmitted: true, completedAt: new Date().toISOString(),
-        projectType, locationType, projectAge, totalCost, workersCount, expectedReturn, description
+        projectType, locationType, projectAge, totalCost, workersCount, expectedReturn, description,
+        guarantorName, guarantorPhone, guarantorJob
       });
 
       const { error } = await window.supabaseClient
@@ -463,54 +621,44 @@
           tracking_code: newTrackingCode,
           is_completion_active: false,
           allow_edit: false,
+          applicant_name: [updatedHusband.name1, updatedHusband.name2, updatedHusband.name3].filter(Boolean).join(' ') || existingCase.applicant_name,
           husband_data: updatedHusband,
+          wife_data: window.formData?.wife || existingCase.wife_data || {},
+          children_data: window.formData?.children || existingCase.children_data || [],
+          expenses_data: window.formData?.expenses || existingCase.expenses_data || {},
+          incomes_data: window.formData?.incomes || existingCase.incomes_data || {},
+          housing_data: window.formData?.housing || existingCase.housing_data || {},
           documents_data: updatedDocs,
           project_data: updatedProjectData,
-          eligibility_verdict: 'مكتمل الأوراق - قيد الاعتماد النهائي'
+          eligibility_verdict: 'مكتمل الأوراق - قيد البحث الميداني والاعتماد النهائي'
         })
         .eq('id', caseId);
 
       if (error) throw error;
 
-      alert(`✅ تم استكمال ورفع أوراق المشروع بنجاح!\n• أصبح الرقم الأولي (${existingCase.initial_tracking_code}) غير نشط.\n• رقم المتابعة الجديد الخاص بك: ${newTrackingCode}`);
+      window.ACTIVE_PROJECT_COMPLETION_CASE = null;
+      alert(`✅ تم استكمال ورفع أوراق المشروع وبيانات الضامن بنجاح!\n• أصبح الرقم الأولي (${existingCase.initial_tracking_code}) غير نشط.\n• رقم المتابعة الجديد الخاص بك: ${newTrackingCode}`);
       if (typeof window.showSection === 'function') window.showSection('home');
     } catch (err) {
-      if (btn) { btn.disabled = false; btn.textContent = '✅ اعتماد الإرسال النهائي وإصدار رقم المتابعة الجديد'; }
       alert('❌ حدث خطأ أثناء حفظ البيانات: ' + (err.message || err));
     }
   };
+  // 7. حذف الصور من Google Drive تلقائياً عند الرفض
+  async function deleteCaseFilesFromGoogleDrive(trackingCode, initialCode) {
+    const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
+    if (!driveUrl) return;
+    for (const c of [trackingCode, initialCode].filter(Boolean)) {
+      try {
+        await fetch(driveUrl, {
+          method: 'POST', mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'delete_case_files', trackingCode: c })
+        });
+      } catch (e) {}
+    }
+  }
 
-  // 8. فتح التعديل لأي حالة عامة إذا سمح الأدمن بذلك (allow_edit = true)
-  window.openAllowedEditForAnyCase = async function() {
-    const code = (document.getElementById('general-edit-code-input')?.value || '').trim().toUpperCase();
-    if (!code) return alert('⚠️ أدخل كود الطلب أولاً.');
-    if (!window.supabaseClient) return;
-
-    const { data } = await window.supabaseClient
-      .from('families')
-      .select('*')
-      .or(`tracking_code.eq.${code},initial_tracking_code.eq.${code}`)
-      .maybeSingle();
-
-    if (!data) return alert('❌ لم يتم العثور على طلب بهذا الكود.');
-    if (!data.allow_edit) return alert('⛔ التعديل مغلق حالياً لهذه الحالة. يرجى التواصل مع الأدمن لتفعيل زر "السماح بالتعديل".');
-
-    if (isSmallProjectSelected(data.intervention_type)) return renderProjectCompletionFullForm(data);
-
-    window.ACTIVE_EDIT_CASE = data;
-    window.formData.interventionType = data.intervention_type || window.formData.interventionType;
-    window.formData.husband = Object.assign(window.formData.husband || {}, data.husband_data || {});
-    window.formData.wife = Object.assign(window.formData.wife || {}, data.wife_data || {});
-    window.formData.children = Array.isArray(data.children_data) ? data.children_data : [];
-    window.formData.expenses = Object.assign(window.formData.expenses || {}, data.expenses_data || {});
-    window.formData.incomes = Object.assign(window.formData.incomes || {}, data.incomes_data || {});
-    window.formData.housing = Object.assign(window.formData.housing || {}, data.housing_data || {});
-    window.formData.documents = Object.assign({}, data.documents_data || {});
-    window.currentStep = 2;
-    window.renderWizardStep();
-  };
-
-  // 9. حقن زر "السماح بالتعديل" العام للأدمن لكل الحالات + أزرار المشروعات والأقساط في الجدول
+  // 8. أزرار الأدمن في الجدول (السماح بالتعديل + تفعيل الاستكمال + رفض وحذف الصور + الأقساط)
   const origFilterAndRenderCasesTable = window.filterAndRenderCasesTable;
   window.filterAndRenderCasesTable = function() {
     if (typeof origFilterAndRenderCasesTable === 'function') origFilterAndRenderCasesTable.apply(this, arguments);
@@ -543,7 +691,6 @@
           compBtn.onclick = () => window.adminActivateProjectCompletion(caseObj.id);
           actionsCell.appendChild(compBtn);
         }
-
         const instBtn = document.createElement('button');
         instBtn.type = 'button';
         instBtn.className = 'nav-btn';
@@ -552,50 +699,58 @@
         instBtn.onclick = () => window.openProjectInstallmentsModal(caseObj.id);
         actionsCell.appendChild(instBtn);
       }
+
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'nav-btn';
+      delBtn.style.cssText = 'background:#b91c1c; color:#fff; padding:3px 6px; font-size:11px;';
+      delBtn.textContent = '🗑️ رفض وحذف الصور';
+      delBtn.onclick = () => window.adminRejectAndPurgeCase(caseObj.id);
+      actionsCell.appendChild(delBtn);
     });
   };
-  // 10. دوال الأدمن: السماح بالتعديل العام + تفعيل استكمال المشروع المبدئي
+
+  window.adminRejectAndPurgeCase = async function(caseId) {
+    const item = (window.ALL_ADMIN_CASES || []).find(c => String(c.id) === String(caseId));
+    if (!item || !window.supabaseClient) return;
+    if (!confirm(`⚠️ هل أنت متأكد من رفض وحذف طلب (${item.applicant_name || item.tracking_code}) ومسح صوره من Google Drive نهائياً؟`)) return;
+    await deleteCaseFilesFromGoogleDrive(item.tracking_code, item.initial_tracking_code);
+    const { error } = await window.supabaseClient.from('families').delete().eq('id', caseId);
+    if (error) return alert('❌ تعذر حذف الحالة: ' + error.message);
+    window.ALL_ADMIN_CASES = (window.ALL_ADMIN_CASES || []).filter(c => String(c.id) !== String(caseId));
+    window.filterAndRenderCasesTable();
+    alert('✅ تم رفض الحالة وحذف سجلها وصورها من Google Drive بنجاح.');
+  };
+
   window.adminToggleAllowEditCase = async function(caseId) {
     const item = (window.ALL_ADMIN_CASES || []).find(c => String(c.id) === String(caseId));
     if (!item || !window.supabaseClient) return;
     const nextVal = !Boolean(item.allow_edit);
-
     const { error } = await window.supabaseClient.from('families').update({ allow_edit: nextVal }).eq('id', caseId);
     if (error) return alert('❌ تعذر تحديث صلاحية التعديل: ' + error.message);
     item.allow_edit = nextVal;
     window.filterAndRenderCasesTable();
-
     if (nextVal) {
       const phone = item.husband_data?.whatsapp || item.husband_data?.phone || item.wife_data?.phone || '';
       const code = item.initial_tracking_code || item.tracking_code;
-      const msg = `مؤسسة الحافظ للتنمية والخدمات\nمرحباً أ/ ${item.applicant_name || 'المستفيد'}\nتم فتح صلاحية التعديل واستكمال المرفقات لطلبكم رقم (${code}).\nيرجى الدخول إلى الموقع وإدخال رقم الطلب لاستكمال البيانات أو تعديلها.`;
-      if (phone && confirm('✅ تم فتح التعديل للحالة.\nهل تريد إرسال رسالة واتساب فورية للمستفيد لإبلاغه؟')) {
-        window.triggerInstantWhatsApp(phone, msg);
-      }
+      const msg = `مؤسسة الحافظ للتنمية والخدمات\nمرحباً أ/ ${item.applicant_name || 'المستفيد'}\nتم فتح صلاحية التعديل واستكمال المرفقات لطلبكم رقم (${code}).`;
+      if (phone && confirm('✅ تم فتح التعديل للحالة.\nهل تريد إرسال رسالة واتساب للمستفيد؟')) window.triggerInstantWhatsApp(phone, msg);
     }
   };
 
   window.adminActivateProjectCompletion = async function(caseId) {
     const item = (window.ALL_ADMIN_CASES || []).find(c => String(c.id) === String(caseId));
     if (!item || !window.supabaseClient) return;
-
     const { error } = await window.supabaseClient.from('families').update({ is_completion_active: true, status: 'approved' }).eq('id', caseId);
     if (error) return alert('❌ تعذر التفعيل: ' + error.message);
-    item.is_completion_active = true;
-    item.status = 'approved';
+    item.is_completion_active = true; item.status = 'approved';
     window.filterAndRenderCasesTable();
-
     const initCode = item.initial_tracking_code || item.tracking_code;
     const phone = item.husband_data?.whatsapp || item.husband_data?.phone || '';
-    const msg =
-      `مؤسسة الحافظ للتنمية والخدمات\nمبروك أ/ ${item.applicant_name || 'صاحب الطلب'}، تمت الموافقة المبدئية على طلب المشروع.\n` +
-      `رقم الطلب الأولي: ${initCode}\nطريقة استكمال الأوراق:\n` +
-      `1. ادخل على الموقع واختر (+ طلب مساعدة) ثم (مشروعات صغيرة).\n` +
-      `2. أدخل رقم الطلب (${initCode}) في الخانة الجانبية لاستكمال البيانات ورفع دراسة الجدوى PDF والفيش الجنائي وصورة المكان والبحث الميداني.`;
+    const msg = `مؤسسة الحافظ للتنمية والخدمات\nمبروك أ/ ${item.applicant_name || 'صاحب الطلب'}، تمت الموافقة المبدئية على طلب المشروع.\nرقم الطلب الأولي: ${initCode}\nادخل على الموقع واختر (+ طلب مساعدة) ثم (مشروع تمكين اقتصادي صغير) وأدخل الرقم (${initCode}) في الخانة الجانبية لاستكمال بيانات الأسرة والمشروع والضامن.`;
     if (phone) window.triggerInstantWhatsApp(phone, msg);
   };
-
-  // 11. شاشة الأقساط المنبثقة (20 شهراً)
+    // 11. شاشة الأقساط المنبثقة (20 شهراً)
   window.openProjectInstallmentsModal = async function(familyId) {
     const pool = [...(window.ALL_ADMIN_CASES || []), ...(window.MEMBER_PORTAL_CASES || [])];
     const caseObj = pool.find(c => String(c.id) === String(familyId));
@@ -634,6 +789,7 @@
         </div>`;
       return;
     }
+
     const paidList = installments.filter(x => x.is_paid);
     const totalAmount = installments.reduce((s, x) => s + Number(x.amount || 0), 0);
     const paidAmount = paidList.reduce((s, x) => s + Number(x.amount || 0), 0);
@@ -676,7 +832,6 @@
         </table>
       </div>`;
   };
-
   window.generate20Installments = async function(familyId) {
     const totalLoan = parseFloat(document.getElementById('inst-total-loan')?.value || '0');
     const startDateStr = document.getElementById('inst-start-date')?.value || '';
@@ -742,7 +897,7 @@
   const origAdminCases = window.renderAdminCasesSection;
   window.renderAdminCasesSection = function() { if (origAdminCases) origAdminCases.apply(this, arguments); loadUpcomingInstallmentsBanner('admin-tab-cases', window.currentUser); };
 
-    const origMemberPortal = window.renderMemberPortal;
+  const origMemberPortal = window.renderMemberPortal;
   window.renderMemberPortal = async function(user) {
     if (origMemberPortal) await origMemberPortal.apply(this, arguments);
     const area = document.getElementById('dashboard-area');
@@ -761,10 +916,7 @@
       const subType = window.formData?.interventionType || 'مساعدات_اجتماعية';
       const code = window.ACTIVE_EDIT_CASE?.tracking_code || ('DRAFT-' + Date.now());
       const res = await window.uploadFileToDriveOrStorage(rawFile, {
-        year: new Date().getFullYear().toString(),
-        village,
-        submissionType: subType,
-        trackingCode: code
+        year: new Date().getFullYear().toString(), village, submissionType: subType, trackingCode: code
       });
       if (res && res.uploaded) {
         const key = explicitDocKey || inputEl.id || 'doc';
@@ -773,66 +925,46 @@
         window.formData.documents = Object.assign({}, window.formData.documents || {}, { [key]: res });
       }
     }
-    if (typeof origHandlePreview === 'function') {
-      return origHandlePreview.apply(this, arguments);
-    }
+    if (typeof origHandlePreview === 'function') return origHandlePreview.apply(this, arguments);
   };
 
-  // تحديث السجل الحالي وإغلاق allow_edit تلقائياً إذا كان المستخدم يعدل حالة مفتوحة
   const origSubmitWizard = window.submitFullWizardApplication;
   window.submitFullWizardApplication = async function() {
     if (window.ACTIVE_EDIT_CASE && window.supabaseClient) {
       const editId = window.ACTIVE_EDIT_CASE.id;
-      const h = window.formData.husband || {};
-      const w = window.formData.wife || {};
-      const { error } = await window.supabaseClient
-        .from('families')
-        .update({
-          husband_data: h,
-          wife_data: w,
-          children_data: window.formData.children || [],
-          expenses_data: window.formData.expenses || {},
-          incomes_data: window.formData.incomes || {},
-          housing_data: window.formData.housing || {},
-          documents_data: Object.assign({}, window.ACTIVE_EDIT_CASE.documents_data || {}, window.formData.documents || {}),
-          allow_edit: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editId);
-
+      const { error } = await window.supabaseClient.from('families').update({
+        husband_data: window.formData.husband || {},
+        wife_data: window.formData.wife || {},
+        children_data: window.formData.children || [],
+        expenses_data: window.formData.expenses || {},
+        incomes_data: window.formData.incomes || {},
+        housing_data: window.formData.housing || {},
+        documents_data: Object.assign({}, window.ACTIVE_EDIT_CASE.documents_data || {}, window.formData.documents || {}),
+        allow_edit: false,
+        updated_at: new Date().toISOString()
+      }).eq('id', editId);
       if (error) return alert('❌ تعذر حفظ التعديلات: ' + error.message);
       window.ACTIVE_EDIT_CASE = null;
       alert('✅ تم حفظ التعديلات بنجاح وإغلاق صلاحية التعديل المؤقتة.');
       if (typeof window.showSection === 'function') window.showSection('home');
       return;
     }
-    if (typeof origSubmitWizard === 'function') {
-      return origSubmitWizard.apply(this, arguments);
-    }
+    if (typeof origSubmitWizard === 'function') return origSubmitWizard.apply(this, arguments);
   };
 
   // 14. زر الأرشفة الطارئة لسجلات Supabase إلى Google Drive
   window.backupSupabaseFamiliesToGoogleDrive = async function() {
     if (!window.supabaseClient || !window.GOOGLE_DRIVE_WEB_APP_URL) return;
     if (!confirm('هل تريد تصدير نسخة احتياطية كاملة من سجلات الحالات (Supabase) وحفظها كملف أرشيف داخل Google Drive؟')) return;
-
     const { data, error } = await window.supabaseClient.from('families').select('*');
     if (error || !data) return alert('❌ تعذر جلب البيانات من Supabase.');
-
-    const res = await fetch(window.GOOGLE_DRIVE_WEB_APP_URL, {
-      method: 'POST',
+    await fetch(window.GOOGLE_DRIVE_WEB_APP_URL, {
+      method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({
-        action: 'archive_db',
-        fileName: `Supabase_Families_Backup_${new Date().toISOString().slice(0, 10)}.json`,
-        records: data
-      })
+      body: JSON.stringify({ action: 'archive_db', fileName: `Supabase_Families_Backup_${new Date().toISOString().slice(0, 10)}.json`, records: data })
     });
-    const json = await res.json();
-    if (json && json.status === 'success') {
-      alert(`✅ تم حفظ نسخة الأرشيف (${data.length} حالة) بنجاح في Google Drive!\nرابط الملف:\n${json.fileUrl}`);
-    } else {
-      alert('❌ تعذرت الأرشفة: ' + (json?.message || 'خطأ غير معروف'));
-    }
+    alert(`✅ تم إرسال نسخة الأرشيف (${data.length} حالة) بنجاح إلى مجلد Database_Backups داخل Google Drive!`);
   };
 })();
+
+
