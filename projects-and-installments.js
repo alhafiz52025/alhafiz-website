@@ -166,17 +166,17 @@
     }).join('');
   };
 
-  window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
+    window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) {
       return { name: 'file', uploaded: false, url: '', publicUrl: '', directUrl: '' };
     }
 
-    const driveUrl = 'https://script.google.com/macros/s/AKfycbwefZy3JgwA9Cc4ZCxSGMEVdi-ZZAvn47Kk6I-RPDFXNpk0xLqJ65Z4qLx_WzWAiL2e/exec';
-    if (!driveUrl || !driveUrl.includes('script.google.com/macros/s/')) {
-      throw new Error('رابط Google Apps Script غير مضبوط بشكل صحيح في ملف config.js');
-    }
+    const driveUrl = String(
+      window.GOOGLE_DRIVE_WEB_APP_URL ||
+      'https://google.com'
+    ).trim();
 
-    const file = await quickCompressImage(rawFile);
+    const file = await quickCompressImage(rawFile, 800, 0.6);
     const base64Data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -188,58 +188,51 @@
       reader.readAsDataURL(file);
     });
 
-    const finalFileName = (meta.prefix ? meta.prefix + '_' : '') + (file.name || ('doc_' + Date.now()));
+    const finalFileName = (meta.prefix ? meta.prefix + '_' : '') + (file.name || ('doc_' + Date.now() + '.jpg'));
     const payload = {
       year: String(meta.year || new Date().getFullYear()),
       village: String(meta.village || 'إهناسيا').trim(),
       submissionType: String(meta.submissionType || 'عام').trim(),
       trackingCode: String(meta.trackingCode || ('TRK-' + Date.now())).trim(),
       fileName: finalFileName,
-      mimeType: file.type || 'application/octet-stream',
+      mimeType: file.type || 'image/jpeg',
       fileBase64: base64Data
     };
 
-    const formBody = new URLSearchParams();
-    formBody.append('payload', JSON.stringify(payload));
-
     const response = await fetch(driveUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: formBody.toString()
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
 
     const rawText = await response.text();
     let result = {};
     try {
       result = JSON.parse(rawText);
-    } catch (parseErr) {
-      throw new Error('تعذر قراءة استجابة Google Drive كـ JSON صالح.');
+    } catch (_) {
+      throw new Error('استجابة غير صالحة من Google Drive');
     }
 
     if (!result || result.status !== 'success') {
-      throw new Error(result?.message || 'فشل رفع الملف إلى Google Drive.');
+      throw new Error(result?.message || 'فشل رفع الملف إلى Google Drive');
     }
 
     const fileId = String(result.fileId || '').trim();
-    const viewUrl = String(
-      result.fileUrl || (fileId ? `https://drive.google.com/file/d/${fileId}/view` : '')
-    ).trim();
-    const directUrl = String(
-      result.directUrl || (fileId ? `https://lh3.googleusercontent.com/d/${fileId}` : viewUrl)
-    ).trim();
+    const viewUrl = String(result.fileUrl || (fileId ? `https://google.com{fileId}/view` : '')).trim();
+    const directUrl = String(result.directUrl || (fileId ? `https://googleusercontent.com{fileId}` : viewUrl)).trim();
 
     return {
       name: finalFileName,
       fileName: finalFileName,
       fileId: fileId,
       size: file.size || 0,
-      mimeType: file.type || '',
+      mimeType: file.type || 'image/jpeg',
       url: viewUrl,
       publicUrl: viewUrl,
       directUrl: directUrl,
       folderUrl: String(result.folderUrl || '').trim(),
       storageProvider: 'google_drive',
-      uploaded: Boolean(viewUrl || fileId)
+      uploaded: true
     };
   };
 
