@@ -73,13 +73,13 @@
     }
 
     const driveUrl = String(
-      window.GOOGLE_DRIVE_WEB_APP_URL ||
-      'https://google.com'
+    window.GOOGLE_DRIVE_WEB_APP_URL ||
+    'https://google.com'
     ).trim();
 
-    if (!driveUrl || !driveUrl.includes('://google.com')) {
-      throw new Error('رابط Google Apps Script غير مضبوط بشكل صحيح في ملف config.js');
-    }
+   if (!driveUrl || !driveUrl.includes('://google.com')) {
+   throw new Error('رابط Google Apps Script غير مضبوط');
+   }
 
     const file = await quickCompressImage(rawFile);
     const base64Data = await new Promise((resolve, reject) => {
