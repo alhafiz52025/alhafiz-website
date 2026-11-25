@@ -480,7 +480,7 @@
 
       // فتح نافذة الواتساب فوراً لحظة الضغطة حتى لا يحظرها المتصفح
       const intlPhone = '20' + phone.replace(/^0/, '');
-      const waUrl = `https://wa.me{intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
+      const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(initWaMsg);
       const waWin = window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
