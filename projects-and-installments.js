@@ -40,6 +40,31 @@
     });
   }
 
+    function quickCompressImage(file, maxW = 900, quality = 0.65) {
+    return new Promise((resolve) => {
+      if (!file || !file.type || !file.type.startsWith('image/')) return resolve(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let w = img.width, h = img.height;
+          if (w > maxW) { h = Math.round((h * maxW) / w); w = maxW; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => {
+            if (!blob) return resolve(file);
+            resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }));
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  }
+
   window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) return { name: 'file', uploaded: false };
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
@@ -57,27 +82,31 @@
         reader.readAsDataURL(file);
       });
 
+      const finalFileName = (meta.prefix ? meta.prefix + '_' : '') + (file.name || ('doc_' + Date.now()));
+
       if (driveUrl) {
         const payload = {
           year: meta.year || new Date().getFullYear().toString(),
           village: meta.village || 'إهناسيا',
           submissionType: meta.submissionType || 'عام',
           trackingCode: meta.trackingCode || ('TRK-' + Date.now()),
-          fileName: (meta.prefix ? meta.prefix + '_' : '') + (file.name || ('doc_' + Date.now())),
+          fileName: finalFileName,
           mimeType: file.type || 'application/octet-stream',
           fileBase64: base64Data
         };
 
-        await fetch(driveUrl, {
+        // الإرسال الفوري في الخلفية بدون حجز المستخدم في الانتظار
+        fetch(driveUrl, {
           method: 'POST',
           mode: 'no-cors',
+          keepalive: true,
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(payload)
-        });
+        }).catch(() => {});
 
         return {
-          name: payload.fileName,
-          fileName: payload.fileName,
+          name: finalFileName,
+          fileName: finalFileName,
           size: file.size,
           mimeType: file.type || '',
           url: 'https://google.com_',
@@ -91,6 +120,7 @@
     }
     return { name: rawFile.name, uploaded: true, storageProvider: 'google_drive' };
   };
+
   // تحديث الفلترة الجغرافية المتسلسلة لشاشة التقديم المبدئي للمشروع
   window.updateProjInitCenters = function() {
     const gov = document.getElementById('prj-init-gov')?.value || '';
