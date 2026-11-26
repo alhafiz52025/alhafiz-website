@@ -33,6 +33,76 @@
     { inputId: 'doc-lease', docKey: 'lease', folder: 'housing_docs' },
     { inputId: 'doc-school-enroll', docKey: 'schoolEnroll', folder: 'housing_docs' }
   ];
+    // قواعد الحالات الاجتماعية الذكية:
+  // - "مقيم مع الأسرة" أو "عازب / عزباء" => تظهر جميع البيانات + بطاقة الرقم القومي (وش وظهر)
+  // - "متوفى / مطلق / مسجون / هجر" => الاسم والعنوان ومستند إثبات الحالة فقط (بدون بطاقة الزوج)
+  window.getSocialStatusRule = function(statusVal) {
+    const s = String(statusVal || '').trim();
+    if (s.includes('عازب') || s.includes('عزباء') || s.includes('أعزب')) {
+      return {
+        mode: 'single',
+        showFullHusbandFields: true,
+        requireHusbandId: true,
+        skipWifeAndChildren: true,
+        wifeAutoStatus: '',
+        proofDocKey: '',
+        proofDocLabel: ''
+      };
+    }
+    if (s.includes('متوف')) {
+      return {
+        mode: 'deceased',
+        showFullHusbandFields: false,
+        requireHusbandId: false,
+        skipWifeAndChildren: false,
+        wifeAutoStatus: 'أرملة',
+        proofDocKey: 'deathCertDoc',
+        proofDocLabel: 'شهادة الوفاة *'
+      };
+    }
+    if (s.includes('مطلق')) {
+      return {
+        mode: 'divorced',
+        showFullHusbandFields: false,
+        requireHusbandId: false,
+        skipWifeAndChildren: false,
+        wifeAutoStatus: 'مطلقة',
+        proofDocKey: 'divorceCertDoc',
+        proofDocLabel: 'قسيمة الطلاق *'
+      };
+    }
+    if (s.includes('مسجون')) {
+      return {
+        mode: 'imprisoned',
+        showFullHusbandFields: false,
+        requireHusbandId: false,
+        skipWifeAndChildren: false,
+        wifeAutoStatus: 'زوجة سجين',
+        proofDocKey: 'prisonVerdictDoc',
+        proofDocLabel: 'صورة الحكم / شهادة من السجن *'
+      };
+    }
+    if (s.includes('هجر')) {
+      return {
+        mode: 'abandoned',
+        showFullHusbandFields: false,
+        requireHusbandId: false,
+        skipWifeAndChildren: false,
+        wifeAutoStatus: 'مهجورة',
+        proofDocKey: 'abandonmentDoc',
+        proofDocLabel: 'جواب هجر (من المركز أو العمدة أو شيخ البلد) *'
+      };
+    }
+    return {
+      mode: 'married',
+      showFullHusbandFields: true,
+      requireHusbandId: true,
+      skipWifeAndChildren: false,
+      wifeAutoStatus: 'متزوجة ومقيمة مع الأسرة',
+      proofDocKey: '',
+      proofDocLabel: ''
+    };
+  };
 
   window.WIZARD_ATTACHMENTS_CACHE = window.WIZARD_ATTACHMENTS_CACHE || {};
 
@@ -425,20 +495,19 @@
     });
   }
 
-  function isHusbandLivingWithFamily(hObj) {
-
+    function isHusbandLivingWithFamily(hObj) {
     const h = hObj || {};
-    const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
-    if (!statusText) return true;
-    return statusText.includes('مقيم مع الأسرة') || statusText.includes('مقيم مع الاسرة') || statusText === 'مقيم';
+    const rule = window.getSocialStatusRule(h.status || h.socialStatus || h.livingStatus || 'مقيم مع الأسرة');
+    return rule.mode === 'married' || rule.mode === 'single';
   }
 
   function computePrimaryApplicantName(hObj, wObj) {
     const h = hObj || {};
     const w = wObj || {};
+    const rule = window.getSocialStatusRule(h.status || 'مقيم مع الأسرة');
     const hFull = [h.name1, h.name2, h.name3].filter(Boolean).join(' ').trim();
     const wFull = [w.name1, w.name2, w.name3].filter(Boolean).join(' ').trim();
-    if (isHusbandLivingWithFamily(h)) {
+    if (rule.mode === 'married' || rule.mode === 'single') {
       return hFull || wFull || '';
     }
     return wFull || hFull || '';
@@ -574,8 +643,7 @@
         <p style="font-size:13px; color:#64748b;">يرجى استكمال كل قسم بالكامل قبل الانتقال إلى القسم التالي.</p>
       `;
     }
-    // --- الخطوة 2: بيانات الزوج (رب الأسرة) ---
-    else if (window.currentStep === 2) {
+        else if (window.currentStep === 2) {
       const locs = window.EGYPT_LOCATIONS || {};
       const govKeys = Object.keys(locs);
       const selectedGov = window.formData.husband?.gov || '';
@@ -595,22 +663,14 @@
         allVillages.map(v => `<option value="${v}" ${v===selectedVillage?'selected':''}>${v}</option>`).join('') +
         (selectedCenter ? `<option value="__NEW__" ${selectedVillage==='__NEW__'?'selected':''}>+ إضافة قرية / عزبة / تابع جديد غير مدرج</option>` : '');
 
-      const statusOptions = (window.HUSBAND_MARITAL_STATUSES || ['مقيم مع الأسرة', 'غائب / مسافر', 'منفصل / مطلق', 'متوفى', 'مريض / عاجز عن الكسب']).map(s => `<option value="${s}" ${window.formData.husband.status===s?'selected':''}>${s}</option>`).join('');
+      const statusList = window.HUSBAND_MARITAL_STATUSES || ['مقيم مع الأسرة', 'عازب / عزباء', 'متوفى', 'مطلق', 'مسجون', 'هجر'];
+      const currentHStatus = window.formData.husband?.status || 'مقيم مع الأسرة';
+      const rule = window.getSocialStatusRule(currentHStatus);
+      const statusOptions = statusList.map(s => `<option value="${s}" ${currentHStatus===s?'selected':''}>${s}</option>`).join('');
       const jobOptions = (window.EGYPT_JOBS || []).map(j => `<option value="${j}" ${window.formData.husband.job===j?'selected':''}>${j}</option>`).join('');
 
-      html += `
-        <h4 style="color:var(--primary-dark); margin-top:0;">👤 القسم الأول: بيانات الزوج (رب الأسرة)</h4>
-        <div class="grid-3">
-          <div><label>الاسم الأول *</label><input id="h-name1" value="${window.formData.husband.name1 || ''}"></div>
-          <div><label>الاسم الثاني *</label><input id="h-name2" value="${window.formData.husband.name2 || ''}"></div>
-          <div><label>الاسم الثالث والعائلة *</label><input id="h-name3" value="${window.formData.husband.name3 || ''}"></div>
-        </div>
-        <div class="grid-3">
-          <div>
-            <label>الحالة الاجتماعية للأب *</label>
-            <select id="h-status" onchange="if(window.formData.husband){window.formData.husband.status=this.value;}">${statusOptions}</select>
-            <small style="color:#0f766e; font-size:11px;">يُعتمد اسم الزوج في ملف البحث إذا كان (مقيم مع الأسرة)، وفي باقي الحالات يُعتمد اسم الزوجة.</small>
-          </div>
+      const fullDetailsHtml = rule.showFullHusbandFields ? `
+        <div class="grid-3" style="margin-top:8px;">
           <div>
             <label>الرقم القومي (14 رقم حصراً) *</label>
             <input id="h-nid" maxlength="14" value="${window.formData.husband.nid || ''}" oninput="window.handleNidInput('h')">
@@ -619,12 +679,12 @@
             <label>النوع (تلقائي من الرقم القومي)</label>
             <input id="h-gender" readonly value="${window.formData.husband.gender || ''}" style="background:#f1f5f9;">
           </div>
-        </div>
-        <div class="grid-2" style="margin-top:8px;">
           <div>
             <label>تاريخ الميلاد (تلقائي من الرقم القومي)</label>
             <input id="h-birth-date" readonly value="${window.formData.husband.birthDate || ''}" style="background:#f1f5f9;">
           </div>
+        </div>
+        <div class="grid-3" style="margin-top:8px;">
           <div>
             <label>المستوى التعليمي *</label>
             <select id="h-edu-level">
@@ -632,10 +692,37 @@
               <option value="متعلم" ${window.formData.husband.eduLevel!=='غير متعلم'?'selected':''}>متعلم</option>
             </select>
           </div>
+          <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" value="${window.formData.husband.phone || ''}"></div>
+          <div><label>رقم الواتساب (11 رقم)</label><input id="h-whatsapp" maxlength="11" value="${window.formData.husband.whatsapp || ''}"></div>
+        </div>
+        <div style="margin-top:8px;"><label>الوظيفة الحالية *</label><select id="h-job">${jobOptions}</select></div>
+        ${window.renderPersonHealthBlockHtml('h', 'مقدم الطلب')}
+        <div class="grid-2" style="margin-top:10px;">
+          <div><label>صورة بطاقة الرقم القومي (وش) *</label><input type="file" id="h-id-front" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'hIdFront')"></div>
+          <div><label>صورة بطاقة الرقم القومي (ظهر) *</label><input type="file" id="h-id-back" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'hIdBack')"></div>
+        </div>
+      ` : `
+        <div style="background:#fffbeb; border:1px solid #f59e0b; padding:12px; border-radius:8px; margin-top:10px;">
+          <label style="font-weight:800; color:#92400e;">${rule.proofDocLabel}</label>
+          <input type="file" id="h-social-proof-doc" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, '${rule.proofDocKey}')">
+          <div style="font-size:11px; color:#78350f; margin-top:4px;">لا يُشترط رفع صورة بطاقة الزوج في هذه الحالة؛ سيتم استكمال بيانات الزوجة (الأم) وبطاقتها في القسم التالي.</div>
+        </div>
+      `;
+
+      html += `
+        <h4 style="color:var(--primary-dark); margin-top:0;">👤 القسم الأول: بيانات الزوج / مقدم الطلب</h4>
+        <div style="margin-bottom:10px;">
+          <label style="font-weight:700;">الحالة الاجتماعية *</label>
+          <select id="h-status" onchange="saveCurrentStepData(); window.formData.husband.status=this.value; window.renderWizardStep();">${statusOptions}</select>
+        </div>
+        <div class="grid-3">
+          <div><label>الاسم الأول *</label><input id="h-name1" value="${window.formData.husband.name1 || ''}"></div>
+          <div><label>الاسم الثاني *</label><input id="h-name2" value="${window.formData.husband.name2 || ''}"></div>
+          <div><label>الاسم الثالث والعائلة *</label><input id="h-name3" value="${window.formData.husband.name3 || ''}"></div>
         </div>
 
         <div style="background:#f8fafc; padding:12px; border-radius:8px; margin:10px 0; border:1px solid #cbd5e1;">
-          <label style="font-weight:700; color:var(--primary-dark);">العنوان الإداري (التسلسل الجغرافي المعتمد) *</label>
+          <label style="font-weight:700; color:var(--primary-dark);">العنوان الإداري للأسرة (التسلسل الجغرافي المعتمد) *</label>
           <div class="grid-3" style="margin-top:6px;">
             <div>
               <label style="font-size:11px;">1. المحافظة:</label>
@@ -656,24 +743,17 @@
           <div style="margin-top:8px;"><input id="h-street" placeholder="شارع / رقم الحارة / التفاصيل كما مدون بالبطاقة *" value="${window.formData.husband.street || ''}"></div>
         </div>
 
-        <div class="grid-3">
-          <div><label>رقم التليفون الأساسي (11 رقم) *</label><input id="h-phone" maxlength="11" value="${window.formData.husband.phone || ''}"></div>
-          <div><label>رقم الواتساب (11 رقم)</label><input id="h-whatsapp" maxlength="11" value="${window.formData.husband.whatsapp || ''}"></div>
-          <div><label>الوظيفة الحالية *</label><select id="h-job">${jobOptions}</select></div>
-        </div>
-
-        ${window.renderPersonHealthBlockHtml('h', 'الزوج')}
-
-        <div class="grid-2" style="margin-top:10px;">
-          <div><label>صورة بطاقة الزوج (وش) *</label><input type="file" id="h-id-front" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'hIdFront')"></div>
-          <div><label>صورة بطاقة الزوج (ظهر) *</label><input type="file" id="h-id-back" accept="image/*,.pdf" onchange="window.handleImmediateAttachmentPreview(this, 'hIdBack')"></div>
-        </div>
+        ${fullDetailsHtml}
       `;
     }
-    // --- الخطوة 3: بيانات الزوجة ---
-    else if (window.currentStep === 3) {
-      const wifeStatusOptions = (window.WIFE_MARITAL_STATUSES || []).map(s => `<option value="${s}" ${window.formData.wife.maritalStatus===s?'selected':''}>${s}</option>`).join('');
+      else if (window.currentStep === 3) {
+      const hRule = window.getSocialStatusRule(window.formData.husband?.status || 'مقيم مع الأسرة');
+      const autoWifeStatus = hRule.wifeAutoStatus || 'متزوجة ومقيمة مع الأسرة';
+      window.formData.wife.maritalStatus = autoWifeStatus;
+      const wifeStatusOptions = (window.WIFE_MARITAL_STATUSES || ['متزوجة ومقيمة مع الأسرة', 'أرملة', 'مطلقة', 'زوجة سجين', 'مهجورة'])
+        .map(s => `<option value="${s}" ${autoWifeStatus===s?'selected':''}>${s}</option>`).join('');
       const jobOptions = (window.EGYPT_JOBS || []).map(j => `<option value="${j}" ${window.formData.wife.job===j?'selected':''}>${j}</option>`).join('');
+      const phoneReqMark = hRule.showFullHusbandFields ? '' : ' *';
 
       html += `
         <h4 style="color:var(--primary-dark); margin-top:0;">👩 القسم الثاني: بيانات الزوجة</h4>
@@ -683,13 +763,16 @@
           <div><label>الاسم الثالث والعائلة *</label><input id="w-name3" value="${window.formData.wife.name3 || ''}"></div>
         </div>
         <div class="grid-3" style="margin-top:8px;">
-          <div><label>الحالة الاجتماعية للزوجة *</label><select id="w-marital-status">${wifeStatusOptions}</select></div>
+          <div>
+            <label>الحالة الاجتماعية للزوجة (تلقائي) *</label>
+            <select id="w-marital-status" disabled style="background:#f1f5f9; font-weight:700;">${wifeStatusOptions}</select>
+          </div>
           <div><label>الرقم القومي (14 رقم حصراً) *</label><input id="w-nid" maxlength="14" value="${window.formData.wife.nid || ''}" oninput="window.handleNidInput('w')"></div>
           <div><label>النوع (تلقائي من الرقم القومي)</label><input id="w-gender" readonly value="${window.formData.wife.gender || ''}" style="background:#f1f5f9;"></div>
         </div>
         <div class="grid-3" style="margin-top:8px;">
           <div><label>تاريخ الميلاد (تلقائي من الرقم القومي)</label><input id="w-birth-date" readonly value="${window.formData.wife.birthDate || ''}" style="background:#f1f5f9;"></div>
-          <div><label>رقم التليفون الأساسي (11 رقم)</label><input id="w-phone" maxlength="11" value="${window.formData.wife.phone || ''}"></div>
+          <div><label>رقم التليفون الأساسي (11 رقم)${phoneReqMark}</label><input id="w-phone" maxlength="11" value="${window.formData.wife.phone || ''}"></div>
           <div><label>الوظيفة / النشاط *</label><select id="w-job">${jobOptions}</select></div>
         </div>
         <div class="grid-2" style="margin-top:8px;">
@@ -714,6 +797,7 @@
         </div>
       `;
     }
+
     // --- الخطوة 4: الأبناء والتابعين (اختياري عدم وجود أبناء) ---
     else if (window.currentStep === 4) {
       const childStatuses = window.CHILD_SOCIAL_STATUSES || ["طفل (أقل من سن الدراسة)", "طالب / طالبة", "أعزب / عزباء (بالغ غير متزوج)", "متزوج / متزوجة"];
@@ -1360,7 +1444,7 @@
     return hasFileSelected && (!savedDoc || !savedDoc.uploadError);
   }
 
-  function validateStepCompletion(step) {
+    function validateStepCompletion(step) {
     if (step === 1) {
       const val = document.getElementById('intervention-type')?.value || '';
       if (!val.trim()) return 'يرجى اختيار نوع المساعدة الأساسية المطلوبة.';
@@ -1368,55 +1452,61 @@
     }
 
     if (step === 2) {
+      const statusVal = document.getElementById('h-status')?.value || 'مقيم مع الأسرة';
+      const rule = window.getSocialStatusRule(statusVal);
       const name1 = (document.getElementById('h-name1')?.value || '').trim();
       const name2 = (document.getElementById('h-name2')?.value || '').trim();
       const name3 = (document.getElementById('h-name3')?.value || '').trim();
-      const nid = (document.getElementById('h-nid')?.value || '').trim();
       const gov = document.getElementById('h-gov')?.value || '';
       const center = document.getElementById('h-center')?.value || '';
       const village = document.getElementById('h-village')?.value || '';
       const street = (document.getElementById('h-street')?.value || '').trim();
+
+      if (!name1 || !name2 || !name3) return 'يرجى استكمال الاسم الثلاثي والعائلة.';
+      if (typeof window.validateLocationHierarchy === 'function') {
+        const geoCheck = window.validateLocationHierarchy(gov, center, village);
+        if (!geoCheck.valid) return geoCheck.reason;
+      }
+      if (!street) return 'يرجى إدخال تفاصيل العنوان (الشارع / الحارة / رقم المنزل).';
+
+      if (!rule.showFullHusbandFields) {
+        const proofReady = isAttachmentReady('h-social-proof-doc', rule.proofDocKey);
+        if (!proofReady) return `يرجى إرفاق (${rule.proofDocLabel.replace('*', '').trim()}) والتأكد من ظهور علامة الرفع الناجح.`;
+        return null;
+      }
+
+      const nid = (document.getElementById('h-nid')?.value || '').trim();
       const phone = (document.getElementById('h-phone')?.value || '').trim();
       const whatsapp = (document.getElementById('h-whatsapp')?.value || '').trim();
       const health = document.getElementById('h-health')?.value || 'سليم';
       const idFront = isAttachmentReady('h-id-front', 'hIdFront');
       const idBack = isAttachmentReady('h-id-back', 'hIdBack');
 
-      if (!name1 || !name2 || !name3) return 'يرجى استكمال الاسم الثلاثي والعائلة للزوج.';
-      if (!window.parseEgyptianNationalId(nid).valid) return 'الرقم القومي للزوج غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).';
-
-      if (typeof window.validateLocationHierarchy === 'function') {
-        const geoCheck = window.validateLocationHierarchy(gov, center, village);
-        if (!geoCheck.valid) return geoCheck.reason;
-      }
-      if (!street) return 'يرجى إدخال تفاصيل العنوان (الشارع / الحارة / رقم المنزل).';
-      if (!isValidEgyptianPhone(phone)) return 'رقم التليفون الأساسي للزوج يجب أن يتكون من 11 رقماً يبدأ بـ 01.';
-      if (whatsapp && !isValidEgyptianPhone(whatsapp)) return 'رقم الواتساب للزوج يجب أن يتكون من 11 رقماً صحيحاً.';
+      if (!window.parseEgyptianNationalId(nid).valid) return 'الرقم القومي غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).';
+      if (!isValidEgyptianPhone(phone)) return 'رقم التليفون الأساسي يجب أن يتكون من 11 رقماً يبدأ بـ 01.';
+      if (whatsapp && !isValidEgyptianPhone(whatsapp)) return 'رقم الواتساب يجب أن يتكون من 11 رقماً صحيحاً.';
 
       if (health !== 'سليم') {
         const need = document.getElementById('h-medical-need')?.value || '';
         const medDoc = isAttachmentReady('h-medical-doc', 'hMedicalDoc');
         const socDoc = isAttachmentReady('h-social-doc', 'hSocialDoc');
-
-        if (!need) return 'يرجى تحديد الإجراء الطبي المطلوب للزوج.';
-        if ([
-          'دواء وعلاج شهري مزمن',
-          'جلسات غسيل كلوي أو علاج كيماوي',
-          'أشعة وتحاليل طبية وفحوصات',
-          'جلسات علاج طبيعي أو تخاطب'
-        ].includes(need)) {
+        if (!need) return 'يرجى تحديد الإجراء الطبي المطلوب.';
+        if (['دواء وعلاج شهري مزمن', 'جلسات غسيل كلوي أو علاج كيماوي', 'أشعة وتحاليل طبية وفحوصات', 'جلسات علاج طبيعي أو تخاطب'].includes(need)) {
           const cost = parseFloat(document.getElementById('h-monthly-cost')?.value || '0');
-          if (!cost || cost <= 0) return 'يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي للزوج.';
+          if (!cost || cost <= 0) return 'يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي.';
         }
-        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوج والتأكد من ظهور علامة الرفع الناجح.';
-        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم لحالة الزوج والتأكد من ظهور علامة الرفع الناجح.';
+        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم.';
+        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم.';
       }
 
-      if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الزوج (وجه وظهر) والتأكد من ظهور علامة الرفع الناجح.';
+      if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الرقم القومي (وجه وظهر) والتأكد من ظهور علامة الرفع الناجح.';
       return null;
     }
 
     if (step === 3) {
+      const hRule = window.getSocialStatusRule(window.formData.husband?.status || 'مقيم مع الأسرة');
+      if (hRule.skipWifeAndChildren) return null;
+
       const name1 = (document.getElementById('w-name1')?.value || '').trim();
       const name2 = (document.getElementById('w-name2')?.value || '').trim();
       const name3 = (document.getElementById('w-name3')?.value || '').trim();
@@ -1428,25 +1518,22 @@
 
       if (!name1 || !name2 || !name3) return 'يرجى استكمال الاسم الثلاثي والعائلة للزوجة.';
       if (!window.parseEgyptianNationalId(nid).valid) return 'الرقم القومي للزوجة غير صحيح (يجب أن يتكون من 14 رقماً صحيحاً).';
+      if (!hRule.showFullHusbandFields && !isValidEgyptianPhone(phone)) {
+        return 'رقم هاتف الزوجة إلزامي (11 رقماً يبدأ بـ 01) للتواصل وإرسال كود الطلب.';
+      }
       if (phone && !isValidEgyptianPhone(phone)) return 'رقم هاتف الزوجة يجب أن يتكون من 11 رقماً صحيحاً.';
 
       if (health !== 'سليم') {
         const need = document.getElementById('w-medical-need')?.value || '';
         const medDoc = isAttachmentReady('w-medical-doc', 'wMedicalDoc');
         const socDoc = isAttachmentReady('w-social-doc', 'wSocialDoc');
-
         if (!need) return 'يرجى تحديد الإجراء الطبي المطلوب للزوجة.';
-        if ([
-          'دواء وعلاج شهري مزمن',
-          'جلسات غسيل كلوي أو علاج كيماوي',
-          'أشعة وتحاليل طبية وفحوصات',
-          'جلسات علاج طبيعي أو تخاطب'
-        ].includes(need)) {
+        if (['دواء وعلاج شهري مزمن', 'جلسات غسيل كلوي أو علاج كيماوي', 'أشعة وتحاليل طبية وفحوصات', 'جلسات علاج طبيعي أو تخاطب'].includes(need)) {
           const cost = parseFloat(document.getElementById('w-monthly-cost')?.value || '0');
           if (!cost || cost <= 0) return 'يرجى إدخال التكلفة الشهرية التقديرية للإجراء الطبي للزوجة.';
         }
-        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوجة والتأكد من ظهور علامة الرفع الناجح.';
-        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم للزوجة والتأكد من ظهور علامة الرفع الناجح.';
+        if (!medDoc) return 'يرجى رفع التقرير الطبي المختوم للزوجة.';
+        if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم للزوجة.';
       }
 
       if (!idFront || !idBack) return 'يرجى رفع صورة بطاقة الزوجة (وجه وظهر) والتأكد من ظهور علامة الرفع الناجح.';
@@ -1454,6 +1541,9 @@
     }
 
     if (step === 4) {
+      const hRule = window.getSocialStatusRule(window.formData.husband?.status || 'مقيم مع الأسرة');
+      if (hRule.skipWifeAndChildren) return null;
+
       const rows = document.querySelectorAll('#children-list > div');
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i];
@@ -1481,7 +1571,7 @@
       if (!isValidEgyptianPhone(mPhone)) return 'رقم هاتف العروسة أو وليها يجب أن يتكون من 11 رقماً.';
       if (!mDate) return 'يرجى تحديد موعد الزفاف المقترح.';
       if (!mAvail) return 'يرجى إدخال المتوفرات لدى العروسة.';
-      if (!mCert || !mHealth) return 'يرجى رفع قسيمة الزواج/الخطوبة والشهادة الصحية للعروسين والتأكد من ظهور علامة الرفع الناجح.';
+      if (!mCert || !mHealth) return 'يرجى رفع قسيمة الزواج/الخطوبة والشهادة الصحية للعروسين.';
       return null;
     }
 
@@ -1515,12 +1605,9 @@
 
       if (['رديء', 'رديء جداً / معدوم', 'متوسط'].includes(furn)) {
         const checkedDefs = Array.from(document.querySelectorAll('.h-deficiency-item:checked'));
-        if (checkedDefs.length === 0) {
-          return 'يرجى اختيار بند واحد على الأقل من نواقص الفرش والأثاث.';
-        }
+        if (checkedDefs.length === 0) return 'يرجى اختيار بند واحد على الأقل من نواقص الفرش والأثاث.';
       }
-
-      if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم ضمن المستندات الرسمية والتأكد من ظهور علامة الرفع الناجح.';
+      if (!socDoc) return 'يرجى رفع البحث الاجتماعي المختوم ضمن المستندات الرسمية.';
       if (hCase === 'إيجار' && !leaseDoc) return 'يرجى رفع عقد الإيجار الرسمي لأن حالة السكن إيجار.';
       return null;
     }
@@ -1528,14 +1615,20 @@
     return null;
   }
 
-  window.nextWizardStep = function() {
+    window.nextWizardStep = function() {
     clearStepError();
     const err = validateStepCompletion(window.currentStep);
-    if (err) {
-      return showStepError(err);
-    }
+    if (err) return showStepError(err);
     saveCurrentStepData();
-    if (window.currentStep === 4 && window.formData.interventionType !== 'تجهيز عروسة (أجهزة كهربائية / مفروشات)') {
+
+    const hRule = window.getSocialStatusRule(window.formData.husband?.status || 'مقيم مع الأسرة');
+    const isMarriage = window.formData.interventionType === 'تجهيز عروسة (أجهزة كهربائية / مفروشات)';
+
+    if (window.currentStep === 2 && hRule.skipWifeAndChildren) {
+      window.formData.wife = {};
+      window.formData.children = [];
+      window.currentStep = isMarriage ? 5 : 6;
+    } else if (window.currentStep === 4 && !isMarriage) {
       window.currentStep = 6;
     } else {
       window.currentStep++;
@@ -1546,25 +1639,20 @@
   window.prevWizardStep = function(targetStep = null) {
     clearStepError();
     saveCurrentStepData();
+
+    const hRule = window.getSocialStatusRule(window.formData.husband?.status || 'مقيم مع الأسرة');
+    const isMarriage = window.formData.interventionType === 'تجهيز عروسة (أجهزة كهربائية / مفروشات)';
+
     if (targetStep) {
       window.currentStep = targetStep;
+    } else if ((window.currentStep === 6 || window.currentStep === 5) && hRule.skipWifeAndChildren) {
+      window.currentStep = 2;
+    } else if (window.currentStep === 6 && !isMarriage) {
+      window.currentStep = 4;
     } else {
       window.currentStep = Math.max(1, window.currentStep - 1);
     }
     window.renderWizardStep();
-  };
-
-  window.toggleLease = function() {
-    const val = document.getElementById('h-status-case')?.value;
-    const box = document.getElementById('lease-doc-box');
-    if (box) {
-      if (val === 'إيجار') box.classList.remove('hidden');
-      else box.classList.add('hidden');
-    }
-    if (window.formData.housing) {
-      window.formData.housing.case = val || 'ملك';
-    }
-    hydrateAttachmentPreviewsInCurrentStep();
   };
 
   window.toggleFurnitureDeficiencies = function() {
@@ -1676,69 +1764,47 @@
     }
   };
 
- async function uploadSingleDoc(inputId, folderName, trackingCode, docKey = '') {
+   async function uploadSingleDoc(inputId, folderName, trackingCode, docKey = '') {
     const inputEl = document.getElementById(inputId);
     const resolvedKey = getDocKeyForInput(inputEl, docKey);
-    const rawFile = inputEl?.files?.[0];
+    const rawFile = inputEl?.files?.item(0);
     const existing = window.formData.documents?.[resolvedKey] || window.WIZARD_ATTACHMENTS_CACHE[resolvedKey];
 
     if (!rawFile) {
       return hasDocValue(existing) ? existing : null;
     }
 
-    const cachedCompressed = window.WIZARD_COMPRESSED_FILES && window.WIZARD_COMPRESSED_FILES[inputId];
-    const sameRawAsCached =
-      cachedCompressed &&
-      cachedCompressed._sourceName === rawFile.name &&
-      cachedCompressed._sourceSize === rawFile.size &&
-      cachedCompressed._sourceLastModified === rawFile.lastModified;
-
-    let file = sameRawAsCached ? cachedCompressed : rawFile;
-
-    if (!sameRawAsCached && typeof compressImageFileIfNeeded === 'function') {
-      file = await compressImageFileIfNeeded(rawFile);
-      file._sourceName = rawFile.name;
-      file._sourceSize = rawFile.size;
-      file._sourceLastModified = rawFile.lastModified;
-      window.WIZARD_COMPRESSED_FILES = window.WIZARD_COMPRESSED_FILES || {};
-      window.WIZARD_COMPRESSED_FILES[inputId] = file;
-    }
-
-    if (existing && existing.uploaded && existing.path && existing.fileName === file.name && existing.size === file.size) {
+    if (
+      existing &&
+      existing.uploaded &&
+      existing.storageProvider === 'google_drive' &&
+      existing.url &&
+      existing._sourceName === rawFile.name &&
+      existing._sourceSize === rawFile.size
+    ) {
       return existing;
     }
 
-    if (!window.supabaseClient || !window.supabaseClient.storage) {
-      return existing || { name: file.name, fileName: file.name, size: file.size };
+    if (typeof window.uploadFileToDriveOrStorage === 'function') {
+      const village = window.formData.husband?.village || document.getElementById('h-village')?.value || 'إهناسيا';
+      const subType = window.formData.interventionType || 'مساعدات_اجتماعية';
+      const uploaded = await window.uploadFileToDriveOrStorage(rawFile, {
+        year: new Date().getFullYear().toString(),
+        village: village,
+        submissionType: subType,
+        trackingCode: trackingCode,
+        prefix: resolvedKey || folderName
+      });
+      if (uploaded && uploaded.uploaded) {
+        uploaded._sourceName = rawFile.name;
+        uploaded._sourceSize = rawFile.size;
+        return uploaded;
+      }
     }
 
-    const safeName = typeof toSafeStorageKeyPart === 'function'
-      ? toSafeStorageKeyPart(file.name)
-      : file.name.replace(/[^\w.-]/g, '_');
-    const filePath = `${trackingCode}/${folderName}/${Date.now()}_${safeName}`;
-
-    const { error } = await window.supabaseClient.storage
-      .from('foundation-docs')
-      .upload(filePath, file, { upsert: true });
-
-    if (error) {
-      return { name: file.name, fileName: file.name, size: file.size, uploadError: error.message };
-    }
-
-    const { data: pubData } = window.supabaseClient.storage
-      .from('foundation-docs')
-      .getPublicUrl(filePath);
-
-    return {
-      name: file.name,
-      fileName: file.name,
-      size: file.size,
-      path: filePath,
-      url: (pubData && pubData.publicUrl) || '',
-      publicUrl: (pubData && pubData.publicUrl) || '',
-      uploaded: true
-    };
+    return existing || { name: rawFile.name, fileName: rawFile.name, size: rawFile.size, uploadError: 'تعذر الرفع إلى Google Drive' };
   }
+
   function saveCurrentStepData() {
     if (window.currentStep === 1) {
       window.formData.interventionType = document.getElementById('intervention-type')?.value || 'كفالة أيتام شهرية';
@@ -1982,19 +2048,25 @@
         schoolEnroll: await uploadSingleDoc('doc-school-enroll', 'housing_docs', trackingCode, 'schoolEnroll')
       };
 
+      const hRule = window.getSocialStatusRule(husbandData.status || 'مقيم مع الأسرة');
+      if (hRule.proofDocKey) {
+        const proofUploaded = await uploadSingleDoc('h-social-proof-doc', 'husband_social', trackingCode, hRule.proofDocKey);
+        if (proofUploaded) rawDocs[hRule.proofDocKey] = proofUploaded;
+      }
+
       const uploadedDocs = {};
-Object.entries(rawDocs).forEach(([key, val]) => {
-  if (hasDocValue(val)) {
-    if (val && typeof val === 'object') {
-      const cleanDoc = { ...val };
-      delete cleanDoc.dataUrl;
-      delete cleanDoc.base64;
-      uploadedDocs[key] = cleanDoc;
-    } else {
-      uploadedDocs[key] = val;
-    }
-  }
-});
+      Object.entries(rawDocs).forEach(([key, val]) => {
+        if (hasDocValue(val)) {
+          if (val && typeof val === 'object') {
+            const cleanDoc = { ...val };
+            delete cleanDoc.dataUrl;
+            delete cleanDoc.base64;
+            uploadedDocs[key] = cleanDoc;
+          } else {
+            uploadedDocs[key] = val;
+          }
+        }
+      });
 
       if (uploadedDocs.hIdFront) uploadedDocs.husband_id_front = uploadedDocs.hIdFront;
       if (uploadedDocs.hIdBack) uploadedDocs.husband_id_back = uploadedDocs.hIdBack;
