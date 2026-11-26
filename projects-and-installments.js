@@ -166,7 +166,7 @@
     }).join('');
   };
 
-    window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
+      window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) {
       return { name: 'file', uploaded: false, url: '', publicUrl: '', directUrl: '' };
     }
@@ -199,10 +199,13 @@
       fileBase64: base64Data
     };
 
+    const formBody = new URLSearchParams();
+    formBody.append('payload', JSON.stringify(payload));
+
     const response = await fetch(driveUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: formBody.toString()
     });
 
     const rawText = await response.text();
@@ -218,8 +221,12 @@
     }
 
     const fileId = String(result.fileId || '').trim();
-    const viewUrl = String(result.fileUrl || (fileId ? `https://google.com{fileId}/view` : '')).trim();
-    const directUrl = String(result.directUrl || (fileId ? `https://googleusercontent.com{fileId}` : viewUrl)).trim();
+    const viewUrl = String(
+      result.fileUrl || (fileId ? 'https://google.com' + fileId + '/view' : '')
+    ).trim();
+    const directUrl = String(
+      result.directUrl || (fileId ? 'https://googleusercontent.com' + fileId : viewUrl)
+    ).trim();
 
     return {
       name: finalFileName,
