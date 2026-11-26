@@ -2582,7 +2582,7 @@
     window.renderAdminAnnouncementsSection();
   };
 
-  window.renderAdminAchievementsSection = async function() {
+    window.renderAdminAchievementsSection = async function() {
     const box = document.getElementById('admin-tab-achievements');
     if (!box) return;
     const cfg = typeof window.getFoundationSettings === 'function' ? await window.getFoundationSettings() : {};
@@ -2608,12 +2608,22 @@
         <h4 style="margin:0 0 8px; color:var(--primary-dark);">🏆 إضافة إنجاز جديد للمعرض</h4>
         <input id="ach-title" placeholder="عنوان الإنجاز أو القافلة *">
         <textarea id="ach-desc" rows="2" placeholder="التفاصيل والقرى المستفيدة *"></textarea>
-        <input id="ach-img" placeholder="رابط الصورة (اختياري)">
-        <button type="button" onclick="adminAddAchievement()" class="action-btn">+ نشر الإنجاز</button>
+        <div class="grid-2" style="margin-bottom:8px;">
+          <div>
+            <label style="font-size:12px; font-weight:700;">📷 اختر صورة من جهازك / هاتفك (اختياري):</label>
+            <input type="file" id="ach-img-file" accept="image/*" style="margin:4px 0 0;">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700;">أو ضع رابط صورة مباشر (اختياري):</label>
+            <input id="ach-img" placeholder="https://..." style="margin:4px 0 0;">
+          </div>
+        </div>
+        <button type="button" id="btn-publish-ach" onclick="adminAddAchievement()" class="action-btn">+ نشر الإنجاز</button>
       </div>
       <div class="grid-2">
         ${list.map(item => `
           <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
+            ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${escapeAttr(item.image_url)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
             <strong>${window.escapeHtml(item.title)}</strong>
             <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || '')}</p>
             <button type="button" onclick="adminDeleteAchievement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
@@ -2636,12 +2646,39 @@
   window.adminAddAchievement = async function() {
     const title = (document.getElementById('ach-title')?.value || '').trim();
     const description = (document.getElementById('ach-desc')?.value || '').trim();
-    const image_url = (document.getElementById('ach-img')?.value || 'logo.jpg').trim();
+    const rawFile = document.getElementById('ach-img-file')?.files?.item(0);
+    let image_url = (document.getElementById('ach-img')?.value || '').trim();
+
     if (!title) return alert('⚠️ اكتب عنوان الإنجاز.');
-    const { error } = await window.supabaseClient.from('achievements').insert([{ title, description, image_url }]);
-    if (error) return alert('❌ تعذر نشر الإنجاز: ' + error.message);
-    alert('✅ تم نشر الإنجاز في قاعدة البيانات بنجاح.');
-    window.renderAdminAchievementsSection();
+
+    const btn = document.getElementById('btn-publish-ach');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع الصورة ونشر الإنجاز...'; }
+
+    try {
+      if (rawFile && typeof window.uploadFileToDriveOrStorage === 'function') {
+        const up = await window.uploadFileToDriveOrStorage(rawFile, {
+          year: new Date().getFullYear().toString(),
+          village: 'معرض_الإنجازات',
+          submissionType: 'إنجازات_المؤسسة',
+          trackingCode: 'ACH-' + Date.now(),
+          prefix: 'Achievement'
+        });
+        if (up && up.uploaded) {
+          image_url = up.directUrl || up.url || '';
+        }
+      }
+
+      if (!image_url) image_url = 'logo.jpg';
+
+      const { error } = await window.supabaseClient.from('achievements').insert([{ title, description, image_url }]);
+      if (error) throw error;
+
+      alert('✅ تم نشر الإنجاز وصورته في قاعدة البيانات بنجاح.');
+      window.renderAdminAchievementsSection();
+    } catch (err) {
+      alert('❌ تعذر نشر الإنجاز: ' + (err.message || err));
+      if (btn) { btn.disabled = false; btn.textContent = '+ نشر الإنجاز'; }
+    }
   };
 
   window.adminDeleteAchievement = async function(id) {
