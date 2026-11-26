@@ -2560,15 +2560,20 @@
       </div>`;
   };
 
-  window.adminAddAnnouncement = async function() {
+    window.adminAddAnnouncement = async function() {
     const title = (document.getElementById('ann-title')?.value || '').trim();
-    const body = (document.getElementById('ann-body')?.value || '').trim();
+    const description = (document.getElementById('ann-body')?.value || '').trim();
     if (!title) return alert('⚠️ اكتب عنوان المنحة أو الإعلان.');
-    const { error } = await window.supabaseClient.from('announcements').insert([{ title, body }]);
+
+    const { error } = await window.supabaseClient
+      .from('announcements')
+      .insert([{ title, description, is_active: true }]);
+
     if (error) return alert('❌ تعذر نشر الإعلان: ' + error.message);
     alert('✅ تم نشر الإعلان بنجاح.');
     window.renderAdminAnnouncementsSection();
   };
+
 
   window.adminDeleteAnnouncement = async function(id) {
     if (!confirm('حذف هذا الإعلان؟')) return;
