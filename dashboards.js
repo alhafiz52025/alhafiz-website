@@ -2534,7 +2534,7 @@
     });
   };
 
-    window.renderAdminAnnouncementsSection = async function() {
+      window.renderAdminAnnouncementsSection = async function() {
     const box = document.getElementById('admin-tab-announcements');
     if (!box) return;
     const { data } = await window.supabaseClient
@@ -2561,16 +2561,19 @@
         <button type="button" id="btn-publish-ann" onclick="adminAddAnnouncement()" class="action-btn">+ نشر الإعلان</button>
       </div>
       <div class="grid-2">
-        ${list.map(item => `
-          <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
-            ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${escapeAttr(item.image_url)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
-            <strong>${window.escapeHtml(item.title || '')}</strong>
-            <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || item.body || '')}</p>
-            <button type="button" onclick="adminDeleteAnnouncement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
-          </div>`).join('')}
+        ${list.map(item => {
+          const imgUrl = window.normalizeDriveImageUrl ? window.normalizeDriveImageUrl(item.image_url) : item.image_url;
+          return `
+            <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
+              ${imgUrl && imgUrl !== 'logo.jpg' ? `<img src="${escapeAttr(imgUrl)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+              <strong>${window.escapeHtml(item.title || '')}</strong>
+              <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || item.body || '')}</p>
+              <button type="button" onclick="adminDeleteAnnouncement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
+            </div>`;
+        }).join('')}
       </div>`;
   };
-
+  
   window.adminAddAnnouncement = async function() {
     const title = (document.getElementById('ann-title')?.value || '').trim();
     const description = (document.getElementById('ann-body')?.value || '').trim();
@@ -2622,7 +2625,7 @@
     window.renderAdminAnnouncementsSection();
   };
 
-    window.renderAdminAchievementsSection = async function() {
+      window.renderAdminAchievementsSection = async function() {
     const box = document.getElementById('admin-tab-achievements');
     if (!box) return;
     const cfg = typeof window.getFoundationSettings === 'function' ? await window.getFoundationSettings() : {};
@@ -2661,13 +2664,16 @@
         <button type="button" id="btn-publish-ach" onclick="adminAddAchievement()" class="action-btn">+ نشر الإنجاز</button>
       </div>
       <div class="grid-2">
-        ${list.map(item => `
-          <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
-            ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${escapeAttr(item.image_url)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
-            <strong>${window.escapeHtml(item.title)}</strong>
-            <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || '')}</p>
-            <button type="button" onclick="adminDeleteAchievement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
-          </div>`).join('')}
+        ${list.map(item => {
+          const imgUrl = window.normalizeDriveImageUrl ? window.normalizeDriveImageUrl(item.image_url) : item.image_url;
+          return `
+            <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
+              ${imgUrl && imgUrl !== 'logo.jpg' ? `<img src="${escapeAttr(imgUrl)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
+              <strong>${window.escapeHtml(item.title)}</strong>
+              <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || '')}</p>
+              <button type="button" onclick="adminDeleteAchievement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
+            </div>`;
+        }).join('')}
       </div>`;
   };
 
