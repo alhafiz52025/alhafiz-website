@@ -166,15 +166,15 @@
     }).join('');
   };
 
-      window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
+        window.uploadFileToDriveOrStorage = async function(rawFile, meta = {}) {
     if (!rawFile) {
       return { name: 'file', uploaded: false, url: '', publicUrl: '', directUrl: '' };
     }
 
-    const driveUrl = String(
-      window.GOOGLE_DRIVE_WEB_APP_URL ||
-      'https://google.com'
-    ).trim();
+    const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
+    if (!driveUrl || !driveUrl.includes('://google.com')) {
+      throw new Error('رابط Google Apps Script غير مضبوط في ملف config.js');
+    }
 
     const file = await quickCompressImage(rawFile, 800, 0.6);
     const base64Data = await new Promise((resolve, reject) => {
