@@ -2534,7 +2534,7 @@
     });
   };
 
-  window.renderAdminAnnouncementsSection = async function() {
+    window.renderAdminAnnouncementsSection = async function() {
     const box = document.getElementById('admin-tab-announcements');
     if (!box) return;
     const { data } = await window.supabaseClient
@@ -2548,32 +2548,72 @@
         <h4 style="margin:0 0 8px; color:var(--primary-dark);">📢 إضافة منحة أو إعلان جديد</h4>
         <input id="ann-title" placeholder="عنوان المنحة أو الإعلان *">
         <textarea id="ann-body" rows="2" placeholder="تفاصيل المنحة وشروط التقديم *"></textarea>
-        <button type="button" onclick="adminAddAnnouncement()" class="action-btn">+ نشر الإعلان</button>
+        <div class="grid-2" style="margin-bottom:8px;">
+          <div>
+            <label style="font-size:12px; font-weight:700;">📷 اختر صورة للإعلان من جهازك / هاتفك (اختياري):</label>
+            <input type="file" id="ann-img-file" accept="image/*" style="margin:4px 0 0;">
+          </div>
+          <div>
+            <label style="font-size:12px; font-weight:700;">أو ضع رابط صورة مباشر (اختياري):</label>
+            <input id="ann-img" placeholder="https://..." style="margin:4px 0 0;">
+          </div>
+        </div>
+        <button type="button" id="btn-publish-ann" onclick="adminAddAnnouncement()" class="action-btn">+ نشر الإعلان</button>
       </div>
       <div class="grid-2">
         ${list.map(item => `
           <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
+            ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${escapeAttr(item.image_url)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
             <strong>${window.escapeHtml(item.title || '')}</strong>
-            <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.body || item.description || '')}</p>
+            <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || item.body || '')}</p>
             <button type="button" onclick="adminDeleteAnnouncement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
           </div>`).join('')}
       </div>`;
   };
 
-    window.adminAddAnnouncement = async function() {
+  window.adminAddAnnouncement = async function() {
     const title = (document.getElementById('ann-title')?.value || '').trim();
     const description = (document.getElementById('ann-body')?.value || '').trim();
+    const rawFile = document.getElementById('ann-img-file')?.files?.item(0);
+    let image_url = (document.getElementById('ann-img')?.value || '').trim();
+
     if (!title) return alert('⚠️ اكتب عنوان المنحة أو الإعلان.');
 
-    const { error } = await window.supabaseClient
-      .from('announcements')
-      .insert([{ title, description, is_active: true }]);
+    const btn = document.getElementById('btn-publish-ann');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع الصورة ونشر الإعلان...'; }
 
-    if (error) return alert('❌ تعذر نشر الإعلان: ' + error.message);
-    alert('✅ تم نشر الإعلان بنجاح.');
-    window.renderAdminAnnouncementsSection();
+    try {
+      if (rawFile && typeof window.uploadFileToDriveOrStorage === 'function') {
+        const up = await window.uploadFileToDriveOrStorage(rawFile, {
+          year: new Date().getFullYear().toString(),
+          village: 'إعلانات_ومبادرات',
+          submissionType: 'منح_ومبادرات',
+          trackingCode: 'ANN-' + Date.now(),
+          prefix: 'Announcement'
+        });
+        if (up && up.uploaded) {
+          image_url = up.directUrl || up.url || '';
+        }
+      }
+
+      const payload = { title, description, is_active: true };
+      if (image_url) payload.image_url = image_url;
+
+      let { error } = await window.supabaseClient.from('announcements').insert([payload]);
+      if (error && String(error.message || '').includes('image_url')) {
+        delete payload.image_url;
+        const retry = await window.supabaseClient.from('announcements').insert([payload]);
+        error = retry.error;
+      }
+      if (error) throw error;
+
+      alert('✅ تم نشر الإعلان بنجاح.');
+      window.renderAdminAnnouncementsSection();
+    } catch (err) {
+      alert('❌ تعذر نشر الإعلان: ' + (err.message || err));
+      if (btn) { btn.disabled = false; btn.textContent = '+ نشر الإعلان'; }
+    }
   };
-
 
   window.adminDeleteAnnouncement = async function(id) {
     if (!confirm('حذف هذا الإعلان؟')) return;
