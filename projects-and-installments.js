@@ -18,7 +18,8 @@
     }
     const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0+/, ''));
     const text = window._HF_WA_MESSAGES[msgKey] || '';
-    const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(text);
+    const waBase = ['https:/', 'wa.me', intlPhone].join('/');
+    const waUrl = waBase + '?text=' + encodeURIComponent(text);
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -615,7 +616,8 @@
         'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
       const intlPhone = '20' + phone.replace(/^0+/, '');
-      const waUrl = `https://wa.me{intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
+      const waBase = ['https:/', 'wa.me', intlPhone].join('/');
+      const waUrl = waBase + '?text=' + encodeURIComponent(initWaMsg);
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
         await window.supabaseClient.from('custom_locations').upsert([{
