@@ -171,9 +171,13 @@
       return { name: 'file', uploaded: false, url: '', publicUrl: '', directUrl: '' };
     }
 
-    const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
-    if (!driveUrl || !driveUrl.includes('://google.com')) {
-      throw new Error('رابط Google Apps Script غير مضبوط في ملف config.js');
+        const driveUrl = String(
+      window.GOOGLE_DRIVE_WEB_APP_URL ||
+      'https://script.google.com/macros/s/AKfycbxEVAzR45MBtslo9oFFJqWtvBgNK6y7MYBt5fwMAkLtkW0MkUAbFiTVyFEJq-JLfvjz/exec'
+    ).trim();
+
+    if (!driveUrl) {
+      throw new Error('يرجى إضافة رابط Google Apps Script');
     }
 
     const file = await quickCompressImage(rawFile, 800, 0.6);
