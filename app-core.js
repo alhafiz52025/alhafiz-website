@@ -16,11 +16,12 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
 
-  window.triggerInstantWhatsApp = function(rawPhone, messageText) {
+    window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const clean = String(rawPhone || '').replace(/\D/g, '');
     if (!clean) return;
     const intl = clean.startsWith('20') ? clean : ('20' + clean.replace(/^0/, ''));
-    const waUrl = `https://wa.me{intl}?text=${encodeURIComponent(messageText || '')}`;
+    const waBase = ['https:/', 'wa.me', intl].join('/');
+    const waUrl = waBase + '?text=' + encodeURIComponent(messageText || '');
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
@@ -29,9 +30,13 @@
     const driveUrl = window.GOOGLE_DRIVE_WEB_APP_URL;
     if (driveUrl && file) {
       try {
-        const base64Data = await new Promise((resolve, reject) => {
+          const base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || '').split(',') || '');
+          reader.onload = () => {
+           const str = String(reader.result || '');
+           const idx = str.indexOf(',');
+            resolve(idx >= 0 ? str.slice(idx + 1) : str);
+          };
           reader.onerror = (err) => reject(err);
           reader.readAsDataURL(file);
         });
@@ -218,7 +223,7 @@
     const phone = (document.getElementById('grievance-phone')?.value || '').trim();
     const details = (document.getElementById('grievance-details')?.value || '').trim();
 
-    if (!fullName || !/^01\d{8}$/.test(phone) || !details) {
+        if (!fullName || !/^01[0125]\d{8}$/.test(phone) || !details) {
       return alert('⚠️ يرجى إدخال الاسم كاملاً، رقم هاتف صحيح (11 رقماً)، وتفاصيل الرسالة.');
     }
 
