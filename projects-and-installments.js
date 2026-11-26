@@ -18,7 +18,7 @@
     }
     const intlPhone = cleanPhone.startsWith('20') ? cleanPhone : ('20' + cleanPhone.replace(/^0+/, ''));
     const text = window._HF_WA_MESSAGES[msgKey] || '';
-    const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(text)}`;
+    const waUrl = 'https://wa.me' + intlPhone + '?text=' + encodeURIComponent(text);
     window.open(waUrl, '_blank', 'noopener,noreferrer');
   };
 
