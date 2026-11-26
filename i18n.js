@@ -451,6 +451,21 @@
     "💬 واتساب": "💬 WhatsApp",
     "💬 تذكير واتساب": "💬 WhatsApp Reminder",
     "💳 الأقساط": "💳 Installments"
+        "مقيم مع الأسرة": "Living with Family",
+    "عازب / عزباء": "Single (Unmarried)",
+    "متوفى": "Deceased",
+    "مطلق": "Divorced",
+    "مسجون": "Imprisoned",
+    "هجر": "Abandoned",
+    "متزوجة ومقيمة مع الأسرة": "Married & Living with Family",
+    "أرملة": "Widow",
+    "مطلقة": "Divorced",
+    "زوجة سجين": "Wife of Prisoner",
+    "مهجورة": "Abandoned Wife",
+    "شهادة الوفاة *": "Death Certificate *",
+    "قسيمة الطلاق *": "Divorce Certificate *",
+    "صورة الحكم / شهادة من السجن *": "Court Verdict / Prison Certificate *",
+    "جواب هجر (من المركز أو العمدة أو شيخ البلد) *": "Abandonment Certificate (Police / Mayor / Village Chief) *"
   });
 
   function rebuildPairLists() {
@@ -591,7 +606,7 @@
           if (!Object.prototype.hasOwnProperty.call(saved, attrName)) continue;
           const origAttr = saved[attrName];
           const nextAttr = toEn ? convertString(origAttr, 'en') : origAttr;
-          if (el.getAttribute(name) !== nextAttr) {
+           if (el.getAttribute(attrName) !== nextAttr) {
             el.setAttribute(attrName, nextAttr);
           }
         }
