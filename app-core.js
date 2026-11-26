@@ -21,11 +21,11 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
 
-  window.normalizeDriveImageUrl = function(rawUrl) {
+    window.normalizeDriveImageUrl = function(rawUrl) {
     const s = String(rawUrl || '').trim();
     if (!s || s === 'logo.jpg') return s;
-    const m = s.match(/(?:\/d\/|[?&]id=|googleusercontent\.com)([a-zA-Z0-9_-]{20,})/);
-    return m ? ['https:/', '://googleusercontent.com', 'd', m[1]].join('/') : s;
+    const m = s.match(/(?:\/d\/|[?&]id=|googleusercontent\.com\/?)([a-zA-Z0-9_-]{20,})/);
+    return (m && m) ? ['https:/', '://googleusercontent.com', 'd', m].join('/') : s;
   };
 
     window.triggerInstantWhatsApp = function(rawPhone, messageText) {
