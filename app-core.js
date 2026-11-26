@@ -15,6 +15,18 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   };
+    window.escapeHtml = function(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  };
+
+  window.normalizeDriveImageUrl = function(rawUrl) {
+    const s = String(rawUrl || '').trim();
+    if (!s || s === 'logo.jpg') return s;
+    const m = s.match(/(?:\/d\/|[?&]id=|googleusercontent\.com)([a-zA-Z0-9_-]{20,})/);
+    return m ? ['https:/', '://googleusercontent.com', 'd', m[1]].join('/') : s;
+  };
 
     window.triggerInstantWhatsApp = function(rawPhone, messageText) {
     const clean = String(rawPhone || '').replace(/\D/g, '');
@@ -144,7 +156,7 @@
     }
         box.innerHTML = data.map(item => `
       <div style="background:var(--bg-color); border:1px solid #f59e0b; border-radius:12px; overflow:hidden;">
-        ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${window.escapeHtml(item.image_url)}" style="width:100%; height:170px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+       ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${window.escapeHtml(window.normalizeDriveImageUrl(item.image_url))}" style="width:100%; height:170px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
         <div style="padding:14px;">
           <span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${window.escapeHtml(item.category || 'مبادرة مفتوحة')}</span>
           <h4 style="color:var(--primary-dark); margin:8px 0 6px;">${window.escapeHtml(item.title)}</h4>
@@ -165,7 +177,7 @@
     }
     box.innerHTML = data.map(s => `
       <div style="background:var(--bg-color); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-        ${s.image_url ? `<img src="${window.escapeHtml(s.image_url)}" style="width:100%; height:170px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+        ${s.image_url ? `<img src="${window.escapeHtml(window.normalizeDriveImageUrl(s.image_url))}" style="width:100%; height:170px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
         <div style="padding:14px;">
           <strong style="color:var(--primary-dark); font-size:15px; display:block; margin-bottom:6px;">${window.escapeHtml(s.title)}</strong>
           <p style="font-size:13px; margin:0;">${window.escapeHtml(s.description || '')}</p>
