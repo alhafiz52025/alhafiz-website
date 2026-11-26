@@ -597,10 +597,13 @@
         return alert('⚠️ يرجى إرفاق صورة البطاقة الشخصية كاملة (الوجه الأمامي والوجه الخلفي).');
       }
 
-      if (btn) {
+            if (btn) {
         btn.disabled = true;
         btn.textContent = '⏳ جارٍ التسجيل وإصدار الرقم الأولي...';
       }
+
+      // 1. فتح نافذة فورية لحظة الضغط لمنع حظر المتصفح (Popup Blocker)
+      const waWin = window.open('about:blank', '_blank');
 
       const initialCode = 'HF-INIT-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
       const initWaMsg =
@@ -612,7 +615,7 @@
         'يرجى الاحتفاظ بهذا الرقم؛ عند الموافقة المبدئية ستصلك رسالة لاستكمال البيانات وباقي الأوراق.';
 
       const intlPhone = '20' + phone.replace(/^0+/, '');
-      const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
+      const waUrl = `https://wa.me{intlPhone}?text=${encodeURIComponent(initWaMsg)}`;
 
       if (document.getElementById('prj-init-village')?.value === '__NEW__' && window.supabaseClient) {
         await window.supabaseClient.from('custom_locations').upsert([{
