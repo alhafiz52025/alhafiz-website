@@ -631,11 +631,8 @@
         submissionType: 'مشروعات_صغيرة_مبدئي',
         trackingCode: initialCode
       };
-
-            const [uploadedFront, uploadedBack] = await Promise.all([
-        window.uploadFileToDriveOrStorage(idFrontFile, { ...uploadMeta, prefix: 'ID_Front' }),
-        window.uploadFileToDriveOrStorage(idBackFile, { ...uploadMeta, prefix: 'ID_Back' })
-      ]);
+      const uploadedFront = await window.uploadFileToDriveOrStorage(idFrontFile, { ...uploadMeta, prefix: 'ID_Front' });
+      const uploadedBack = await window.uploadFileToDriveOrStorage(idBackFile, { ...uploadMeta, prefix: 'ID_Back' });
       const selectedIntervention = document.getElementById('intervention-type')?.value || PROJECT_INTERVENTION_LABEL;
 
       const payload = {
