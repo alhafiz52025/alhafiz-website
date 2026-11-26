@@ -79,14 +79,20 @@
     return [w.name1, w.name2, w.name3].filter(Boolean).join(' ').trim();
   }
 
-  function isHusbandLivingWithFamily(caseObj) {
+    function isHusbandLivingWithFamily(caseObj) {
     const h = (caseObj && caseObj.husband_data && typeof caseObj.husband_data === 'object') ? caseObj.husband_data : {};
     const statusText = String(h.status || h.socialStatus || h.livingStatus || '').trim();
     if (!statusText) return Boolean(getHusbandFullName(caseObj));
-    return statusText.includes('مقيم مع الأسرة') || statusText.includes('مقيم مع الاسرة') || statusText === 'مقيم';
+    return (
+      statusText.includes('مقيم مع الأسرة') ||
+      statusText.includes('مقيم مع الاسرة') ||
+      statusText === 'مقيم' ||
+      statusText.includes('عازب') ||
+      statusText.includes('عزباء') ||
+      statusText.includes('أعزب')
+    );
   }
 
-  // اسم الملف: باسم الزوج إذا كان (مقيم مع الأسرة)، وفي باقي الحالات باسم الزوجة
   function getCasePrimaryDisplayName(caseObj) {
     if (!caseObj) return 'غير محدد';
     const hName = getHusbandFullName(caseObj);
@@ -421,7 +427,7 @@
     return normalizeDonorArray(c.assigned_donors || c.assigned_donor_name);
   }
 
-  function getCaseAttachmentsAudit(caseObj) {
+    function getCaseAttachmentsAudit(caseObj) {
     let docsObj = caseObj && caseObj.documents_data;
     if (typeof docsObj === 'string') {
       try {
@@ -468,23 +474,43 @@
       return null;
     };
 
-    const rawItems = [
-      {
-        label: 'صورة بطاقة الزوج (وجه)',
-        value: pickFirstValid(docsObj.husband_id_front, docsObj.hIdFront, docsObj['h-id-front'], h.id_front, h.idFront)
-      },
-      {
-        label: 'صورة بطاقة الزوج (ظهر)',
-        value: pickFirstValid(docsObj.husband_id_back, docsObj.hIdBack, docsObj['h-id-back'], h.id_back, h.idBack)
-      },
-      {
-        label: 'صورة بطاقة الزوجة (وجه)',
-        value: pickFirstValid(docsObj.wife_id_front, docsObj.wIdFront, docsObj['w-id-front'], w.id_front, w.idFront)
-      },
-      {
-        label: 'صورة بطاقة الزوجة (ظهر)',
-        value: pickFirstValid(docsObj.wife_id_back, docsObj.wIdBack, docsObj['w-id-back'], w.id_back, w.idBack)
-      },
+    const statusText = String(h.status || '').trim();
+    const isSingleCase = statusText.includes('عازب') || statusText.includes('عزباء') || statusText.includes('أعزب');
+    const isAbsentHusband = statusText.includes('متوف') || statusText.includes('مطلق') || statusText.includes('مسجون') || statusText.includes('هجر');
+
+    const rawItems = [];
+    if (!isAbsentHusband) {
+      rawItems.push(
+        {
+          label: 'صورة بطاقة الزوج / مقدم الطلب (وجه)',
+          value: pickFirstValid(docsObj.husband_id_front, docsObj.hIdFront, docsObj['h-id-front'], h.id_front, h.idFront)
+        },
+        {
+          label: 'صورة بطاقة الزوج / مقدم الطلب (ظهر)',
+          value: pickFirstValid(docsObj.husband_id_back, docsObj.hIdBack, docsObj['h-id-back'], h.id_back, h.idBack)
+        }
+      );
+    } else {
+      rawItems.push({
+        label: `مستند إثبات الحالة الاجتماعية (${statusText})`,
+        value: pickFirstValid(docsObj.deathCertDoc, docsObj.divorceCertDoc, docsObj.prisonVerdictDoc, docsObj.abandonmentDoc, docsObj.socialProofDoc)
+      });
+    }
+
+    if (!isSingleCase) {
+      rawItems.push(
+        {
+          label: 'صورة بطاقة الزوجة (وجه)',
+          value: pickFirstValid(docsObj.wife_id_front, docsObj.wIdFront, docsObj['w-id-front'], w.id_front, w.idFront)
+        },
+        {
+          label: 'صورة بطاقة الزوجة (ظهر)',
+          value: pickFirstValid(docsObj.wife_id_back, docsObj.wIdBack, docsObj['w-id-back'], w.id_back, w.idBack)
+        }
+      );
+    }
+
+    rawItems.push(
       {
         label: 'البحث الاجتماعي المعتمد',
         value: pickFirstValid(docsObj.social_research, docsObj.socialResearch, docsObj['doc-social-research'], docsObj.hSocialDoc, docsObj.wSocialDoc, caseObj && caseObj.social_research_doc)
@@ -497,7 +523,7 @@
         label: 'التقارير الطبية / مستندات إضافية',
         value: pickFirstValid(docsObj.medical_report, docsObj.hMedicalDoc, docsObj.wMedicalDoc, docsObj.mHealthDoc, docsObj.mCertDoc, docsObj.insuranceH, docsObj.insuranceW, docsObj.schoolEnroll, docsObj['h-medical-doc'], docsObj['w-medical-doc'], caseObj && caseObj.medical_doc)
       }
-    ];
+    );
 
     const items = rawItems.map((it, idx) => {
       const attached = hasValidAttachment(it.value);
