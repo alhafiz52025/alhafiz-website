@@ -142,12 +142,15 @@
       box.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#64748b;">لا توجد منح أو مبادرات مفتوحة حالياً.</p>';
       return;
     }
-    box.innerHTML = data.map(item => `
-      <div style="background:var(--bg-color); border:1px solid #f59e0b; border-radius:12px; overflow:hidden; padding:14px;">
-        <span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${window.escapeHtml(item.category || 'مبادرة مفتوحة')}</span>
-        <h4 style="color:var(--primary-dark); margin:8px 0 6px;">${window.escapeHtml(item.title)}</h4>
-        <p style="font-size:13px; margin:0 0 10px;">${window.escapeHtml(item.description || item.body || '')}</p>
-        <button type="button" onclick="showSection('apply')" class="action-btn" style="width:100%; font-size:12px;">+ التقديم الآن</button>
+        box.innerHTML = data.map(item => `
+      <div style="background:var(--bg-color); border:1px solid #f59e0b; border-radius:12px; overflow:hidden;">
+        ${item.image_url && item.image_url !== 'logo.jpg' ? `<img src="${window.escapeHtml(item.image_url)}" style="width:100%; height:170px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
+        <div style="padding:14px;">
+          <span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${window.escapeHtml(item.category || 'مبادرة مفتوحة')}</span>
+          <h4 style="color:var(--primary-dark); margin:8px 0 6px;">${window.escapeHtml(item.title)}</h4>
+          <p style="font-size:13px; margin:0 0 10px;">${window.escapeHtml(item.description || item.body || '')}</p>
+          <button type="button" onclick="showSection('apply')" class="action-btn" style="width:100%; font-size:12px;">+ التقديم الآن</button>
+        </div>
       </div>
     `).join('');
   };
