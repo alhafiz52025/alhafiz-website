@@ -43,7 +43,7 @@
     <div class="top-bar-inner">
       <span data-i18n="topBarReg">🏛️ مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025 (مركز إهناسيا - بني سويف)</span>
       <div>
-        <a href="https://wa.me" target="_blank" rel="noopener noreferrer">💬 واتساب: 01000880156</a>
+        <a href="#" onclick="openFoundationWhatsApp(); return false;">💬 واتساب: 01000880156</a>
         <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">📘 فيسبوك</a>
       </div>
     </div>
@@ -142,7 +142,7 @@
           <button type="button" onclick="toggleDarkMode()" class="nav-btn" style="font-size:12px;">🌓</button>
         </div>
         <button type="button" onclick="showSection('donate')" class="action-btn" style="width:100%; margin-bottom:8px;">💚 تبرع الآن</button>
-        <a href="https://wa.me" target="_blank" rel="noopener noreferrer" class="nav-btn" style="width:100%; justify-content:center; margin-bottom:10px;">💬 واتساب مباشر: 01000880156</a>
+        <button type="button" onclick="openFoundationWhatsApp()" class="nav-btn" style="width:100%; justify-content:center; margin-bottom:10px;">💬 واتساب مباشر: 01000880156</button>
         <div style="text-align:center;">
           <button type="button" onclick="showSection('login')" style="background:none; border:none; color:var(--primary-dark); font-size:12px; font-weight:700; cursor:pointer; text-decoration:underline;">🔐 دخول الأعضاء والإدارة</button>
         </div>
@@ -431,7 +431,7 @@
           <p><strong>رقم الإشهار:</strong> 2202 لسنة 2025 بوزارة التضامن الاجتماعي</p>
           <p><strong>واتساب رسمي:</strong> 01000880156 | <strong>إدارة:</strong> 01155540066</p>
           <p><strong>البريد الإلكتروني:</strong> alhafiz52025@gmail.com</p>
-          <a href="https://wa.me" target="_blank" rel="noopener noreferrer" class="action-btn" style="width:100%; margin-top:8px;">💬 فتح محادثة واتساب فورية</a>
+          <button type="button" onclick="openFoundationWhatsApp()" class="action-btn" style="width:100%; margin-top:8px;">💬 فتح محادثة واتساب فورية</button>
         </div>
         <div class="card">
           <h4 style="color:var(--primary-dark);">⚖️ نموذج التظلمات السرية وبلاغات الخير</h4>
@@ -488,7 +488,7 @@
 
   <!-- الأزرار العائمة -->
   <div class="floating-actions no-print">
-    <a href="https://wa.me" target="_blank" rel="noopener noreferrer" class="float-btn" style="background:#16a34a;" title="واتساب مباشر">💬</a>
+    <button type="button" onclick="openFoundationWhatsApp()" class="float-btn" style="background:#16a34a;" title="واتساب مباشر">💬</button>
     <button type="button" onclick="window.scrollTo({top:0, behavior:'smooth'})" class="float-btn" style="background:#0f172a;" title="العودة للأعلى">⬆️</button>
   </div>
 
@@ -504,9 +504,9 @@
   <script src="config.js?v=109"></script>
   <script src="egypt-data.js?v=109"></script>
   <script src="i18n.js?v=109"></script>
-  <script src="app-core.js?v=109"></script>
+  <script src="app-core.js?v=110"></script>
   <script src="wizard.js?v=109"></script>
-  <script src="dashboards.js?v=110"></script>
+  <script src="dashboards.js?v=111"></script>
   <script src="projects-and-installments.js?v=109"></script>
 </body>
 </html>
