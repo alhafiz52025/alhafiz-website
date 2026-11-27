@@ -633,4 +633,20 @@ footer a:hover { text-decoration: underline; }
   justify-content: center;
   text-decoration: none;
 }
+/* تكبير خطوط القائمة العلوية على الكمبيوتر لراحة العين */
+.desktop-nav-links .nav-btn {
+  font-size: 15.5px !important;
+  padding: 10px 16px !important;
+  font-weight: 800 !important;
+}
+
+.nav-dropdown-menu button {
+  font-size: 14.5px !important;
+  padding: 10px 14px !important;
+}
+
+.btn-donate-hero {
+  font-size: 15.5px !important;
+  padding: 10px 22px !important;
+}
 
