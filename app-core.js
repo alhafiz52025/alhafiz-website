@@ -460,3 +460,192 @@
       if (btn) { btn.disabled = false; btn.textContent = '✅ تأكيد تسجيل التبرع العيني'; }
     }
   };
+  window.submitVolunteerForm = async function() {
+    const fullName = (document.getElementById('vol-name')?.value || '').trim();
+    const village = (document.getElementById('vol-village')?.value || '').trim();
+    const phone = (document.getElementById('vol-phone')?.value || '').trim();
+    const email = (document.getElementById('vol-email')?.value || '').trim();
+    const qual = (document.getElementById('vol-qual')?.value || '').trim();
+    const avail = (document.getElementById('vol-avail')?.value || '').trim();
+    const skills = Array.from(document.querySelectorAll('.vol-skill-chk:checked')).map(c => c.value).join('، ');
+
+    if (!fullName || !village || !/^01\d{8}$/.test(phone)) {
+      return alert('⚠️ يرجى إدخال الاسم كاملاً، القرية/العزبة، ورقم واتساب صحيح (11 رقماً).');
+    }
+
+    const code = 'VOL-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+    if (window.supabaseClient) {
+      const { error } = await window.supabaseClient.from('volunteers').insert([{
+        volunteer_code: code, full_name: fullName, village, phone, email,
+        qualification: qual, skills: skills || 'تنظيم وتوزيع ميداني', availability: avail, status: 'pending'
+      }]);
+      if (error) return alert('❌ خطأ أثناء التسجيل: ' + error.message);
+    }
+
+    window.triggerInstantWhatsApp(phone, `مؤسسة الحافظ للتنمية والخدمات\nأهلاً بك أ/ ${fullName} في فريق المتطوعين!\nكود التطوع الخاص بك: ${code}\nسيتم التواصل معك فور تنسيق القوافل في (${village}).`);
+    alert(`✅ تم تسجيل طلب التطوع بنجاح!\nكود المتطوع: ${code}`);
+    ['vol-name', 'vol-village', 'vol-phone', 'vol-email', 'vol-qual', 'vol-avail'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  };
+
+  window.submitPartnerOnboarding = async function() {
+    const orgName = (document.getElementById('prt-org-name')?.value || '').trim();
+    const regNo = (document.getElementById('prt-reg-no')?.value || '').trim();
+    const orgType = document.getElementById('prt-type')?.value || 'جمعية أهلية قاعدية';
+    const repName = (document.getElementById('prt-rep-name')?.value || '').trim();
+    const repRole = (document.getElementById('prt-rep-role')?.value || '').trim();
+    const phone = (document.getElementById('prt-phone')?.value || '').trim();
+    const scope = (document.getElementById('prt-scope')?.value || '').trim();
+
+    if (!orgName || !repName || !/^01\d{8}$/.test(phone)) {
+      return alert('⚠️ يرجى إدخال اسم الجمعية/المؤسسة، اسم الممثل، ورقم هاتف صحيح.');
+    }
+
+    if (window.supabaseClient) {
+      const { error } = await window.supabaseClient.from('organizations').insert([{
+        org_name: orgName, registration_number: regNo, org_type: orgType,
+        representative_name: repName, representative_role: repRole,
+        phone, whatsapp: phone, village_scope: scope, show_on_home: false, status: 'pending'
+      }]);
+      if (error) return alert('❌ خطأ أثناء إرسال طلب الشراكة: ' + error.message);
+    }
+
+    alert('✅ تم إرسال طلب الشراكة بنجاح! ستقوم إدارة المؤسسة بمراجعة البيانات واعتماد الظهور في شبكة الشركاء.');
+    ['prt-org-name', 'prt-reg-no', 'prt-rep-name', 'prt-rep-role', 'prt-phone', 'prt-scope'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  };
+
+  window.submitGrievance = async function() {
+    const type = document.getElementById('grievance-type')?.value || 'تظلم';
+    const fullName = (document.getElementById('grievance-name')?.value || '').trim();
+    const phone = (document.getElementById('grievance-phone')?.value || '').trim();
+    const details = (document.getElementById('grievance-details')?.value || '').trim();
+
+    if (!fullName || !/^01\d{8}$/.test(phone) || !details) {
+      return alert('⚠️ يرجى إدخال الاسم كاملاً، رقم هاتف صحيح (11 رقماً)، وتفاصيل الرسالة.');
+    }
+
+    const code = 'GRV-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+    if (window.supabaseClient) {
+      const { error } = await window.supabaseClient.from('grievances').insert([{
+        tracking_code: code, grievance_type: type, full_name: fullName,
+        address_details: 'إهناسيا - بني سويف', phone, message_body: details, status: 'pending'
+      }]);
+      if (error) return alert('❌ خطأ أثناء الإرسال: ' + error.message);
+    }
+
+    window.triggerInstantWhatsApp(phone, `مؤسسة الحافظ للتنمية والخدمات\nتم استلام رسالتكم بنجاح.\nرقم المتابعة: ${code}`);
+    alert(`✅ تم إرسال رسالتكم بسرية تامة!\nرقم المتابعة: ${code}`);
+    ['grievance-name', 'grievance-phone', 'grievance-details'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  };
+  window.trackApplication = async function() {
+    const q = (document.getElementById('track-input')?.value || '').trim().toUpperCase();
+    const resBox = document.getElementById('track-result');
+    if (!q || !resBox) return;
+
+    if (!q.startsWith('HF-') && !q.startsWith('GRV-') && !q.startsWith('DON-') && !q.startsWith('INK-')) {
+      resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">⚠️ يُسمح بالاستعلام برقم الطلب أو التبرع المرسل على الواتساب فقط (HF- أو DON- أو INK- أو GRV-).</div>';
+      return;
+    }
+
+    resBox.innerHTML = '<p style="font-size:13px;">جاري البحث...</p>';
+    if (!window.supabaseClient) return;
+
+    if (q.startsWith('DON-') || q.startsWith('INK-')) {
+      const { data } = await window.supabaseClient.from('donations').select('*').eq('donation_code', q).maybeSingle();
+      if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على تبرع بهذا الكود.</div>'; return; }
+      const st = data.status === 'approved'
+        ? `✅ تم اعتماد الاستلام رسمياً (رقم الإيصال / الإيداع: ${window.escapeHtml(data.linked_doc_number || 'معتمد')})`
+        : '⏳ قيد مراجعة كشف الحساب البنكي / الاستلام المخزني';
+      resBox.innerHTML = `<div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:14px; border-radius:10px;"><strong>كود التبرع:</strong> ${window.escapeHtml(data.donation_code)}<br><strong>المتبرع:</strong> ${window.escapeHtml(data.donor_name || 'فاعل خير')}<br><strong>الحالة:</strong> ${st}</div>`;
+      return;
+    }
+
+    if (q.startsWith('GRV-')) {
+      const { data } = await window.supabaseClient.from('grievances').select('*').eq('tracking_code', q).maybeSingle();
+      if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على رسالة بهذا الرقم.</div>'; return; }
+      resBox.innerHTML = `<div style="background:#f8fafc; border:1px solid #cbd5e1; padding:14px; border-radius:10px;"><strong>رقم المتابعة:</strong> ${window.escapeHtml(data.tracking_code)}<br><strong>الحالة:</strong> ${data.status === 'resolved' || data.status === 'تم الرد' ? 'تم الرد' : 'قيد المراجعة'}</div>`;
+      return;
+    }
+
+    const { data } = await window.supabaseClient.from('families').select('*').or(`tracking_code.eq.${q},initial_tracking_code.eq.${q}`).maybeSingle();
+    if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على طلب مطابق.</div>'; return; }
+
+    const statusLabel = data.status === 'approved' ? '✅ مقبول للصرف' : (data.status === 'rejected' ? '❌ مرفوض' : '🔍 قيد المراجعة');
+    resBox.innerHTML = `<div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:16px; border-radius:12px;"><strong>رقم الطلب:</strong> ${window.escapeHtml(data.tracking_code)}<br><strong>النوع:</strong> ${window.escapeHtml(data.intervention_type)}<br><strong>الحالة:</strong> ${statusLabel}</div>`;
+  };
+
+  window.loginUser = async function() {
+    const email = (document.getElementById('login-email')?.value || '').trim().toLowerCase();
+    const pass = (document.getElementById('login-pass')?.value || '').trim();
+    if (!email || !pass) return alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور.');
+
+    const cfg = await window.getFoundationSettings();
+    const adminEmail = (cfg.admin_email || 'alhafiz52025@gmail.com').toLowerCase();
+    let matchedUser = null;
+
+    if (email === adminEmail && pass === '22022025') {
+      matchedUser = { email: adminEmail, name: 'رئيس مجلس الأمناء', role: 'admin', phone: cfg.phone_whatsapp || '01000880156' };
+    } else if (window.supabaseClient) {
+      const { data } = await window.supabaseClient.from('users_profiles').select('*').ilike('email', email).maybeSingle();
+      if (data && data.account_status === 'active' && (data.password_hash === pass || data.temp_code === pass)) {
+        matchedUser = {
+          id: data.id, email: data.email, name: data.full_name, role: data.role || 'researcher',
+          phone: data.phone || cfg.phone_whatsapp || '01000880156',
+          can_view_all_cases: !!data.can_view_all_cases, must_change_password: data.temp_code === pass || !!data.must_change_password
+        };
+      }
+    }
+
+    if (!matchedUser) return alert('❌ بيانات الدخول غير صحيحة أو الحساب غير مفعل.');
+
+    pending2FAUser = matchedUser;
+    pending2FACode = String(Math.floor(100000 + Math.random() * 900000));
+    pending2FAExpires = Date.now() + 5 * 60 * 1000;
+
+    if (window.supabaseClient?.auth?.signInWithOtp) {
+      window.supabaseClient.auth.signInWithOtp({ email: matchedUser.email }).catch(() => {});
+    }
+
+    const otpBox = document.getElementById('login-2fa-box');
+    const otpHint = document.getElementById('login-2fa-hint');
+    if (otpBox) {
+      otpBox.classList.remove('hidden');
+      if (otpHint) otpHint.innerHTML = `🔐 تم إرسال رمز التحقق (6 أرقام) إلى البريد (<strong>${window.escapeHtml(matchedUser.email)}</strong>). يمكنك أيضاً استلامه فوراً عبر واتساب:`;
+    }
+  };
+
+  window.send2FACodeToWhatsApp = function() {
+    if (!pending2FAUser || !pending2FACode) return;
+    window.triggerInstantWhatsApp(pending2FAUser.phone, `مؤسسة الحافظ للتنمية والخدمات\n🔐 رمز تأكيد الدخول (OTP) الخاص بك هو: ${pending2FACode}\nصالح لمدة 5 دقائق.`);
+  };
+
+  window.complete2FALogin = function() {
+    const codeInput = (document.getElementById('login-otp-input')?.value || '').trim();
+    if (!pending2FAUser || !pending2FACode) return alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور أولاً.');
+    if (Date.now() > pending2FAExpires) {
+      pending2FAUser = null; pending2FACode = '';
+      return alert('⏰ انتهت صلاحية رمز التحقق. يرجى تسجيل الدخول مجدداً.');
+    }
+    if (codeInput !== pending2FACode) return alert('❌ رمز التحقق غير صحيح.');
+
+    window.currentUser = pending2FAUser;
+    pending2FAUser = null; pending2FACode = '';
+    document.getElementById('login-2fa-box')?.classList.add('hidden');
+    sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
+    if (typeof window.routeLoggedInUser === 'function') window.routeLoggedInUser(window.currentUser);
+  };
+
+  window.logoutUser = function() {
+    window.currentUser = null;
+    sessionStorage.removeItem('hf_current_user');
+    document.getElementById('dashboard-area')?.classList.add('hidden');
+    document.getElementById('login-box')?.classList.remove('hidden');
+  };
+
+  window.addEventListener('DOMContentLoaded', () => {
+    applyDynamicSiteSettings();
+    window.renderPublicAnnouncements();
+    window.renderPublicAchievements();
+    window.renderPublicPartners();
+    if (window.currentUser && typeof window.routeLoggedInUser === 'function') window.routeLoggedInUser(window.currentUser);
+  });
+})();
