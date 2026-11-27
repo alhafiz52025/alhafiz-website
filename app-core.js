@@ -18,32 +18,47 @@
   };
   window.getSupabase();
     // محرك اتصال احتياطي مباشر بقاعدة بيانات Supabase REST في حال تعثر تحميل CDN
+    // محرك اتصال احتياطي مباشر بقاعدة بيانات Supabase REST في حال تعثر تحميل CDN
   if (!window.supabaseClient) {
     const baseUrl = (window.SB_URL || 'https://supabase.co').replace(/\/+$/, '') + '/rest/v1';
     const apiKey = window.SB_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
-    const headers = { 'apikey': apiKey, 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
 
     window.supabaseClient = {
       from(table) {
         let method = 'GET', bodyData = null, filters = [], orderStr = '', singleMode = false, upsertConflict = '';
+        const reqHeaders = { 'apikey': apiKey, 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
         const q = {
           select() { return q; },
           eq(col, val) { filters.push(`${col}=eq.${encodeURIComponent(val)}`); return q; },
+          neq(col, val) { filters.push(`${col}=neq.${encodeURIComponent(val)}`); return q; },
+          gt(col, val) { filters.push(`${col}=gt.${encodeURIComponent(val)}`); return q; },
+          gte(col, val) { filters.push(`${col}=gte.${encodeURIComponent(val)}`); return q; },
+          lt(col, val) { filters.push(`${col}=lt.${encodeURIComponent(val)}`); return q; },
+          lte(col, val) { filters.push(`${col}=lte.${encodeURIComponent(val)}`); return q; },
+          in(col, arr) { filters.push(`${col}=in.(${(arr || []).map(v => encodeURIComponent(v)).join(',')})`); return q; },
           ilike(col, val) { filters.push(`${col}=ilike.${encodeURIComponent(val)}`); return q; },
           or(expr) { filters.push(`or=(${encodeURIComponent(expr)})`); return q; },
           order(col, opt = {}) { orderStr = `order=${col}.${opt.ascending === false ? 'desc' : 'asc'}`; return q; },
+          limit(n) { filters.push(`limit=${Number(n)}`); return q; },
+          single() { singleMode = true; return q; },
           maybeSingle() { singleMode = true; return q; },
           insert(rows) { method = 'POST'; bodyData = JSON.stringify(rows); return q; },
           update(patch) { method = 'PATCH'; bodyData = JSON.stringify(patch); return q; },
-          upsert(rows, opt = {}) { method = 'POST'; upsertConflict = opt.onConflict ? `?on_conflict=${opt.onConflict}` : ''; headers['Prefer'] = 'resolution=merge-duplicates,return=representation'; bodyData = JSON.stringify(rows); return q; },
+          upsert(rows, opt = {}) {
+            method = 'POST';
+            upsertConflict = opt.onConflict ? `on_conflict=${opt.onConflict}` : '';
+            reqHeaders['Prefer'] = 'resolution=merge-duplicates,return=representation';
+            bodyData = JSON.stringify(rows);
+            return q;
+          },
           delete() { method = 'DELETE'; return q; },
           async then(resolve) {
             try {
-              const qs = [upsertConflict.replace(/^\?/, ''), ...filters, orderStr].filter(Boolean).join('&');
-              const res = await fetch(`${baseUrl}/${table}${qs ? '?' + qs : ''}`, { method, headers, body: bodyData });
+              const qs = [upsertConflict, ...filters, orderStr].filter(Boolean).join('&');
+              const res = await fetch(`${baseUrl}/${table}${qs ? '?' + qs : ''}`, { method, headers: reqHeaders, body: bodyData });
               const json = res.status === 204 ? [] : await res.json();
               if (!res.ok) return resolve({ data: null, error: { message: json.message || res.statusText } });
-              const out = singleMode ? (Array.isArray(json) ? (json || null) : json) : json;
+              const out = singleMode ? (Array.isArray(json) ? (json.at(0) || null) : json) : json;
               resolve({ data: out, error: null });
             } catch (e) { resolve({ data: null, error: { message: e.message } }); }
           }
