@@ -238,6 +238,13 @@
         if (dEl) dEl.textContent = cfg.campaign_desc || '';
         if (statsEl) statsEl.innerHTML = `تم تحقيق: <strong>${current.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> (${pct}%) من إجمالي <strong>${target.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> — المتبقي: <strong>${rem.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong>`;
         if (barEl) barEl.style.width = pct + '%';
+                let campImgEl = document.getElementById('camp-banner-img');
+        const cImgUrl = cfg.campaign_image_url ? window.normalizeDriveImageUrl(cfg.campaign_image_url) : '';
+        if (cImgUrl && !campImgEl) {
+          campBox.insertAdjacentHTML('afterbegin', `<img id="camp-banner-img" src="${window.escapeHtml(cImgUrl)}" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" onerror="this.style.display='none'">`);
+        } else if (campImgEl && cImgUrl) {
+          campImgEl.src = cImgUrl;
+        }
       }
     }
   }
