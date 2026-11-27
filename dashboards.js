@@ -3804,8 +3804,10 @@
             </select>
           </div>
         </div>
-        <button type="button" onclick="adminSaveCampaignSettings()" class="action-btn" style="margin-top:10px; background:#b45309;">💾 حفظ وتحديث الحملة بالصفحة الرئيسية</button>
-      </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button type="button" id="btn-save-camp" onclick="adminSaveCampaignSettings(false)" class="action-btn" style="background:#b45309;">💾 حفظ وتحديث الحملة الحالية</button>
+          <button type="button" onclick="adminStartNewCampaign()" class="action-btn" style="background:#047857;">➕ إطلاق حملة جديدة (تصفير العداد ورفع صورة جديدة)</button>
+        </div>
 
       <div style="background:var(--bg-color); border:1px solid var(--border); padding:14px; border-radius:10px;">
         <h4 style="margin:0 0 10px; color:var(--primary-dark);">⚙️ إعدادات المؤسسة والحساب البنكي الرسمي (تُحدّث الموقع والإيصالات تلقائياً)</h4>
@@ -3824,6 +3826,14 @@
   };
 
   window.adminSaveCampaignSettings = async function() {
+      window.adminStartNewCampaign = function() {
+    document.getElementById('cfg-camp-title').value = '';
+    document.getElementById('cfg-camp-desc').value = '';
+    document.getElementById('cfg-camp-target').value = '500';
+    document.getElementById('cfg-camp-current').value = '0';
+    document.getElementById('cfg-camp-active').value = 'true';
+    alert('🆕 تم تجهيز نموذج الحملة الجديدة! اكتب اسم الحملة الجديدة والهدف وارفع صورتها ثم اضغط (💾 حفظ وتحديث الحملة الحالية).');
+  };
     const patch = {
       campaign_title: (document.getElementById('cfg-camp-title')?.value || '').trim(),
       campaign_unit: (document.getElementById('cfg-camp-unit')?.value || 'بطانية').trim(),
