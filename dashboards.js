@@ -2671,15 +2671,12 @@
     window.renderAdminAnnouncementsSection();
   };
 
-      window.renderAdminAchievementsSection = async function() {
+        window.renderAdminAchievementsSection = async function() {
     const box = document.getElementById('admin-tab-achievements');
     if (!box) return;
     const cfg = typeof window.getFoundationSettings === 'function' ? await window.getFoundationSettings() : {};
-    const { data } = await window.supabaseClient
-      .from('achievements')
-      .select('*')
-      .order('created_at', { ascending: false });
-    const list = data || [];
+    const { data } = await window.supabaseClient.from('achievements').select('*').order('created_at', { ascending: false });
+    window.ALL_ADMIN_ACHIEVEMENTS = data || [];
 
     box.innerHTML = `
       <div style="background:#ecfdf5; padding:12px; border-radius:8px; border:1px solid #a7f3d0; margin-bottom:14px; color:#0f172a;">
@@ -2694,85 +2691,86 @@
       </div>
 
       <div style="background:var(--bg-color); padding:12px; border-radius:8px; border:1px solid var(--border); margin-bottom:12px;">
-        <h4 style="margin:0 0 8px; color:var(--primary-dark);">🏆 إضافة إنجاز جديد للمعرض</h4>
+        <h4 style="margin:0 0 8px; color:var(--primary-dark);">🏆 إضافة أو تعديل إنجاز في المعرض</h4>
+        <input type="hidden" id="edit-ach-id" value="">
         <input id="ach-title" placeholder="عنوان الإنجاز أو القافلة *">
         <textarea id="ach-desc" rows="2" placeholder="التفاصيل والقرى المستفيدة *"></textarea>
         <div class="grid-2" style="margin-bottom:8px;">
           <div>
-            <label style="font-size:12px; font-weight:700;">📷 اختر صورة من جهازك / هاتفك (اختياري):</label>
-            <input type="file" id="ach-img-file" accept="image/*" style="margin:4px 0 0;">
+            <label style="font-size:12px; font-weight:700;">📷 اختر صورة من جهازك (تظهر مصغرة للتأكيد):</label>
+            <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+              <input type="file" id="ach-img-file" accept="image/*" onchange="previewAndCompressImage(this, 'prev-ach-img')" style="margin:0; flex:1;">
+              <img id="prev-ach-img" class="hidden" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid #cbd5e1;">
+            </div>
           </div>
           <div>
             <label style="font-size:12px; font-weight:700;">أو ضع رابط صورة مباشر (اختياري):</label>
             <input id="ach-img" placeholder="https://..." style="margin:4px 0 0;">
           </div>
         </div>
-        <button type="button" id="btn-publish-ach" onclick="adminAddAchievement()" class="action-btn">+ نشر الإنجاز</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="btn-publish-ach" onclick="adminSaveOrAddAchievement()" class="action-btn">🚀 نشر / حفظ الإنجاز</button>
+          <button type="button" onclick="document.getElementById('edit-ach-id').value=''; document.getElementById('ach-title').value=''; document.getElementById('ach-desc').value='';" class="nav-btn">➕ جديد</button>
+        </div>
       </div>
       <div class="grid-2">
-        ${list.map(item => {
+        ${window.ALL_ADMIN_ACHIEVEMENTS.map(item => {
           const imgUrl = window.normalizeDriveImageUrl ? window.normalizeDriveImageUrl(item.image_url) : item.image_url;
           return `
             <div style="background:#fff; color:#0f172a; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
               ${imgUrl && imgUrl !== 'logo.jpg' ? `<img src="${escapeAttr(imgUrl)}" style="width:100%; height:150px; object-fit:cover; border-radius:6px; margin-bottom:8px;" onerror="this.style.display='none'">` : ''}
               <strong>${window.escapeHtml(item.title)}</strong>
               <p style="font-size:12px; margin:6px 0;">${window.escapeHtml(item.description || '')}</p>
-              <button type="button" onclick="adminDeleteAchievement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
+              <div style="display:flex; gap:6px;">
+                <button type="button" onclick="adminEditAchievement('${escapeAttr(item.id)}')" class="nav-btn btn-gold" style="font-size:11px; padding:4px 8px;">✏️ تعديل</button>
+                <button type="button" onclick="adminDeleteAchievement('${escapeAttr(item.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف</button>
+              </div>
             </div>`;
         }).join('')}
       </div>`;
   };
 
-  window.adminSaveSiteStats = async function() {
-    const patch = {
-      stat_food_bags: document.getElementById('st-food')?.value || '+450',
-      stat_cash_aid: document.getElementById('st-cash')?.value || '+112',
-      stat_blankets: document.getElementById('st-blankets')?.value || '+100',
-      stat_villages: document.getElementById('st-villages')?.value || '14'
-    };
-    const { error } = await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
-    if (error) return alert('❌ تعذر حفظ الأرقام: ' + error.message);
-    alert('✅ تم تحديث أرقام الأثر الميداني في الصفحة الرئيسية.');
+  window.adminEditAchievement = function(id) {
+    const it = (window.ALL_ADMIN_ACHIEVEMENTS || []).find(x => String(x.id) === String(id));
+    if (!it) return;
+    document.getElementById('edit-ach-id').value = it.id;
+    document.getElementById('ach-title').value = it.title || '';
+    document.getElementById('ach-desc').value = it.description || '';
+    document.getElementById('ach-img').value = it.image_url || '';
+    const prev = document.getElementById('prev-ach-img');
+    if (prev && it.image_url) { prev.src = window.normalizeDriveImageUrl(it.image_url); prev.classList.remove('hidden'); }
+    document.getElementById('ach-title').focus();
   };
 
-  window.adminAddAchievement = async function() {
+  window.adminSaveOrAddAchievement = async function() {
+    const editId = (document.getElementById('edit-ach-id')?.value || '').trim();
     const title = (document.getElementById('ach-title')?.value || '').trim();
     const description = (document.getElementById('ach-desc')?.value || '').trim();
     const rawFile = document.getElementById('ach-img-file')?.files?.item(0);
     let image_url = (document.getElementById('ach-img')?.value || '').trim();
 
     if (!title) return alert('⚠️ اكتب عنوان الإنجاز.');
-
     const btn = document.getElementById('btn-publish-ach');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع الصورة ونشر الإنجاز...'; }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ ضغط الصورة والحفظ...'; }
 
     try {
-      if (rawFile && typeof window.uploadFileToDriveOrStorage === 'function') {
-        const up = await window.uploadFileToDriveOrStorage(rawFile, {
-          year: new Date().getFullYear().toString(),
-          village: 'معرض_الإنجازات',
-          submissionType: 'إنجازات_المؤسسة',
-          trackingCode: 'ACH-' + Date.now(),
-          prefix: 'Achievement'
-        });
-        if (up && up.uploaded) {
-          image_url = up.directUrl || up.url || '';
-        }
+      if (rawFile && typeof window.uploadPublicDisplayImage === 'function') {
+        image_url = await window.uploadPublicDisplayImage(rawFile, 'achievements');
       }
-
       if (!image_url) image_url = 'logo.jpg';
 
-      const { error } = await window.supabaseClient.from('achievements').insert([{ title, description, image_url }]);
+      const { error } = editId
+        ? await window.supabaseClient.from('achievements').update({ title, description, image_url }).eq('id', editId)
+        : await window.supabaseClient.from('achievements').insert([{ title, description, image_url }]);
       if (error) throw error;
 
-      alert('✅ تم نشر الإنجاز وصورته في قاعدة البيانات بنجاح.');
+      alert(editId ? '✅ تم تعديل الإنجاز بنجاح.' : '✅ تم نشر الإنجاز وصورته بنجاح.');
       window.renderAdminAchievementsSection();
     } catch (err) {
-      alert('❌ تعذر نشر الإنجاز: ' + (err.message || err));
-      if (btn) { btn.disabled = false; btn.textContent = '+ نشر الإنجاز'; }
+      alert('❌ تعذر الحفظ: ' + (err.message || err));
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 نشر / حفظ الإنجاز'; }
     }
   };
-
   window.adminDeleteAchievement = async function(id) {
     if (!confirm('حذف هذا الإنجاز؟')) return;
     const { error } = await window.supabaseClient.from('achievements').delete().eq('id', id);
