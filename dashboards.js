@@ -1020,13 +1020,14 @@
             <strong>⚠️ تنبيه أمني:</strong> لقد قمت بالدخول باستخدام الرمز المؤقت. يرجى تعيين كلمة مرور جديدة خاصة بك الآن.
           </div>` : ''}
 
-        <div class="no-print" style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border); margin-top:14px;">
+                <div class="no-print" style="background:var(--bg-color); padding:14px; border-radius:10px; border:1px solid var(--border); margin-top:14px;">
           <h4 style="margin:0 0 8px; color:var(--primary-dark);">🔑 تغيير كلمة المرور الخاصة بك</h4>
-          <div class="grid-3">
-            <input id="mem-temp-or-old" placeholder="الرمز المؤقت أو كلمة السر الحالية" style="margin:0;">
-            <input id="mem-new-pass" type="password" placeholder="كلمة السر الجديدة (6 أحرف فأكثر)" style="margin:0;">
-            <button type="button" onclick="changeMemberOwnPassword()" class="action-btn" style="margin:0;">حفظ كلمة السر الجديدة</button>
-          </div>
+          <form onsubmit="event.preventDefault(); changeMemberOwnPassword();" class="grid-3">
+            <input type="text" autocomplete="username" value="${escapeAttr(user.email || '')}" class="hidden">
+            <input id="mem-temp-or-old" type="password" autocomplete="current-password" placeholder="الرمز المؤقت أو كلمة السر الحالية" style="margin:0;">
+            <input id="mem-new-pass" type="password" autocomplete="new-password" placeholder="كلمة السر الجديدة (6 أحرف فأكثر)" style="margin:0;">
+            <button type="submit" class="action-btn" style="margin:0;">حفظ كلمة السر الجديدة</button>
+          </form>
         </div>
 
         <div class="no-print" style="background:#f8fafc; padding:12px; border-radius:10px; border:1px solid #cbd5e1; margin-top:16px;">
@@ -1502,16 +1503,19 @@
           </div>
         </div>
 
-        <div id="admin-password-change-box" class="no-print hidden" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px; margin-top:10px;">
+                <div id="admin-password-change-box" class="no-print hidden" style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:12px; margin-top:10px;">
           <h4 style="margin:0 0 8px; color:#064e3b;">🔑 تغيير الرقم السري لحساب الأدمن</h4>
-          <div class="grid-3">
-            <input id="adm-cur-pass" type="password" placeholder="الرقم السري الحالي" style="margin:0;">
-            <input id="adm-new-pass" type="password" placeholder="الرقم السري الجديد (6 أحرف+)" style="margin:0;">
-            <input id="adm-conf-pass" type="password" placeholder="تأكيد الرقم السري الجديد" style="margin:0;">
-          </div>
-          <div style="margin-top:8px;">
-            <button type="button" onclick="adminChangeOwnPassword()" class="action-btn" style="padding:6px 14px; font-size:12px;">حفظ الرقم السري الجديد</button>
-          </div>
+          <form onsubmit="event.preventDefault(); adminChangeOwnPassword();">
+            <input type="text" autocomplete="username" value="${escapeAttr(user.email || '')}" class="hidden">
+            <div class="grid-3">
+              <input id="adm-cur-pass" type="password" autocomplete="current-password" placeholder="الرقم السري الحالي" style="margin:0;">
+              <input id="adm-new-pass" type="password" autocomplete="new-password" placeholder="الرقم السري الجديد (6 أحرف+)" style="margin:0;">
+              <input id="adm-conf-pass" type="password" autocomplete="new-password" placeholder="تأكيد الرقم السري الجديد" style="margin:0;">
+            </div>
+            <div style="margin-top:8px;">
+              <button type="submit" class="action-btn" style="padding:6px 14px; font-size:12px;">حفظ الرقم السري الجديد</button>
+            </div>
+          </form>
         </div>
 
         ${dbWarning ? `<div style="background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:10px; border-radius:8px; margin-top:10px; font-size:12px;">${window.escapeHtml(dbWarning)}</div>` : ''}
