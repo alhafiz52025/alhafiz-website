@@ -704,6 +704,12 @@
   };
 
   window.send2FACodeToWhatsApp = function() {
+      window.send2FACodeToEmail = function() {
+    if (!pending2FAUser || !pending2FACode) return;
+    const subj = 'رمز تأكيد الدخول (OTP) - مؤسسة الحافظ للتنمية والخدمات';
+    const body = `مرحباً أ/ ${pending2FAUser.name}\nرمز تأكيد الدخول الخاص بك هو: ${pending2FACode}\nصالح لمدة 5 دقائق.`;
+    window.open(`mailto:${encodeURIComponent(pending2FAUser.email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
+  };
     if (!pending2FAUser || !pending2FACode) return;
     window.triggerInstantWhatsApp(pending2FAUser.phone, `مؤسسة الحافظ للتنمية والخدمات\n🔐 رمز تأكيد الدخول (OTP) الخاص بك هو: ${pending2FACode}\nصالح لمدة 5 دقائق.`);
   };
@@ -773,5 +779,63 @@
 
   window.closePolicyModal = function() {
     document.getElementById('policy-modal')?.classList.add('hidden');
+      // ضغط الصورة ومعاينتها مصغرة فوراً بجوار زر الرفع + رفعها لـ Supabase Storage و Google Drive
+  window.previewAndCompressImage = function(fileInput, previewImgId) {
+    const file = fileInput?.files?.item(0);
+    const imgEl = document.getElementById(previewImgId);
+    if (!file || !imgEl) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      imgEl.src = e.target.result;
+      imgEl.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.uploadPublicDisplayImage = async function(file, folderName = 'public_media') {
+    if (!file) return '';
+    // 1. ضغط الصورة لتكون سريعة التحميل (عرض أقصى 900px وجودة 80%)
+    const compressedBlob = await new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, 900 / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+        canvas.toBlob((b) => resolve(b || file), 'image/jpeg', 0.82);
+      };
+      img.onerror = () => resolve(file);
+      img.src = url;
+    });
+
+    const compressedFile = new File([compressedBlob], (file.name || 'img').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+
+    // 2. أرشفة نسخة في Google Drive في الخلفية
+    if (typeof window.uploadFileToDriveOrStorage === 'function') {
+      window.uploadFileToDriveOrStorage(compressedFile, {
+        year: new Date().getFullYear().toString(), village: folderName,
+        submissionType: folderName, trackingCode: 'MED-' + Date.now(), prefix: 'Media'
+      }).catch(() => {});
+    }
+
+    // 3. الرفع المباشر إلى Supabase Storage للحصول على رابط صورة عام يظهر فوراً في كل المتصفحات
+    if (window.supabaseClient && window.supabaseClient.storage) {
+      const path = `public_gallery/${folderName}/${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
+      const { error } = await window.supabaseClient.storage.from('foundation-docs').upload(path, compressedFile, { upsert: true, contentType: 'image/jpeg' });
+      if (!error) {
+        const { data: pub } = window.supabaseClient.storage.from('foundation-docs').getPublicUrl(path);
+        if (pub && pub.publicUrl) return pub.publicUrl;
+      }
+    }
+
+    // 4. احتياطي مضمون في حال عدم تفعيل Storage: إرجاع الصورة المضغوطة كـ DataURL
+    return await new Promise((resolve) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result || '');
+      r.readAsDataURL(compressedFile);
+    });
   };
 })();
