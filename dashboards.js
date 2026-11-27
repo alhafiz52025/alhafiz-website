@@ -2664,6 +2664,12 @@
       if (btn) { btn.disabled = false; btn.textContent = '🚀 نشر / حفظ الإعلان'; }
     }
   };
+    window.adminDeleteAnnouncement = async function(id) {
+    if (!confirm('هل أنت متأكد من حذف هذا الإعلان نهائياً؟')) return;
+    const { error } = await window.supabaseClient.from('announcements').delete().eq('id', id);
+    if (error) return alert('❌ تعذر حذف الإعلان: ' + error.message);
+    window.renderAdminAnnouncementsSection();
+  };
 
       window.renderAdminAchievementsSection = async function() {
     const box = document.getElementById('admin-tab-achievements');
