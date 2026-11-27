@@ -649,4 +649,25 @@ footer a:hover { text-decoration: underline; }
   font-size: 15.5px !important;
   padding: 10px 22px !important;
 }
+/* تنسيق البطاقة الجانبية: النص على اليمين والصورة على اليسار */
+.side-media-card {
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.side-media-card img {
+  width: 100%;
+  height: 175px;
+  object-fit: contain;
+  background: #ffffff;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  padding: 4px;
+}
+
+@media (max-width: 720px) {
+  .side-media-card { grid-template-columns: 1fr; }
+}
 
