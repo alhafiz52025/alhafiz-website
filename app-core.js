@@ -703,4 +703,40 @@
     window.renderPublicPartners();
     if (window.currentUser && typeof window.routeLoggedInUser === 'function') window.routeLoggedInUser(window.currentUser);
   });
+    // نافذة السياسات والحوكمة المؤسسية
+  window.openPolicyModal = function(tabKey = 'governance') {
+    const modal = document.getElementById('policy-modal');
+    const body = document.getElementById('policy-modal-body');
+    if (!modal || !body) return;
+
+    const policies = {
+      governance: `
+        <h4 style="color:#064e3b; margin-bottom:8px;">🏛️ إطار الحوكمة المؤسسية والرقابة</h4>
+        <p>تعمل <strong>مؤسسة الحافظ للتنمية والخدمات</strong> (مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي) وفق نظام حوكمة رقمي يضمن الفصل بين لجان البحث الميداني، ولجان الاعتماد، وأمانة الصندوق، مع منع ازدواجية الصرف بين الجمعيات القاعدية في مركز إهناسيا ومحافظة بني سويف.</p>`,
+      donations: `
+        <h4 style="color:#064e3b; margin-bottom:8px;">💚 سياسة قبول التبرعات والشفافية المالية</h4>
+        <p>حرصاً على أعلى معايير النزاهة المالية، تستقبل المؤسسة التبرعات المالية عبر <strong>التحويل البنكي الرسمي فقط</strong> على حساب المؤسسة بالبنك الزراعي المصري (فرع منهرة)، مع الفصل التام بين أموال الزكاة، الصدقات، المشروعات، وبند دعم المصاريف الإدارية، وإصدار إيصالات رسمية مختومة لكل متبرع.</p>`,
+      conflict: `
+        <h4 style="color:#064e3b; margin-bottom:8px;">⚖️ سياسة منع تضارب المصالح</h4>
+        <p>يُحظر على أعضاء مجلس الأمناء والباحثين الميدانيين صرف أي مساعدات أو قروض حسنة لأنفسهم أو لأقاربهم حتى الدرجة الثانية، وتُخضع جميع الملفات للمراجعة المستقلة والتوثيق الرقمي.</p>`,
+      privacy: `
+        <h4 style="color:#064e3b; margin-bottom:8px;">🔒 سياسة الخصوصية وحماية بيانات المستفيدين والمتبرعين</h4>
+        <p>تلتزم المؤسسة بالحفاظ على سرية كافة البيانات الشخصية والمستندات الطبية والاجتماعية للمستفيدين والمتبرعين وعدم مشاركتها مع أي طرف خارجي إلا في حدود التنسيق الخيري المعتمد لمنع الازدواجية.</p>`
+    };
+
+    body.innerHTML = `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px;">
+        <button type="button" onclick="openPolicyModal('governance')" class="nav-btn ${tabKey==='governance'?'btn-primary':''}">الحوكمة</button>
+        <button type="button" onclick="openPolicyModal('donations')" class="nav-btn ${tabKey==='donations'?'btn-primary':''}">قبول التبرعات</button>
+        <button type="button" onclick="openPolicyModal('conflict')" class="nav-btn ${tabKey==='conflict'?'btn-primary':''}">منع تضارب المصالح</button>
+        <button type="button" onclick="openPolicyModal('privacy')" class="nav-btn ${tabKey==='privacy'?'btn-primary':''}">الخصوصية</button>
+      </div>
+      ${policies[tabKey] || policies.governance}
+    `;
+    modal.classList.remove('hidden');
+  };
+
+  window.closePolicyModal = function() {
+    document.getElementById('policy-modal')?.classList.add('hidden');
+  };
 })();
