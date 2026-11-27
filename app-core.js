@@ -598,14 +598,14 @@
     ['prt-org-name', 'prt-reg-no', 'prt-rep-name', 'prt-rep-role', 'prt-phone', 'prt-scope'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   };
 
-  window.submitGrievance = async function() {
+    window.submitGrievance = async function() {
     const type = document.getElementById('grievance-type')?.value || 'تظلم';
     const fullName = (document.getElementById('grievance-name')?.value || '').trim();
     const phone = (document.getElementById('grievance-phone')?.value || '').trim();
     const details = (document.getElementById('grievance-details')?.value || '').trim();
 
-    if (!fullName || !/^01\d{8}$/.test(phone) || !details) {
-      return alert('⚠️ يرجى إدخال الاسم كاملاً، رقم هاتف صحيح (11 رقماً)، وتفاصيل الرسالة.');
+    if (!fullName || !window.isValidEgyptPhone(phone) || !details) {
+      return alert('⚠️ يرجى إدخال الاسم كاملاً، رقم هاتف مصري صحيح (11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015)، وتفاصيل الرسالة.');
     }
 
     const code = 'GRV-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
@@ -619,8 +619,11 @@
 
     window.triggerInstantWhatsApp(phone, `مؤسسة الحافظ للتنمية والخدمات\nتم استلام رسالتكم بنجاح.\nرقم المتابعة: ${code}`);
     alert(`✅ تم إرسال رسالتكم بسرية تامة!\nرقم المتابعة: ${code}`);
-    ['grievance-name', 'grievance-phone', 'grievance-details'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['grievance-name', 'grievance-phone', 'grievance-details'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
   };
+
   window.trackApplication = async function() {
     const q = (document.getElementById('track-input')?.value || '').trim().toUpperCase();
     const resBox = document.getElementById('track-result');
