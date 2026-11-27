@@ -534,7 +534,51 @@
     "• بوابة التبرعات الرسمية": "• Official Donation Portal",
     "• تقديم طلب مساعدة": "• Apply for Assistance",
     "• الاستعلام الفوري": "• Instant Tracking",
-    "• انضم كمتطوع": "• Join as a Volunteer"
+    "• انضم كمتطوع": "• Join as a Volunteer",
+        // 8. ترجمة الفقرات الكاملة، مجالات العمل، التطوع، الشركاء، السياسات المنبثقة، وقائمة التدخلات
+    "مساعدات غذائية وكراتين وعاجلة للأسر الأولى بالرعاية ومبادرات الدعم الموسمي في إهناسيا وبني سويف.": "Food boxes and urgent relief aid for underprivileged families and seasonal initiatives in Ihnasia and Beni Suef.",
+    "رفع كفاءة المنازل، تركيب الأسقف، وتوصيل وصلات المياه النقية للأسر الأكثر احتياجاً.": "Upgrading homes, installing roofs, and extending clean water connections for families in need.",
+    "كفالة الأيتام والأرامل والمسنين وذوي الهمم وتقديم الرعاية الاجتماعية وتجهيز العرائس.": "Sponsoring orphans, widows, the elderly, and people with disabilities, plus social care and bride preparation.",
+    "دعم المشروعات الصغيرة ومتناهية الصغر بقروض حسنة بدون فوائد لتحويل الأسر إلى منتجة.": "Supporting micro and small projects with interest-free loans (Qard Hasan) to empower productive families.",
+    "تنظيم القوافل الطبية المجانية والمساهمة في العلاج والعمليات الجراحية والأجهزة التعويضية.": "Organizing free medical convoys and contributing to treatment, surgeries, and assistive devices.",
+    "دعم الطلاب غير القادرين بالمستلزمات والشنط المدرسية والمصروفات وبرامج التوعية.": "Supporting underprivileged students with school supplies, bags, tuition fees, and awareness programs.",
+    "🏛️ عن مؤسسة الحافظ للتنمية والخدمات": "🏛️ About Al-Hafiz Foundation for Development and Services",
+    "👁️ الرؤية": "👁️ Vision",
+    "🎯 الرسالة": "🎯 Mission",
+    "👥 مجلس الأمناء والهيكل الإداري": "👥 Board of Trustees & Administrative Structure",
+    "رئيس مجلس الأمناء": "Chairman of the Board of Trustees",
+    "الأمين العام (السكرتير)": "Secretary-General",
+    "أ. آمال إبراهيم زكي": "Ms. Amal Ibrahim Zaki",
+    "أمين الصندوق": "Treasurer",
+    "أ. فاتن سيد عبد العليم": "Ms. Faten Sayed Abdel-Alim",
+    "المدير التنفيذي": "Executive Director",
+    "أ. طارق علي عباس": "Mr. Tarek Ali Abbas",
+    "عضو مجلس الأمناء": "Board of Trustees Member",
+    "أ. أسماء أحمد أحمد": "Ms. Asmaa Ahmed Ahmed",
+    "فريق العمل": "Operations Team",
+    "الباحثون الميدانيون والمتطوعون": "Field Researchers & Volunteers",
+    "تاريخ إجراء البحث / الزيارة الميدانية *": "Field Research / Visit Date *",
+    "كفالة أيتام": "Orphan Sponsorship",
+    "مساعدة مالية شهرية / عاجلة": "Monthly / Urgent Financial Aid",
+    "كراتين ومواد غذائية": "Food Boxes & Supplies",
+    "رعاية طبية / عملية جراحية / علاج": "Medical Care / Surgery / Treatment",
+    "تجهيز عرائس": "Bride Marriage Preparation",
+    "سكن كريم (تسقيف / ترميم / وصلة مياه)": "Decent Housing (Roofing / Renovation / Water Connection)",
+    "مشروع صغير (قرض حسن بدون فوائد)": "Small Project (Interest-Free Qard Hasan)",
+    "دعم تعليمي وطلاب": "Educational & Student Support",
+    "📜 السياسات والحوكمة المؤسسية": "📜 Policies & Institutional Governance",
+    "الحوكمة": "Governance",
+    "قبول التبرعات": "Donation Acceptance",
+    "منع تضارب المصالح": "Conflict of Interest",
+    "الخصوصية": "Privacy",
+    "🏛️ إطار الحوكمة المؤسسية والرقابة": "🏛️ Institutional Governance & Oversight Framework",
+    "💚 سياسة قبول التبرعات والشفافية المالية": "💚 Donation Acceptance & Financial Transparency Policy",
+    "⚖️ سياسة منع تضارب المصالح": "⚖️ Conflict of Interest Prevention Policy",
+    "🔒 سياسة الخصوصية وحماية بيانات المستفيدين والمتبرعين": "🔒 Privacy & Data Protection Policy",
+    "كن شريكاً في الخير والمشاركة الميدانية في قرى وعزب مركز إهناسيا وبني سويف": "Be a partner in goodness and field volunteering across Ihnasia and Beni Suef villages",
+    "لتنسيق الجهود ومنع ازدواجية الصرف في قرى وعزب مركز إهناسيا وبني سويف": "To coordinate efforts and prevent aid duplication across Ihnasia and Beni Suef villages",
+    "إطار الحوكمة والمؤسسة": "Governance & Foundation",
+    "إطار الحوكمة والسياسات": "Governance & Policies"
   });
 
   function rebuildPairLists() {
@@ -575,7 +619,7 @@
     return out;
   }
 
-  function convertString(raw, targetLang) {
+    function convertString(raw, targetLang) {
     if (typeof raw !== 'string' || !raw.trim()) return raw;
     const dict = window.FULL_DICTIONARY || {};
     const trimmed = raw.trim();
@@ -584,18 +628,18 @@
       if (Object.prototype.hasOwnProperty.call(dict, trimmed)) {
         return raw.replace(trimmed, dict[trimmed]);
       }
-      return convertByPairs(raw, arToEnPairs);
+      return raw;
     } else {
-      // ترجمة عكسية من الإنجليزية للعربية أو استعادة الأصل العربي
       for (let i = 0; i < enToArPairs.length; i++) {
         const [arKey, enVal] = enToArPairs[i];
         if (trimmed === enVal) {
           return raw.replace(trimmed, arKey);
         }
       }
-      return convertByPairs(raw, enToArPairs);
+      return raw;
     }
   }
+
 
   function updateButtonText(targetLang) {
     const btn = document.getElementById('lang-toggle-btn');
