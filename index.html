@@ -462,9 +462,12 @@
         </form>
 
         <!-- مربع إدخال رمز التحقق الثنائي (OTP) -->
-        <div id="login-2fa-box" class="hidden" style="background:#ecfdf5; border:1px solid #10b981; padding:12px; border-radius:10px; margin-top:12px;">
+                <div id="login-2fa-box" class="hidden" style="background:#ecfdf5; border:1px solid #10b981; padding:12px; border-radius:10px; margin-top:12px;">
           <p id="login-2fa-hint" style="font-size:12px; color:#064e3b; margin-bottom:8px;"></p>
-          <button type="button" onclick="send2FACodeToWhatsApp()" class="nav-btn btn-gold" style="width:100%; justify-content:center; margin-bottom:8px; font-size:12px;">💬 إرسال رمز التأكيد إلى واتساب الآن</button>
+          <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <button type="button" onclick="send2FACodeToWhatsApp()" class="nav-btn btn-gold" style="flex:1; justify-content:center; font-size:12px;">💬 إرسال للواتساب</button>
+            <button type="button" onclick="send2FACodeToEmail()" class="nav-btn" style="flex:1; justify-content:center; background:#1d4ed8; color:#fff; font-size:12px;">✉️ إرسال للبريد</button>
+          </div>
           <div style="display:flex; gap:6px;">
             <input id="login-otp-input" maxlength="6" placeholder="أدخل الرمز (6 أرقام)" style="margin:0; text-align:center; font-weight:800; letter-spacing:3px;">
             <button type="button" onclick="complete2FALogin()" class="action-btn">تأكيد الدخول</button>
