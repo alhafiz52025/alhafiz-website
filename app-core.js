@@ -218,33 +218,43 @@
       if (el && map[id]) el.textContent = map[id];
     });
 
-    const campBox = document.getElementById('live-campaign-section');
-    if (campBox) {
-      if (cfg.campaign_active === false) {
+        const campBox = document.getElementById('live-campaign-section');
+    if (campBox && window.supabaseClient) {
+      const { data: camps } = await window.supabaseClient
+        .from('campaigns').select('*').eq('is_active', true).order('created_at', { ascending: false });
+
+      if (!camps || camps.length === 0) {
         campBox.classList.add('hidden');
       } else {
         campBox.classList.remove('hidden');
-        const target = Math.max(1, Number(cfg.campaign_target) || 500);
-        const current = Math.max(0, Number(cfg.campaign_current) || 0);
-        const pct = Math.min(100, Math.round((current / target) * 100));
-        const unit = cfg.campaign_unit || 'بطانية';
-        const rem = Math.max(0, target - current);
-
-        const tEl = document.getElementById('camp-title');
-        const dEl = document.getElementById('camp-desc');
-        const statsEl = document.getElementById('camp-stats');
-        const barEl = document.getElementById('camp-progress-fill');
-        if (tEl) tEl.textContent = cfg.campaign_title || '';
-        if (dEl) dEl.textContent = cfg.campaign_desc || '';
-        if (statsEl) statsEl.innerHTML = `تم تحقيق: <strong>${current.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> (${pct}%) من إجمالي <strong>${target.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> — المتبقي: <strong>${rem.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong>`;
-        if (barEl) barEl.style.width = pct + '%';
-                let campImgEl = document.getElementById('camp-banner-img');
-        const cImgUrl = cfg.campaign_image_url ? window.normalizeDriveImageUrl(cfg.campaign_image_url) : '';
-        if (cImgUrl && !campImgEl) {
-          campBox.insertAdjacentHTML('afterbegin', `<img id="camp-banner-img" src="${window.escapeHtml(cImgUrl)}" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" onerror="this.style.display='none'">`);
-        } else if (campImgEl && cImgUrl) {
-          campImgEl.src = cImgUrl;
-        }
+        campBox.style.background = 'transparent';
+        campBox.style.border = 'none';
+        campBox.style.padding = '0';
+        campBox.innerHTML = camps.map(c => {
+          const target = Math.max(1, Number(c.target_amount) || 500);
+          const current = Math.max(0, Number(c.current_amount) || 0);
+          const pct = Math.min(100, Math.round((current / target) * 100));
+          const rem = Math.max(0, target - current);
+          const unit = c.unit || 'بطانية';
+          const img = c.image_url ? window.normalizeDriveImageUrl(c.image_url) : '';
+          return `
+            <div class="campaign-tracker-card">
+              ${img && img !== 'logo.jpg' ? `<img src="${window.escapeHtml(img)}" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" onerror="this.style.display='none'">` : ''}
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                <div>
+                  <span style="background:#047857; color:#fff; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800;">🎯 حملة ميدانية جارية</span>
+                  <h3 style="color:#064e3b; margin:6px 0 4px; font-size:19px;">${window.escapeHtml(c.title)}</h3>
+                </div>
+                <div style="display:flex; gap:6px;">
+                  <button type="button" onclick="openDonateForCampaign('${window.escapeHtml(c.id)}')" class="action-btn" style="background:#b45309;">💚 ساهم في إكمال المتبقي</button>
+                  <button type="button" onclick="shareInitiativeWhatsApp('${window.escapeHtml(c.title)}')" class="nav-btn" style="font-size:12px;">📤 مشاركة</button>
+                </div>
+              </div>
+              <p style="font-size:13px; color:#334155; margin:4px 0 8px;">${window.escapeHtml(c.description || '')}</p>
+              <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+              <div style="font-size:13px; color:#064e3b;">تم تحقيق: <strong>${current.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> (${pct}%) من إجمالي <strong>${target.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> — المتبقي: <strong>${rem.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong></div>
+            </div>`;
+        }).join('');
       }
     }
   }
