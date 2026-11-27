@@ -1,4 +1,4 @@
-// app-core.js - المحرك الأساسي الموحد لمؤسسة الحافظ للتنمية والخدمات (الجزء 1 من 3)
+// app-core.js - المحرك الأساسي الموحد لمؤسسة الحافظ للتنمية والخدمات
 (function() {
   window.currentUser = JSON.parse(sessionStorage.getItem('hf_current_user') || 'null');
   let currentLang = 'ar';
@@ -7,11 +7,16 @@
   let pending2FACode = '';
   let pending2FAExpires = 0;
 
-  const sbUrl = window.SB_URL || 'https://supabase.co';
-  const sbKey = window.SB_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
-  if (!window.supabaseClient && window.supabase && typeof window.supabase.createClient === 'function') {
-    window.supabaseClient = window.supabase.createClient(sbUrl, sbKey);
-  }
+  window.getSupabase = function() {
+    if (window.supabaseClient) return window.supabaseClient;
+    const sbUrl = window.SB_URL || 'https://fwyacpvbhwdlivzeiper.supabase.co';
+    const sbKey = window.SB_KEY || 'sb_publishable_6xYRIb6tT-Na8wvnDoGMsQ_EeMfQzdz';
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      window.supabaseClient = window.supabase.createClient(sbUrl, sbKey);
+    }
+    return window.supabaseClient;
+  };
+  window.getSupabase();
 
   window.escapeHtml = function(str) {
     return String(str ?? '')
