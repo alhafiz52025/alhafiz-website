@@ -449,7 +449,7 @@
     const isCampaign = !!document.getElementById('don-is-campaign')?.checked;
     const receiptFile = document.getElementById('don-receipt-file')?.files?.item(0);
 
-    if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ يرجى إدخال رقم هاتف / واتساب صحيح (11 رقماً يبدأ بـ 01).');
+    if (!window.isValidEgyptPhone(phone)) return alert('⚠️ يرجى إدخال رقم هاتف / واتساب مصري صحيح (11 رقماً).');
     if (!amount || amount <= 0) return alert('⚠️ يرجى إدخال مبلغ التبرع بالجنيه المصري.');
 
     const btn = document.getElementById('btn-submit-bank-don');
@@ -508,7 +508,7 @@
     const delivery = document.getElementById('ink-delivery')?.value || 'التسليم بمقر المؤسسة';
     const address = (document.getElementById('ink-address')?.value || '').trim();
 
-    if (!/^01[0125]\d{8}$/.test(phone)) return alert('⚠️ يرجى إدخال رقم تليفون صحيح (11 رقماً يبدأ بـ 01).');
+    if (!window.isValidEgyptPhone(phone)) return alert('⚠️ يرجى إدخال رقم تليفون مصري صحيح (11 رقماً).');
     if (!itemDesc || !itemQty) return alert('⚠️ يرجى كتابة وصف الحاجة المتبرع بها والعدد أو الكمية.');
     if (delivery.includes('منزلي') && !address) return alert('⚠️ يرجى كتابة العنوان بالتفصيل ليصلكم مندوب التحصيل المنزلي.');
 
@@ -554,9 +554,9 @@
     const avail = (document.getElementById('vol-avail')?.value || '').trim();
     const skills = Array.from(document.querySelectorAll('.vol-skill-chk:checked')).map(c => c.value).join('، ');
 
-    if (!fullName || !village || !/^01\d{8}$/.test(phone)) {
-      return alert('⚠️ يرجى إدخال الاسم كاملاً، القرية/العزبة، ورقم واتساب صحيح (11 رقماً).');
-    }
+   if (!fullName || !village || !window.isValidEgyptPhone(phone)) {
+  return alert('⚠️ يرجى إدخال الاسم كاملاً، القرية/العزبة، ورقم واتساب مصري صحيح (11 رقماً).');
+}
 
     const code = 'VOL-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
     if (window.supabaseClient) {
@@ -581,9 +581,9 @@
     const phone = (document.getElementById('prt-phone')?.value || '').trim();
     const scope = (document.getElementById('prt-scope')?.value || '').trim();
 
-    if (!orgName || !repName || !/^01\d{8}$/.test(phone)) {
-      return alert('⚠️ يرجى إدخال اسم الجمعية/المؤسسة، اسم الممثل، ورقم هاتف صحيح.');
-    }
+    if (!orgName || !repName || !window.isValidEgyptPhone(phone)) {
+  return alert('⚠️ يرجى إدخال اسم الجمعية/المؤسسة، اسم الممثل، ورقم هاتف مصري صحيح (11 رقماً).');
+}
 
     if (window.supabaseClient) {
       const { error } = await window.supabaseClient.from('organizations').insert([{
