@@ -245,29 +245,28 @@
         campBox.style.background = 'transparent';
         campBox.style.border = 'none';
         campBox.style.padding = '0';
-        campBox.innerHTML = camps.map(c => {
+                campBox.innerHTML = camps.map(c => {
           const target = Math.max(1, Number(c.target_amount) || 500);
           const current = Math.max(0, Number(c.current_amount) || 0);
           const pct = Math.min(100, Math.round((current / target) * 100));
           const rem = Math.max(0, target - current);
-          const unit = c.unit || 'بطانية';
+          const unit = (c.unit || 'وحدة').trim();
           const img = c.image_url ? window.normalizeDriveImageUrl(c.image_url) : '';
+          const hasImg = img && img !== 'logo.jpg';
           return `
-            <div class="campaign-tracker-card">
-              ${img && img !== 'logo.jpg' ? `<img src="${window.escapeHtml(img)}" style="width:100%; max-height:220px; object-fit:cover; border-radius:12px; margin-bottom:12px;" onerror="this.style.display='none'">` : ''}
-              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <div>
-                  <span style="background:#047857; color:#fff; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800;">🎯 حملة ميدانية جارية</span>
-                  <h3 style="color:#064e3b; margin:6px 0 4px; font-size:19px;">${window.escapeHtml(c.title)}</h3>
-                </div>
-                <div style="display:flex; gap:6px;">
-                  <button type="button" onclick="openDonateForCampaign('${window.escapeHtml(c.id)}')" class="action-btn" style="background:#b45309;">💚 ساهم في إكمال المتبقي</button>
-                  <button type="button" onclick="shareInitiativeWhatsApp('${window.escapeHtml(c.title)}')" class="nav-btn" style="font-size:12px;">📤 مشاركة</button>
+            <div class="campaign-tracker-card ${hasImg ? 'side-media-card' : ''}" style="margin-bottom:0;">
+              <div>
+                <span style="background:#047857; color:#fff; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:800;">🎯 حملة ميدانية جارية</span>
+                <h3 style="color:#064e3b; margin:6px 0 4px; font-size:18px;">${window.escapeHtml(c.title)}</h3>
+                <p style="font-size:13px; color:#334155; margin:4px 0 8px;">${window.escapeHtml(c.description || '')}</p>
+                <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
+                <div style="font-size:12.5px; color:#064e3b; margin-bottom:10px;">تم تحقيق: <strong>${current.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> (${pct}%) من <strong>${target.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> — المتبقي: <strong>${rem.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong></div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                  <button type="button" onclick="openDonateForCampaign('${window.escapeHtml(c.id)}')" class="action-btn" style="background:#b45309; padding:7px 14px; font-size:12px;">💚 ساهم في إكمال المتبقي</button>
+                  <button type="button" onclick="shareInitiativeWhatsApp('${window.escapeHtml(c.title)}')" class="nav-btn" style="padding:7px 12px; font-size:12px;">📤 مشاركة</button>
                 </div>
               </div>
-              <p style="font-size:13px; color:#334155; margin:4px 0 8px;">${window.escapeHtml(c.description || '')}</p>
-              <div class="progress-track"><div class="progress-fill" style="width:${pct}%;"></div></div>
-              <div style="font-size:13px; color:#064e3b;">تم تحقيق: <strong>${current.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> (${pct}%) من إجمالي <strong>${target.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong> — المتبقي: <strong>${rem.toLocaleString('ar-EG')} ${window.escapeHtml(unit)}</strong></div>
+              ${hasImg ? `<div><img src="${window.escapeHtml(img)}" alt="${window.escapeHtml(c.title)}" onerror="this.style.display='none'"></div>` : ''}
             </div>`;
         }).join('');
       }
@@ -277,29 +276,28 @@
   window.renderPublicAnnouncements = async function() {
     const box = document.getElementById('public-announcements-container');
     if (!box || !window.supabaseClient) return;
-    const { data } = await window.supabaseClient
-      .from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
-
+    const { data } = await window.supabaseClient.from('announcements').select('*').eq('is_active', true).order('created_at', { ascending: false });
     if (!data || data.length === 0) {
       box.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#64748b;">لا توجد منح أو مبادرات مفتوحة حالياً.</p>';
       return;
     }
+    box.className = 'grid-2';
     box.innerHTML = data.map(item => {
       const imgUrl = window.normalizeDriveImageUrl(item.image_url);
+      const hasImg = imgUrl && imgUrl !== 'logo.jpg';
       return `
-        <div style="background:var(--bg-color); border:1px solid #f59e0b; border-radius:12px; overflow:hidden;">
-          ${imgUrl && imgUrl !== 'logo.jpg' ? `<img src="${window.escapeHtml(imgUrl)}" style="width:100%; height:180px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
-          <div style="padding:14px;">
+        <div class="${hasImg ? 'side-media-card' : ''}" style="background:var(--bg-color); border:1px solid #f59e0b; border-radius:12px; padding:14px;">
+          <div>
             <span style="background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${window.escapeHtml(item.category || 'مبادرة مفتوحة')}</span>
             <h4 style="color:var(--primary-dark); margin:8px 0 6px;">${window.escapeHtml(item.title)}</h4>
             <p style="font-size:13px; margin:0 0 10px;">${window.escapeHtml(item.description || item.body || '')}</p>
             <div style="display:flex; gap:6px;">
-              <button type="button" onclick="showSection('apply')" class="action-btn" style="flex:1; font-size:12px;">+ التقديم الآن</button>
+              <button type="button" onclick="showSection('apply')" class="action-btn" style="font-size:12px;">+ التقديم الآن</button>
               <button type="button" onclick="shareInitiativeWhatsApp('${window.escapeHtml(item.title)}')" class="nav-btn" style="font-size:12px;">📤 مشاركة</button>
             </div>
           </div>
-        </div>
-      `;
+          ${hasImg ? `<div><img src="${window.escapeHtml(imgUrl)}" onerror="this.style.display='none'"></div>` : ''}
+        </div>`;
     }).join('');
   };
 
@@ -311,18 +309,19 @@
       box.innerHTML = '<p style="grid-column:1/-1; text-align:center; color:#64748b;">لا توجد إنجازات منشورة حالياً.</p>';
       return;
     }
+    box.className = 'grid-2';
     box.innerHTML = data.map(s => {
       const imgUrl = window.normalizeDriveImageUrl(s.image_url);
+      const hasImg = imgUrl && imgUrl !== 'logo.jpg';
       return `
-        <div style="background:var(--bg-color); border:1px solid var(--border); border-radius:12px; overflow:hidden;">
-          ${imgUrl && imgUrl !== 'logo.jpg' ? `<img src="${window.escapeHtml(imgUrl)}" style="width:100%; height:180px; object-fit:cover;" onerror="this.style.display='none'">` : ''}
-          <div style="padding:14px;">
+        <div class="${hasImg ? 'side-media-card' : ''}" style="background:var(--bg-color); border:1px solid var(--border); border-radius:12px; padding:14px;">
+          <div>
             <strong style="color:var(--primary-dark); font-size:15px; display:block; margin-bottom:6px;">${window.escapeHtml(s.title)}</strong>
-            <p style="font-size:13px; margin:0 0 8px;">${window.escapeHtml(s.description || '')}</p>
+            <p style="font-size:13px; margin:0 0 10px;">${window.escapeHtml(s.description || '')}</p>
             <button type="button" onclick="shareInitiativeWhatsApp('${window.escapeHtml(s.title)}')" class="nav-btn" style="font-size:11px; padding:4px 10px;">📤 مشاركة الإنجاز</button>
           </div>
-        </div>
-      `;
+          ${hasImg ? `<div><img src="${window.escapeHtml(imgUrl)}" onerror="this.style.display='none'"></div>` : ''}
+        </div>`;
     }).join('');
   };
   window.renderPublicPartners = async function() {
