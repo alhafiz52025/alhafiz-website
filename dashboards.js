@@ -3780,34 +3780,44 @@
       `جزاكم الله خيراً أ/ ${d.donor_name || 'فاعل خير'}، نؤكد لكم أنه تم مراجعة واعتماد استلام ${detailText}.\n` +
       `نسأل الله أن يتقبل منكم ويبارك في مالكم وأهلكم.`);
   };
-  window.renderAdminCampaignAndSettingsTab = async function() {
+    window.renderAdminCampaignAndSettingsTab = async function() {
     const box = document.getElementById('admin-tab-campaign');
     if (!box) return;
     const cfg = await window.getFoundationSettings();
+    const { data: camps } = await window.supabaseClient.from('campaigns').select('*').order('created_at', { ascending: false });
+    const campList = camps || [];
 
     box.innerHTML = `
       <div style="background:#fffbeb; border:1px solid #f59e0b; padding:14px; border-radius:10px; margin-bottom:14px; color:#0f172a;">
-        <h4 style="margin:0 0 10px; color:#92400e;">🎯 التحكم في شريط الحملة المباشرة (Campaign Tracker) بالصفحة الرئيسية</h4>
+        <h4 style="margin:0 0 10px; color:#92400e;">🎯 نشر حملة ميدانية جديدة في الصفحة الرئيسية</h4>
         <div class="grid-2">
-          <div><label style="font-size:12px;">عنوان الحملة:</label><input id="cfg-camp-title" value="${escapeAttr(cfg.campaign_title || '')}" style="margin:0;"></div>
-          <div><label style="font-size:12px;">وحدة القياس (بطانية / جنيه / سقف / كرتونة):</label><input id="cfg-camp-unit" value="${escapeAttr(cfg.campaign_unit || 'بطانية')}" style="margin:0;"></div>
+          <div><label style="font-size:12px;">عنوان الحملة الجديدة *:</label><input id="new-camp-title" placeholder="مثال: حملة دفء الشتاء وتوفير البطاطين 2026" style="margin:0;"></div>
+          <div><label style="font-size:12px;">وحدة القياس *:</label><input id="new-camp-unit" value="بطانية" placeholder="بطانية / جنيه / سقف / كرتونة" style="margin:0;"></div>
         </div>
-        <div style="margin-top:8px;"><label style="font-size:12px;">وصف الحملة المختصر:</label><input id="cfg-camp-desc" value="${escapeAttr(cfg.campaign_desc || '')}" style="margin:0;"></div>
+        <div style="margin-top:8px;"><label style="font-size:12px;">وصف الحملة المختصر:</label><input id="new-camp-desc" placeholder="تفاصيل الحملة والقرى المستهدفة..." style="margin:0;"></div>
         <div class="grid-3" style="margin-top:8px;">
-          <div><label style="font-size:12px;">الهدف الإجمالي:</label><input id="cfg-camp-target" type="number" value="${Number(cfg.campaign_target) || 500}" style="margin:0;"></div>
-          <div><label style="font-size:12px;">المحقق حالياً (يتحدث تلقائياً عند اعتماد التبرعات):</label><input id="cfg-camp-current" type="number" value="${Number(cfg.campaign_current) || 0}" style="margin:0;"></div>
-          <div>
-            <label style="font-size:12px;">حالة الظهور بالصفحة الرئيسية:</label>
-            <select id="cfg-camp-active" style="margin:0;">
-              <option value="true" ${cfg.campaign_active !== false ? 'selected' : ''}>✅ ظاهر للزوار</option>
-              <option value="false" ${cfg.campaign_active === false ? 'selected' : ''}>🚫 مخفي مؤقتاً</option>
-            </select>
-          </div>
+          <div><label style="font-size:12px;">الهدف الإجمالي *:</label><input id="new-camp-target" type="number" value="500" style="margin:0;"></div>
+          <div><label style="font-size:12px;">الرصيد المبدئي المحقق:</label><input id="new-camp-current" type="number" value="0" style="margin:0;"></div>
+          <div><label style="font-size:12px;">📷 رفع صورة الحملة (اختياري):</label><input type="file" id="new-camp-img" accept="image/*" style="margin:0;"></div>
         </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-          <button type="button" id="btn-save-camp" onclick="adminSaveCampaignSettings(false)" class="action-btn" style="background:#b45309;">💾 حفظ وتحديث الحملة الحالية</button>
-          <button type="button" onclick="adminStartNewCampaign()" class="action-btn" style="background:#047857;">➕ إطلاق حملة جديدة (تصفير العداد ورفع صورة جديدة)</button>
+        <button type="button" id="btn-publish-camp" onclick="adminPublishNewCampaign()" class="action-btn" style="margin-top:10px; background:#047857;">🚀 نشر الحملة في الصفحة الرئيسية</button>
+
+        <div class="grid-2" style="margin-top:14px;">
+          ${campList.map(c => {
+            const img = c.image_url ? (window.normalizeDriveImageUrl ? window.normalizeDriveImageUrl(c.image_url) : c.image_url) : '';
+            return `
+              <div style="background:#fff; border:1px solid #cbd5e1; padding:12px; border-radius:8px;">
+                ${img && img !== 'logo.jpg' ? `<img src="${escapeAttr(img)}" style="width:100%; height:140px; object-fit:cover; border-radius:6px; margin-bottom:6px;" onerror="this.style.display='none'">` : ''}
+                <strong>${window.escapeHtml(c.title)}</strong>
+                <p style="font-size:12px; margin:4px 0;">المحقق: <strong>${c.current_amount}</strong> من <strong>${c.target_amount} ${window.escapeHtml(c.unit || '')}</strong></p>
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+                  <button type="button" onclick="adminUpdateCampaignProgress('${escapeAttr(c.id)}', ${Number(c.current_amount)||0})" class="nav-btn btn-gold" style="font-size:11px; padding:4px 8px;">✏️ تعديل المحقق</button>
+                  <button type="button" onclick="adminDeleteCampaign('${escapeAttr(c.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:4px 8px;">🗑️ حذف الحملة</button>
+                </div>
+              </div>`;
+          }).join('')}
         </div>
+      </div>
 
       <div style="background:var(--bg-color); border:1px solid var(--border); padding:14px; border-radius:10px;">
         <h4 style="margin:0 0 10px; color:var(--primary-dark);">⚙️ إعدادات المؤسسة والحساب البنكي الرسمي (تُحدّث الموقع والإيصالات تلقائياً)</h4>
@@ -3825,30 +3835,56 @@
       </div>`;
   };
 
-  window.adminSaveCampaignSettings = async function() {
-      window.adminStartNewCampaign = function() {
-    document.getElementById('cfg-camp-title').value = '';
-    document.getElementById('cfg-camp-desc').value = '';
-    document.getElementById('cfg-camp-target').value = '500';
-    document.getElementById('cfg-camp-current').value = '0';
-    document.getElementById('cfg-camp-active').value = 'true';
-    alert('🆕 تم تجهيز نموذج الحملة الجديدة! اكتب اسم الحملة الجديدة والهدف وارفع صورتها ثم اضغط (💾 حفظ وتحديث الحملة الحالية).');
+  window.adminPublishNewCampaign = async function() {
+    const title = (document.getElementById('new-camp-title')?.value || '').trim();
+    const unit = (document.getElementById('new-camp-unit')?.value || 'بطانية').trim();
+    const description = (document.getElementById('new-camp-desc')?.value || '').trim();
+    const target_amount = Number(document.getElementById('new-camp-target')?.value || 500);
+    const current_amount = Number(document.getElementById('new-camp-current')?.value || 0);
+    const rawFile = document.getElementById('new-camp-img')?.files?.item(0);
+
+    if (!title) return alert('⚠️ اكتب عنوان الحملة الجديدة أولاً.');
+    const btn = document.getElementById('btn-publish-camp');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ رفع الصورة ونشر الحملة...'; }
+
+    try {
+      let image_url = '';
+      if (rawFile && typeof window.uploadFileToDriveOrStorage === 'function') {
+        const up = await window.uploadFileToDriveOrStorage(rawFile, {
+          year: new Date().getFullYear().toString(), village: 'الحملات_المباشرة',
+          submissionType: 'صور_الحملات', trackingCode: 'CAMP-' + Date.now(), prefix: 'Campaign'
+        });
+        if (up && up.uploaded) image_url = up.directUrl || up.url || '';
+      }
+
+      const { error } = await window.supabaseClient.from('campaigns').insert([{
+        title, description, unit, target_amount, current_amount, image_url, is_active: true
+      }]);
+      if (error) throw error;
+      alert('✅ تم نشر الحملة الجديدة بصورتها في الصفحة الرئيسية بنجاح!');
+      window.renderAdminCampaignAndSettingsTab();
+    } catch (err) {
+      alert('❌ تعذر نشر الحملة: ' + (err.message || err));
+      if (btn) { btn.disabled = false; btn.textContent = '🚀 نشر الحملة في الصفحة الرئيسية'; }
+    }
   };
-    const patch = {
-      campaign_title: (document.getElementById('cfg-camp-title')?.value || '').trim(),
-      campaign_unit: (document.getElementById('cfg-camp-unit')?.value || 'بطانية').trim(),
-      campaign_desc: (document.getElementById('cfg-camp-desc')?.value || '').trim(),
-      campaign_target: Number(document.getElementById('cfg-camp-target')?.value || 500),
-      campaign_current: Number(document.getElementById('cfg-camp-current')?.value || 0),
-      campaign_active: document.getElementById('cfg-camp-active')?.value === 'true'
-    };
-    const { error } = await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
-    if (error) return alert('❌ تعذر حفظ الحملة: ' + error.message);
-    alert('✅ تم تحديث شريط الحملة المباشرة في الصفحة الرئيسية بنجاح.');
+
+  window.adminUpdateCampaignProgress = async function(id, curVal) {
+    const nextVal = prompt('أدخل الرصيد المحقق الجديد للحملة:', String(curVal));
+    if (nextVal === null) return;
+    await window.supabaseClient.from('campaigns').update({ current_amount: Number(nextVal) || 0 }).eq('id', id);
+    window.renderAdminCampaignAndSettingsTab();
+  };
+
+  window.adminDeleteCampaign = async function(id) {
+    if (!confirm('هل أنت متأكد من حذف هذه الحملة نهائياً؟')) return;
+    await window.supabaseClient.from('campaigns').delete().eq('id', id);
+    window.renderAdminCampaignAndSettingsTab();
   };
 
   window.adminSaveGeneralFoundationSettings = async function() {
     const patch = {
+      id: 1,
       bank_account_title: (document.getElementById('cfg-bank-title')?.value || '').trim(),
       bank_account_number: (document.getElementById('cfg-bank-num')?.value || '').trim(),
       phone_whatsapp: (document.getElementById('cfg-wa-phone')?.value || '').trim(),
@@ -3856,10 +3892,11 @@
       admin_email: (document.getElementById('cfg-adm-email')?.value || '').trim(),
       hq_address: (document.getElementById('cfg-hq-addr')?.value || '').trim()
     };
-    const { error } = await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
+    const { error } = await window.supabaseClient.from('site_settings').upsert([patch], { onConflict: 'id' });
     if (error) return alert('❌ تعذر حفظ الإعدادات: ' + error.message);
     alert('✅ تم حفظ الإعدادات العامة للمؤسسة بنجاح.');
   };
+
   window.renderAdminPartnersAndVolunteersTab = async function() {
     const box = document.getElementById('admin-tab-partners-vol');
     if (!box) return;
