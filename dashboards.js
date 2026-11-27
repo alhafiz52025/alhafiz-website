@@ -3674,4 +3674,427 @@
     alert('✅ تم إرسال طلب الانضمام وحفظه في قاعدة البيانات بنجاح.');
     location.reload();
   };
+    // === إضافات الإدارة المتكاملة: التبرعات + الحملة المباشرة + الشركاء + المتطوعون + النسخ الاحتياطي والاستعادة ===
+  window.ALL_ADMIN_DONATIONS = window.ALL_ADMIN_DONATIONS || [];
+  window.ALL_ADMIN_VOLUNTEERS = window.ALL_ADMIN_VOLUNTEERS || [];
+
+  window.renderAdminDonationsTab = async function() {
+    const box = document.getElementById('admin-tab-donations');
+    if (!box) return;
+    box.innerHTML = '<p style="font-size:13px;">⏳ جارٍ تحميل سجل التبرعات...</p>';
+    const { data } = await window.supabaseClient.from('donations').select('*').order('created_at', { ascending: false });
+    window.ALL_ADMIN_DONATIONS = data || [];
+    const list = window.ALL_ADMIN_DONATIONS;
+
+    const totalBank = list.filter(d => d.donation_kind === 'bank_transfer' && d.status === 'approved')
+      .reduce((s, d) => s + (Number(d.amount) || 0), 0);
+    const pendingCnt = list.filter(d => d.status !== 'approved').length;
+
+    box.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:#ecfdf5; padding:12px; border-radius:10px; border:1px solid #a7f3d0; margin-bottom:12px; color:#064e3b;">
+        <div><strong>💰 التبرعات البنكية المعتمدة:</strong> ${totalBank.toLocaleString('ar-EG')} ج.م | <strong>⏳ بانتظار المراجعة:</strong> ${pendingCnt}</div>
+        <button type="button" onclick="renderAdminDonationsTab()" class="nav-btn" style="font-size:12px;">🔄 تحديث</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>كود التبرع</th><th>النوع</th><th>المتبرع والهاتف</th><th>القيمة / الصنف</th>
+              <th>المصرف / الوجهة</th><th>المرجع / التسليم</th><th>الحالة</th><th>الإجراء</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.length === 0 ? '<tr><td colspan="8" style="text-align:center;">لا توجد تبرعات مسجلة بعد.</td></tr>' : list.map(d => {
+              const isBank = d.donation_kind === 'bank_transfer';
+              const valText = isBank
+                ? `${Number(d.amount || 0).toLocaleString('ar-EG')} ج.م${d.admin_support_amount ? ' (+' + d.admin_support_amount + ' إداري)' : ''}`
+                : `${window.escapeHtml(d.item_category || '')}: ${window.escapeHtml(d.item_description || '')} (${window.escapeHtml(d.item_quantity || '')})`;
+              const refText = isBank
+                ? `مرجع: ${window.escapeHtml(d.transfer_ref || '—')}${d.receipt_image_url ? ` <a href="${escapeAttr(window.normalizeDriveImageUrl ? window.normalizeDriveImageUrl(d.receipt_image_url) : d.receipt_image_url)}" target="_blank">[صورة]</a>` : ''}`
+                : `${window.escapeHtml(d.delivery_method || '')} ${d.donor_address ? '(' + window.escapeHtml(d.donor_address) + ')' : ''}`;
+              const stBadge = d.status === 'approved'
+                ? `<span style="color:#047857; font-weight:800;">✅ معتمد (${window.escapeHtml(d.linked_doc_number || '')})</span>`
+                : `<span style="color:#b45309; font-weight:800;">⏳ قيد المراجعة</span>`;
+
+              return `
+                <tr>
+                  <td><strong>${window.escapeHtml(d.donation_code)}</strong>${d.is_campaign_contribution ? '<br><span style="font-size:10px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:4px;">🎯 حملة</span>' : ''}</td>
+                  <td>${isBank ? '🏦 تحويل بنكي' : '📦 تبرع عيني'}</td>
+                  <td>${window.escapeHtml(d.donor_name || 'فاعل خير')}<br><small>${window.escapeHtml(d.phone || '')}</small></td>
+                  <td><strong>${valText}</strong></td>
+                  <td>${window.escapeHtml(d.sharia_category || 'تبرع عيني')}</td>
+                  <td>${refText}</td>
+                  <td>${stBadge}</td>
+                  <td>
+                    ${d.status !== 'approved'
+                      ? `<button type="button" onclick="approveDonationRecord('${escapeAttr(d.id)}')" class="action-btn" style="font-size:11px; padding:5px 10px;">✅ اعتماد وشكر</button>`
+                      : `<button type="button" onclick="sendDonationFinalThanks('${escapeAttr(d.id)}')" class="nav-btn" style="font-size:11px; padding:4px 8px;">💬 إعادة الشكر</button>`}
+                  </td>
+                </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  };
+
+  window.approveDonationRecord = async function(donId) {
+    const d = (window.ALL_ADMIN_DONATIONS || []).find(x => String(x.id) === String(donId));
+    if (!d) return;
+    if (!confirm(`تأكيد اعتماد استلام التبرع (${d.donation_code}) وإرسال رسالة الشكر النهائية للمتبرع؟`)) return;
+
+    const isBank = d.donation_kind === 'bank_transfer';
+    const docNum = (isBank ? 'CSH-' : 'DEP-') + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+
+    const { error } = await window.supabaseClient.from('donations').update({
+      status: 'approved', linked_doc_number: docNum,
+      approved_by: window.currentUser?.name || 'الإدارة', approved_at: new Date().toISOString()
+    }).eq('id', d.id);
+    if (error) return alert('❌ تعذر اعتماد التبرع: ' + error.message);
+
+    if (d.is_campaign_contribution && isBank && Number(d.amount) > 0) {
+      const cfg = await window.getFoundationSettings();
+      const nextVal = (Number(cfg.campaign_current) || 0) + Number(d.amount);
+      await window.supabaseClient.from('site_settings').update({ campaign_current: nextVal }).eq('id', 1);
+    }
+
+    d.status = 'approved';
+    d.linked_doc_number = docNum;
+    window.sendDonationFinalThanks(d.id);
+    window.renderAdminDonationsTab();
+  };
+
+  window.sendDonationFinalThanks = function(donId) {
+    const d = (window.ALL_ADMIN_DONATIONS || []).find(x => String(x.id) === String(donId));
+    if (!d) return;
+    const isBank = d.donation_kind === 'bank_transfer';
+    const detailText = isBank
+      ? `تبرعكم المالي عبر التحويل البنكي بمبلغ ${d.amount} ج.م لصالح (${d.sharia_category || 'أوجه الخير'}) وإدراجه رسمياً بإيصال رقم (${d.linked_doc_number})`
+      : `تبرعكم العيني (${d.item_category}: ${d.item_description} - الكمية: ${d.item_quantity}) وإيداعه رسمياً بمخزن المؤسسة بإذن رقم (${d.linked_doc_number})`;
+
+    window.triggerInstantWhatsApp(d.phone,
+      `مؤسسة الحافظ للتنمية والخدمات (إشهار 2202 لسنة 2025)\n` +
+      `جزاكم الله خيراً أ/ ${d.donor_name || 'فاعل خير'}، نؤكد لكم أنه تم مراجعة واعتماد استلام ${detailText}.\n` +
+      `نسأل الله أن يتقبل منكم ويبارك في مالكم وأهلكم.`);
+  };
+  window.renderAdminCampaignAndSettingsTab = async function() {
+    const box = document.getElementById('admin-tab-campaign');
+    if (!box) return;
+    const cfg = await window.getFoundationSettings();
+
+    box.innerHTML = `
+      <div style="background:#fffbeb; border:1px solid #f59e0b; padding:14px; border-radius:10px; margin-bottom:14px; color:#0f172a;">
+        <h4 style="margin:0 0 10px; color:#92400e;">🎯 التحكم في شريط الحملة المباشرة (Campaign Tracker) بالصفحة الرئيسية</h4>
+        <div class="grid-2">
+          <div><label style="font-size:12px;">عنوان الحملة:</label><input id="cfg-camp-title" value="${escapeAttr(cfg.campaign_title || '')}" style="margin:0;"></div>
+          <div><label style="font-size:12px;">وحدة القياس (بطانية / جنيه / سقف / كرتونة):</label><input id="cfg-camp-unit" value="${escapeAttr(cfg.campaign_unit || 'بطانية')}" style="margin:0;"></div>
+        </div>
+        <div style="margin-top:8px;"><label style="font-size:12px;">وصف الحملة المختصر:</label><input id="cfg-camp-desc" value="${escapeAttr(cfg.campaign_desc || '')}" style="margin:0;"></div>
+        <div class="grid-3" style="margin-top:8px;">
+          <div><label style="font-size:12px;">الهدف الإجمالي:</label><input id="cfg-camp-target" type="number" value="${Number(cfg.campaign_target) || 500}" style="margin:0;"></div>
+          <div><label style="font-size:12px;">المحقق حالياً (يتحدث تلقائياً عند اعتماد التبرعات):</label><input id="cfg-camp-current" type="number" value="${Number(cfg.campaign_current) || 0}" style="margin:0;"></div>
+          <div>
+            <label style="font-size:12px;">حالة الظهور بالصفحة الرئيسية:</label>
+            <select id="cfg-camp-active" style="margin:0;">
+              <option value="true" ${cfg.campaign_active !== false ? 'selected' : ''}>✅ ظاهر للزوار</option>
+              <option value="false" ${cfg.campaign_active === false ? 'selected' : ''}>🚫 مخفي مؤقتاً</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" onclick="adminSaveCampaignSettings()" class="action-btn" style="margin-top:10px; background:#b45309;">💾 حفظ وتحديث الحملة بالصفحة الرئيسية</button>
+      </div>
+
+      <div style="background:var(--bg-color); border:1px solid var(--border); padding:14px; border-radius:10px;">
+        <h4 style="margin:0 0 10px; color:var(--primary-dark);">⚙️ إعدادات المؤسسة والحساب البنكي الرسمي (تُحدّث الموقع والإيصالات تلقائياً)</h4>
+        <div class="grid-2">
+          <div><label style="font-size:12px;">اسم البنك والفرع المعتمد للتبرعات:</label><input id="cfg-bank-title" value="${escapeAttr(cfg.bank_account_title || '')}" style="margin:0;"></div>
+          <div><label style="font-size:12px;">رقم الحساب البنكي الرسمي:</label><input id="cfg-bank-num" value="${escapeAttr(cfg.bank_account_number || '')}" style="margin:0;"></div>
+        </div>
+        <div class="grid-3" style="margin-top:8px;">
+          <div><label style="font-size:12px;">رقم الواتساب الرسمي:</label><input id="cfg-wa-phone" value="${escapeAttr(cfg.phone_whatsapp || '01000880156')}" style="margin:0;"></div>
+          <div><label style="font-size:12px;">هاتف الإدارة:</label><input id="cfg-adm-phone" value="${escapeAttr(cfg.phone_admin || '01155540066')}" style="margin:0;"></div>
+          <div><label style="font-size:12px;">البريد الإلكتروني الرسمي:</label><input id="cfg-adm-email" value="${escapeAttr(cfg.admin_email || 'alhafiz52025@gmail.com')}" style="margin:0;"></div>
+        </div>
+        <div style="margin-top:8px;"><label style="font-size:12px;">عنوان المقر الرئيسي:</label><input id="cfg-hq-addr" value="${escapeAttr(cfg.hq_address || '')}" style="margin:0;"></div>
+        <button type="button" onclick="adminSaveGeneralFoundationSettings()" class="action-btn" style="margin-top:10px;">💾 حفظ الإعدادات العامة للمؤسسة</button>
+      </div>`;
+  };
+
+  window.adminSaveCampaignSettings = async function() {
+    const patch = {
+      campaign_title: (document.getElementById('cfg-camp-title')?.value || '').trim(),
+      campaign_unit: (document.getElementById('cfg-camp-unit')?.value || 'بطانية').trim(),
+      campaign_desc: (document.getElementById('cfg-camp-desc')?.value || '').trim(),
+      campaign_target: Number(document.getElementById('cfg-camp-target')?.value || 500),
+      campaign_current: Number(document.getElementById('cfg-camp-current')?.value || 0),
+      campaign_active: document.getElementById('cfg-camp-active')?.value === 'true'
+    };
+    const { error } = await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
+    if (error) return alert('❌ تعذر حفظ الحملة: ' + error.message);
+    alert('✅ تم تحديث شريط الحملة المباشرة في الصفحة الرئيسية بنجاح.');
+  };
+
+  window.adminSaveGeneralFoundationSettings = async function() {
+    const patch = {
+      bank_account_title: (document.getElementById('cfg-bank-title')?.value || '').trim(),
+      bank_account_number: (document.getElementById('cfg-bank-num')?.value || '').trim(),
+      phone_whatsapp: (document.getElementById('cfg-wa-phone')?.value || '').trim(),
+      phone_admin: (document.getElementById('cfg-adm-phone')?.value || '').trim(),
+      admin_email: (document.getElementById('cfg-adm-email')?.value || '').trim(),
+      hq_address: (document.getElementById('cfg-hq-addr')?.value || '').trim()
+    };
+    const { error } = await window.supabaseClient.from('site_settings').update(patch).eq('id', 1);
+    if (error) return alert('❌ تعذر حفظ الإعدادات: ' + error.message);
+    alert('✅ تم حفظ الإعدادات العامة للمؤسسة بنجاح.');
+  };
+  window.renderAdminPartnersAndVolunteersTab = async function() {
+    const box = document.getElementById('admin-tab-partners-vol');
+    if (!box) return;
+    box.innerHTML = '<p style="font-size:13px;">⏳ جارٍ تحميل سجلات الشركاء والمتطوعين...</p>';
+
+    const [orgsRes, volsRes] = await Promise.all([
+      window.supabaseClient.from('organizations').select('*').order('created_at', { ascending: false }),
+      window.supabaseClient.from('volunteers').select('*').order('created_at', { ascending: false })
+    ]);
+    const orgs = orgsRes.data || [];
+    const vols = volsRes.data || [];
+    window.ALL_ADMIN_ORGANIZATIONS = orgs;
+    window.ALL_ADMIN_VOLUNTEERS = vols;
+
+    box.innerHTML = `
+      <div style="background:var(--bg-color); border:1px solid var(--border); padding:12px; border-radius:10px; margin-bottom:14px;">
+        <h4 style="margin:0 0 8px; color:var(--primary-dark);">🤝 إضافة جمعية قاعدية أو مؤسسة شريكة (ببيانات التوثيق الكاملة)</h4>
+        <div class="grid-3">
+          <input id="adm-org-name" placeholder="اسم الجمعية / المؤسسة *" style="margin:0;">
+          <input id="adm-org-reg" placeholder="رقم الإشهار" style="margin:0;">
+          <select id="adm-org-type" style="margin:0;"><option value="جمعية أهلية قاعدية">جمعية أهلية قاعدية</option><option value="مؤسسة مانحة">مؤسسة مانحة</option><option value="شركة راعية">شركة راعية</option></select>
+        </div>
+        <div class="grid-3" style="margin-top:8px;">
+          <input id="adm-org-rep" placeholder="اسم ممثل الجمعية / رئيس المجلس *" style="margin:0;">
+          <input id="adm-org-phone" placeholder="رقم الهاتف / واتساب *" style="margin:0;">
+          <input id="adm-org-scope" placeholder="القرية / نطاق العمل" style="margin:0;">
+        </div>
+        <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <input type="file" id="adm-org-logo" accept="image/*" style="margin:0; max-width:260px;">
+          <button type="button" onclick="adminAddPartnerOrg()" class="action-btn" style="margin:0;">+ حفظ واعتماد الشريك</button>
+        </div>
+        <div style="overflow-x:auto; margin-top:10px;">
+          <table>
+            <thead><tr><th>الجمعية / المؤسسة</th><th>رقم الإشهار</th><th>ممثل الجمعية والهاتف</th><th>النطاق</th><th>الظهور بالرئيسية</th><th>حذف</th></tr></thead>
+            <tbody>
+              ${orgs.map(o => `
+                <tr>
+                  <td><strong>${window.escapeHtml(o.org_name || o.name || '')}</strong><br><small>${window.escapeHtml(o.org_type || '')}</small></td>
+                  <td>${window.escapeHtml(o.registration_number || '-')}</td>
+                  <td>${window.escapeHtml(o.representative_name || '-')}<br><small>${window.escapeHtml(o.phone || '')}</small></td>
+                  <td>${window.escapeHtml(o.village_scope || '-')}</td>
+                  <td><button type="button" onclick="adminToggleOrgHome('${escapeAttr(o.id)}', ${!o.show_on_home})" class="nav-btn" style="font-size:11px; padding:3px 8px;">${o.show_on_home ? '✅ ظاهر' : '🚫 مخفي'}</button></td>
+                  <td><button type="button" onclick="adminDeletePartnerOrg('${escapeAttr(o.id)}')" class="nav-btn" style="background:#dc2626; color:#fff; font-size:11px; padding:3px 7px;">🗑️</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-color); border:1px solid var(--border); padding:12px; border-radius:10px;">
+        <h4 style="margin:0 0 8px; color:var(--primary-dark);">🙋 سجل المتطوعين المسجلين (${vols.length})</h4>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>الكود</th><th>الاسم والقرية</th><th>الهاتف والمؤهل</th><th>المهارات والتفرغ</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+            <tbody>
+              ${vols.length === 0 ? '<tr><td colspan="6" style="text-align:center;">لا يوجد متطوعون مسجلون بعد.</td></tr>' : vols.map(v => `
+                <tr>
+                  <td><strong>${window.escapeHtml(v.volunteer_code || '')}</strong></td>
+                  <td>${window.escapeHtml(v.full_name || '')}<br><small>${window.escapeHtml(v.village || '')}</small></td>
+                  <td>${window.escapeHtml(v.phone || '')}<br><small>${window.escapeHtml(v.qualification || '')}</small></td>
+                  <td>${window.escapeHtml(v.skills || '')}<br><small>${window.escapeHtml(v.availability || '')}</small></td>
+                  <td>${v.status === 'approved' ? '✅ معتمد' : '⏳ جديد'}</td>
+                  <td style="display:flex; gap:4px; flex-wrap:wrap;">
+                    <button type="button" onclick="adminPromoteVolunteerToResearcher('${escapeAttr(v.id)}')" class="action-btn" style="font-size:11px; padding:4px 8px;">⬆️ تفعيل كباحث/متطوع</button>
+                    <button type="button" onclick="window.triggerInstantWhatsApp('${escapeAttr(v.phone)}', 'مرحباً أ/ ${escapeAttr(v.full_name)}، ندعوك للمشاركة في قافلة مؤسسة الحافظ القادمة.')" class="nav-btn btn-gold" style="font-size:11px; padding:4px 8px;">💬 استدعاء</button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  };
+
+  window.adminAddPartnerOrg = async function() {
+    const org_name = (document.getElementById('adm-org-name')?.value || '').trim();
+    const registration_number = (document.getElementById('adm-org-reg')?.value || '').trim();
+    const org_type = document.getElementById('adm-org-type')?.value || 'جمعية أهلية قاعدية';
+    const representative_name = (document.getElementById('adm-org-rep')?.value || '').trim();
+    const phone = (document.getElementById('adm-org-phone')?.value || '').trim();
+    const village_scope = (document.getElementById('adm-org-scope')?.value || '').trim();
+    const logoFile = document.getElementById('adm-org-logo')?.files?.item(0);
+
+    if (!org_name || !representative_name) return alert('⚠️ أدخل اسم الجمعية/المؤسسة واسم ممثلها.');
+    let logo_url = '';
+    if (logoFile && typeof window.uploadFileToDriveOrStorage === 'function') {
+      const up = await window.uploadFileToDriveOrStorage(logoFile, {
+        year: new Date().getFullYear().toString(), village: 'شركاء_النجاح',
+        submissionType: 'شعارات_الشركاء', trackingCode: 'ORG-' + Date.now(), prefix: 'PartnerLogo'
+      });
+      if (up && up.uploaded) logo_url = up.directUrl || up.url || '';
+    }
+
+    const { error } = await window.supabaseClient.from('organizations').insert([{
+      org_name, name: org_name, registration_number, org_type,
+      representative_name, phone, whatsapp: phone, village_scope,
+      logo_url, show_on_home: true, status: 'approved'
+    }]);
+    if (error) return alert('❌ تعذر حفظ الشريك: ' + error.message);
+    alert('✅ تم حفظ واعتماد الشريك وإظهاره في شريط شركاء النجاح.');
+    window.renderAdminPartnersAndVolunteersTab();
+  };
+
+  window.adminToggleOrgHome = async function(id, nextShow) {
+    await window.supabaseClient.from('organizations').update({ show_on_home: nextShow }).eq('id', id);
+    window.renderAdminPartnersAndVolunteersTab();
+  };
+
+  window.adminDeletePartnerOrg = async function(id) {
+    if (!confirm('حذف هذه الجهة الشريكة؟')) return;
+    await window.supabaseClient.from('organizations').delete().eq('id', id);
+    window.renderAdminPartnersAndVolunteersTab();
+  };
+
+  window.adminPromoteVolunteerToResearcher = async function(volId) {
+    const v = (window.ALL_ADMIN_VOLUNTEERS || []).find(x => String(x.id) === String(volId));
+    if (!v) return;
+    const email = (v.email || prompt('أدخل البريد الإلكتروني لتفعيل حساب الدخول للمتطوع:', '') || '').trim().toLowerCase();
+    if (!email) return;
+    const pass = '123456';
+
+    await window.supabaseClient.from('volunteers').update({ status: 'approved', promoted_to_user: true, email }).eq('id', v.id);
+    await window.supabaseClient.from('users_profiles').upsert([{
+      full_name: v.full_name, email, phone: v.phone, role: 'researcher', password_hash: pass, account_status: 'active'
+    }], { onConflict: 'email' });
+
+    window.triggerInstantWhatsApp(v.phone, `مؤسسة الحافظ للتنمية والخدمات\nمبارك أ/ ${v.full_name}، تم تفعيل حسابك كباحث/متطوع معتمد.\nالبريد: ${email}\nكلمة المرور: ${pass}`);
+    alert('✅ تم اعتماد المتطوع وتفعيل حساب دخوله بنجاح.');
+    window.renderAdminPartnersAndVolunteersTab();
+  };
+  window.renderAdminBackupRestoreTab = function() {
+    const box = document.getElementById('admin-tab-backup');
+    if (!box) return;
+    box.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #10b981; padding:16px; border-radius:12px; margin-bottom:14px; color:#064e3b;">
+        <h4 style="margin:0 0 8px;">☁️ إنشاء نسخة احتياطية كاملة للموقع وحفظها في Google Drive</h4>
+        <p style="font-size:13px; margin:0 0 12px;">يجمع هذا الزر جميع بيانات المؤسسة (الحالات، التبرعات، المتطوعين، الجمعيات الشريكة، الأعضاء، المنح، الإنجازات، التظلمات، المحاضر، والإعدادات) ويحفظها فوراً في مجلد <strong>Supabase_Backups</strong> على Google Drive مع تنزيل نسخة احتياطية على جهازك.</p>
+        <button type="button" id="btn-full-drive-backup" onclick="runFullSiteDriveBackup()" class="action-btn">☁️ حفظ نسخة احتياطية كاملة في Google Drive + جهازي الآن</button>
+      </div>
+
+      <div style="background:#fffbeb; border:1px solid #f59e0b; padding:16px; border-radius:12px; color:#78350f;">
+        <h4 style="margin:0 0 8px;">♻️ استعادة بيانات الموقع من ملف نسخة احتياطية (.json)</h4>
+        <p style="font-size:13px; margin:0 0 10px;">اختر ملف النسخة الاحتياطية المحفوظ مسبقاً على جهازك أو من مجلد <strong>Supabase_Backups</strong> في Google Drive لاستعادة السجلات بأمان:</p>
+        <input type="file" id="restore-backup-file" accept=".json,application/json" style="background:#fff;">
+        <button type="button" id="btn-restore-backup" onclick="restoreSiteFromBackupFile()" class="action-btn" style="background:#b45309;">♻️ استعادة البيانات من الملف المحدد</button>
+      </div>`;
+  };
+
+  window.runFullSiteDriveBackup = async function() {
+    const btn = document.getElementById('btn-full-drive-backup');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ تجميع وحفظ النسخة الاحتياطية...'; }
+    try {
+      const tables = ['families', 'donations', 'volunteers', 'organizations', 'users_profiles', 'announcements', 'achievements', 'grievances', 'official_documents', 'site_settings'];
+      const backupObj = { exported_at: new Date().toISOString(), foundation: 'مؤسسة الحافظ للتنمية والخدمات', tables: {} };
+
+      for (const tbl of tables) {
+        const { data } = await window.supabaseClient.from(tbl).select('*');
+        backupObj.tables[tbl] = data || [];
+      }
+
+      const fileName = `AlHafiz_Full_Backup_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.json`;
+      const jsonStr = JSON.stringify(backupObj, null, 2);
+
+      // تنزيل نسخة على الجهاز
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      // رفع النسخة إلى Google Drive
+      const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
+      if (driveUrl) {
+        const formBody = new URLSearchParams();
+        formBody.append('payload', JSON.stringify({ action: 'archive_db', fileName, records: backupObj }));
+        await fetch(driveUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: formBody.toString() });
+      }
+
+      alert(`✅ تم إنشاء النسخة الاحتياطية الكاملة بنجاح وحفظها في Google Drive وعلى جهازك:\n${fileName}`);
+    } catch (err) {
+      alert('❌ تعذر إتمام النسخ الاحتياطي: ' + (err.message || err));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '☁️ حفظ نسخة احتياطية كاملة في Google Drive + جهازي الآن'; }
+    }
+  };
+
+  window.restoreSiteFromBackupFile = async function() {
+    const file = document.getElementById('restore-backup-file')?.files?.item(0);
+    if (!file) return alert('⚠️ اختر ملف النسخة الاحتياطية (.json) أولاً.');
+    if (!confirm('⚠️ هل أنت متأكد من استعادة البيانات من هذا الملف؟ سيتم تحديث السجلات المطابقة في قاعدة البيانات.')) return;
+
+    const btn = document.getElementById('btn-restore-backup');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ استعادة البيانات...'; }
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const tbls = parsed.tables || {};
+      const order = ['site_settings', 'users_profiles', 'organizations', 'volunteers', 'announcements', 'achievements', 'families', 'donations', 'grievances', 'official_documents'];
+
+      for (const tbl of order) {
+        const rows = tbls[tbl];
+        if (Array.isArray(rows) && rows.length > 0) {
+          await window.supabaseClient.from(tbl).upsert(rows, { onConflict: 'id' });
+        }
+      }
+      alert('✅ تمت استعادة بيانات الموقع بنجاح! سيتم إعادة تحميل اللوحة.');
+      location.reload();
+    } catch (err) {
+      alert('❌ ملف النسخة الاحتياطية غير صالح أو تعذرت الاستعادة: ' + (err.message || err));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '♻️ استعادة البيانات من الملف المحدد'; }
+    }
+  };
+
+  // حقن التبويبات الـ 4 الجديدة تلقائياً داخل لوحة الأدمن دون المساس بالتبويبات السابقة
+  const origRenderAdmin = window.renderAdminFullDashboard;
+  window.renderAdminFullDashboard = async function(user) {
+    await origRenderAdmin(user);
+    const officialBtn = document.getElementById('tab-btn-official');
+    const officialTab = document.getElementById('admin-tab-official');
+    if (officialBtn && officialBtn.parentElement && !document.getElementById('tab-btn-donations')) {
+      officialBtn.parentElement.insertAdjacentHTML('beforeend', `
+        <button type="button" onclick="switchAdminTab('donations')" class="nav-btn" id="tab-btn-donations">💰 التبرعات</button>
+        <button type="button" onclick="switchAdminTab('campaign')" class="nav-btn" id="tab-btn-campaign">🎯 الحملة والإعدادات</button>
+        <button type="button" onclick="switchAdminTab('partners-vol')" class="nav-btn" id="tab-btn-partners-vol">🤝 الشركاء والمتطوعون</button>
+        <button type="button" onclick="switchAdminTab('backup')" class="nav-btn btn-gold" id="tab-btn-backup">☁️ النسخ الاحتياطي</button>
+      `);
+      officialTab.insertAdjacentHTML('afterend', `
+        <div id="admin-tab-donations" class="hidden" style="margin-top:12px;"></div>
+        <div id="admin-tab-campaign" class="hidden" style="margin-top:12px;"></div>
+        <div id="admin-tab-partners-vol" class="hidden" style="margin-top:12px;"></div>
+        <div id="admin-tab-backup" class="hidden" style="margin-top:12px;"></div>
+      `);
+    }
+  };
+
+  const origSwitchTab = window.switchAdminTab;
+  window.switchAdminTab = function(tab) {
+    const allTabs = ['cases', 'members', 'announcements', 'achievements', 'grievances', 'official', 'donations', 'campaign', 'partners-vol', 'backup'];
+    allTabs.forEach(t => {
+      document.getElementById('admin-tab-' + t)?.classList.toggle('hidden', t !== tab);
+      document.getElementById('tab-btn-' + t)?.classList.toggle('btn-primary', t === tab);
+    });
+    if (['cases', 'members', 'announcements', 'achievements', 'grievances', 'official'].includes(tab)) {
+      origSwitchTab(tab);
+    } else if (tab === 'donations') window.renderAdminDonationsTab();
+    else if (tab === 'campaign') window.renderAdminCampaignAndSettingsTab();
+    else if (tab === 'partners-vol') window.renderAdminPartnersAndVolunteersTab();
+    else if (tab === 'backup') window.renderAdminBackupRestoreTab();
+  };
 })();
