@@ -777,9 +777,11 @@
     modal.classList.remove('hidden');
   };
 
-  window.closePolicyModal = function() {
+    window.closePolicyModal = function() {
     document.getElementById('policy-modal')?.classList.add('hidden');
-      // ضغط الصورة ومعاينتها مصغرة فوراً بجوار زر الرفع + رفعها لـ Supabase Storage و Google Drive
+  };
+
+  // ضغط الصورة ومعاينتها مصغرة فوراً بجوار زر الرفع + رفعها لـ Supabase Storage و Google Drive
   window.previewAndCompressImage = function(fileInput, previewImgId) {
     const file = fileInput?.files?.item(0);
     const imgEl = document.getElementById(previewImgId);
@@ -794,7 +796,6 @@
 
   window.uploadPublicDisplayImage = async function(file, folderName = 'public_media') {
     if (!file) return '';
-    // 1. ضغط الصورة لتكون سريعة التحميل (عرض أقصى 900px وجودة 80%)
     const compressedBlob = await new Promise((resolve) => {
       const img = new Image();
       const url = URL.createObjectURL(file);
@@ -813,7 +814,6 @@
 
     const compressedFile = new File([compressedBlob], (file.name || 'img').replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
 
-    // 2. أرشفة نسخة في Google Drive في الخلفية
     if (typeof window.uploadFileToDriveOrStorage === 'function') {
       window.uploadFileToDriveOrStorage(compressedFile, {
         year: new Date().getFullYear().toString(), village: folderName,
@@ -821,7 +821,6 @@
       }).catch(() => {});
     }
 
-    // 3. الرفع المباشر إلى Supabase Storage للحصول على رابط صورة عام يظهر فوراً في كل المتصفحات
     if (window.supabaseClient && window.supabaseClient.storage) {
       const path = `public_gallery/${folderName}/${Date.now()}_${Math.floor(Math.random()*1000)}.jpg`;
       const { error } = await window.supabaseClient.storage.from('foundation-docs').upload(path, compressedFile, { upsert: true, contentType: 'image/jpeg' });
@@ -831,7 +830,6 @@
       }
     }
 
-    // 4. احتياطي مضمون في حال عدم تفعيل Storage: إرجاع الصورة المضغوطة كـ DataURL
     return await new Promise((resolve) => {
       const r = new FileReader();
       r.onload = () => resolve(r.result || '');
