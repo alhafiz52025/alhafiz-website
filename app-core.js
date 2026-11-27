@@ -102,15 +102,16 @@
     return clean.length === 11 && (clean.startsWith('010') || clean.startsWith('011') || clean.startsWith('012') || clean.startsWith('015'));
   };
 
-      window.openFoundationWhatsApp = function(customText) {
+       window.openFoundationWhatsApp = function(customText) {
     const cfg = window.SITE_CONFIG_CACHE || {};
     const raw = String(cfg.phone_whatsapp || '01000880156').replace(/\D/g, '');
     const intl = raw.startsWith('20') ? raw : ('20' + raw.replace(/^0/, ''));
     const msg = customText || 'مرحباً بمؤسسة الحافظ للتنمية والخدمات، أرغب في الاستفسار والتواصل معكم.';
-    const finalUrl = 'https://wa.me' + intl + '?text=' + encodeURIComponent(msg);
-    window.open(finalUrl, '_blank', 'noopener,noreferrer');
+    const u = new URL('https://wa.me');
+    u.pathname = intl;
+    u.searchParams.set('text', msg);
+    window.open(u.toString(), '_blank', 'noopener,noreferrer');
   };
-
 
   window.uploadFileToDriveOrStorage = async function(file, meta = {}) {
     const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
