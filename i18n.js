@@ -640,7 +640,17 @@
     "الصفة الإدارية": "Administrative Title",
     "القرية / نطاق العمل الجغرافي": "Village / Geographic Scope",
     "🤝 بلاغ خير (دلّنا على أسرة متعففة أو مريض محتاج)": "🤝 Charity Report (Guide us to a needy family or patient)",
-    "اكتب التفاصيل أو عنوان الأسرة المتعففة ورقم التواصل *": "Write details or needy family address and contact number *"
+    "اكتب التفاصيل أو عنوان الأسرة المتعففة ورقم التواصل *": "Write details or needy family address and contact number ",
+        "(2202) لسنة 2025": "(2202) of 2025",
+    ". تنطلق من مركز إهناسيا – محافظة بني سويف لخدمة أهالي المركز والمحافظة وكافة محافظات الجمهورية.": ". Based in Ihnasia District – Beni Suef Governorate to serve local residents and all governorates of Egypt.",
+    "(المشهرة برقم": "(Registered under No.",
+    "2202 لسنة 2025": "2202 of 2025",
+    "بوزارة التضامن الاجتماعي) إحدى أبرز المؤسسات الخيرية والتنموية في": "with the Ministry of Social Solidarity) one of the leading charitable and developmental foundations in",
+    "و": "and",
+    "مؤسسة أهلية مشهرة برقم 2202 لسنة 2025 - مركز إهناسيا، بني سويف": "A civil foundation registered under No. 2202 of 2025 - Ihnasia District, Beni Suef",
+    "نعمل كمظلة تنموية تربط كبرى المؤسسات المانحة بالجمعيات القاعدية، بنظام إلكتروني دقيق يمنع الازدواجية ويضمن وصول الدعم لمستحقيه في مركز إهناسيا وبني سويف وجميع محافظات مصر.": "We serve as a developmental umbrella connecting major donor institutions with grassroots NGOs, using an accurate digital system that prevents duplication and ensures support reaches eligible recipients in Ihnasia, Beni Suef, and across Egypt.",
+    "مشهرة برقم 2202 لسنة 2025 بوزارة التضامن الاجتماعي — منشأة عبد الصمد، مركز إهناسيا، بني سويف.": "Registered under No. 2202 of 2025 with the Ministry of Social Solidarity — Manshaat Abdel-Samad, Ihnasia, Beni Suef.",
+    "💬 واتساب: 01000880156 | إدارة: 01155540066": "💬 WhatsApp: 01000880156 | Admin: 01155540066"
   });
 
   function rebuildPairLists() {
