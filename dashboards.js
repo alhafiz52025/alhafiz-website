@@ -2456,14 +2456,12 @@
           <tbody>
             ${users.map(u => `
               <tr>
-                <td><strong>${window.escapeHtml(u.full_name || '-')}</strong></td>
-                <td>${window.escapeHtml(u.email || '-')}<br><small>${window.escapeHtml(u.phone || '')}</small></td>
-                <td>${window.escapeHtml(roleNames[u.role] || u.role || 'عضو')}</td>
-                <td>${u.account_status === 'active' ? '✅ نشط' : '⏳ معلق/موقوف'}</td>
-                <td style="display:flex; gap:4px; flex-wrap:wrap;">
+                   <td style="display:flex; gap:4px; flex-wrap:wrap;">
+                  <button type="button" onclick="adminViewMemberAssignedCases('${escapeAttr(u.email)}', '${escapeAttr(u.full_name || '')}')" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 7px; font-size:11px;">📁 حالاته</button>
+                  <button type="button" onclick="adminEditUserAccount('${escapeAttr(u.id)}')" class="nav-btn" style="background:#4f46e5; color:#fff; padding:3px 7px; font-size:11px;">✏️ تعديل</button>
                   <button type="button" onclick="adminToggleUserStatus('${escapeAttr(u.id)}', '${u.account_status === 'active' ? 'suspended' : 'active'}')" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 7px; font-size:11px;">${u.account_status === 'active' ? 'إيقاف' : 'تفعيل'}</button>
-                  <button type="button" onclick="adminIssueMemberTempCode('${escapeAttr(u.id)}', '${escapeAttr(u.email || '')}', '${escapeAttr(u.full_name || '')}', '${escapeAttr(u.phone || '')}')" class="nav-btn btn-gold" style="padding:3px 7px; font-size:11px;">🔑 رمز مؤقت</button>
-                  <button type="button" onclick="adminNotifyMemberJoin('${escapeAttr(u.id)}')" class="nav-btn" style="background:#1d4ed8; color:#fff; padding:3px 7px; font-size:11px;">📩 إشعار انضمام</button>
+                  <button type="button" onclick="adminIssueMemberTempCode('${escapeAttr(u.id)}', '${escapeAttr(u.email || '')}', '${escapeAttr(u.full_name || '')}', '${escapeAttr(u.phone || '')}')" class="nav-btn btn-gold" style="padding:3px 7px; font-size:11px;">🔑 رمز</button>
+                  <button type="button" onclick="adminDeleteUserAccount('${escapeAttr(u.id)}', '${escapeAttr(u.full_name || '')}')" class="nav-btn" style="background:#dc2626; color:#fff; padding:3px 7px; font-size:11px;">🗑️</button>
                 </td>
               </tr>`).join('')}
           </tbody>
@@ -2520,6 +2518,45 @@
   };
 
   window.adminNotifyMemberJoin = function(userId) {
+      window.adminEditUserAccount = async function(userId) {
+    const u = (window.ALL_ADMIN_USERS || []).find(x => String(x.id) === String(userId));
+    if (!u) return;
+    const newName = prompt('تعديل الاسم الكامل للعضو:', u.full_name || '');
+    if (newName === null) return;
+    const newPhone = prompt('تعديل رقم الهاتف / واتساب:', u.phone || '');
+    if (newPhone === null) return;
+    const newRole = prompt('تعديل الصفة (researcher = باحث / volunteer = متطوع / partner = شريك / donor = مانح / admin = أدمن):', u.role || 'researcher');
+    if (newRole === null) return;
+
+    const { error } = await window.supabaseClient.from('users_profiles').update({
+      full_name: newName.trim() || u.full_name,
+      phone: newPhone.trim(),
+      role: newRole.trim() || u.role
+    }).eq('id', userId);
+    if (error) return alert('❌ تعذر تعديل العضو: ' + error.message);
+    alert('✅ تم تحديث بيانات العضو بنجاح.');
+    window.renderAdminMembersSection();
+  };
+
+  window.adminDeleteUserAccount = async function(userId, fullName) {
+    if (!confirm(`⚠️ هل أنت متأكد من حذف حساب (${fullName}) نهائياً؟`)) return;
+    const { error } = await window.supabaseClient.from('users_profiles').delete().eq('id', userId);
+    if (error) return alert('❌ تعذر حذف الحساب: ' + error.message);
+    alert('✅ تم حذف الحساب بنجاح.');
+    window.renderAdminMembersSection();
+  };
+
+  window.adminViewMemberAssignedCases = function(memberEmail, memberName) {
+    const cases = (window.ALL_ADMIN_CASES || []).filter(c =>
+      String(c.assigned_to_email || '').toLowerCase() === String(memberEmail || '').toLowerCase()
+    );
+    if (cases.length === 0) {
+      return alert(`ℹ️ لا توجد حالات مسندة حالياً للعضو (${memberName}).`);
+    }
+    const listText = cases.map((c, i) => `${i + 1}) ${c.tracking_code} — ${c.village_hamlet || ''} (${c.intervention_type || ''})`).join('\n');
+    alert(`📁 الحالات المسندة إلى (${memberName}) — العدد: ${cases.length}\n\n${listText}`);
+  };
+
     const u = (window.ALL_ADMIN_USERS || []).find(x => String(x.id) === String(userId));
     if (!u) return;
     const msg =
@@ -4026,6 +4063,30 @@
     alert('✅ تم اعتماد المتطوع وتفعيل حساب دخوله بنجاح.');
     window.renderAdminPartnersAndVolunteersTab();
   };
+    window.adminEditVolunteer = async function(volId) {
+    const v = (window.ALL_ADMIN_VOLUNTEERS || []).find(x => String(x.id) === String(volId));
+    if (!v) return;
+    const name = prompt('تعديل اسم المتطوع:', v.full_name || '');
+    if (name === null) return;
+    const village = prompt('تعديل القرية / المركز:', v.village || '');
+    if (village === null) return;
+    const phone = prompt('تعديل رقم الهاتف / واتساب:', v.phone || '');
+    if (phone === null) return;
+    const skills = prompt('تعديل المهارات:', v.skills || '');
+    if (skills === null) return;
+    await window.supabaseClient.from('volunteers').update({
+      full_name: name.trim(), village: village.trim(), phone: phone.trim(), skills: skills.trim()
+    }).eq('id', volId);
+    alert('✅ تم تحديث بيانات المتطوع.');
+    window.renderAdminPartnersAndVolunteersTab();
+  };
+
+  window.adminDeleteVolunteer = async function(volId) {
+    if (!confirm('هل أنت متأكد من حذف سجل هذا المتطوع؟')) return;
+    await window.supabaseClient.from('volunteers').delete().eq('id', volId);
+    window.renderAdminPartnersAndVolunteersTab();
+  };
+
   window.renderAdminBackupRestoreTab = function() {
     const box = document.getElementById('admin-tab-backup');
     if (!box) return;
