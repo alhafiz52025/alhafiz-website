@@ -103,13 +103,12 @@
   };
 
     window.openFoundationWhatsApp = function(customText = '') {
-    const cfg = window.SITE_CONFIG_CACHE || {};
-    const raw = String(cfg.phone_whatsapp || '01000880156').replace(/\D/g, '');
-    const intl = raw.startsWith('20') ? raw : ('20' + raw.replace(/^0/, ''));
-    const msg = customText || 'مرحباً بمؤسسة الحافظ للتنمية والخدمات، أرغب في الاستفسار والتواصل معكم.';
-    const waUrl = 'https://whatsapp.com' + intl + '&text=' + encodeURIComponent(msg);
-    window.open(waUrl, '_blank', 'noopener,noreferrer');
-  };
+  const cfg = window.SITE_CONFIG_CACHE || {};
+  const raw = String(cfg.phone_whatsapp || '01000880156').replace(/\D/g, '');
+  const intl = raw.startsWith('20') ? raw : ('20' + raw.replace(/^0/, ''));
+  const msg = customText || 'مرحباً بمؤسسة الحافظ للتنمية والخدمات، أرغب في الاستفسار والتواصل معكم.';
+  window.open(`https://wa.me{intl}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+};
 
   window.uploadFileToDriveOrStorage = async function(file, meta = {}) {
     const driveUrl = String(window.GOOGLE_DRIVE_WEB_APP_URL || '').trim();
