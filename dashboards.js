@@ -4111,4 +4111,17 @@
     else if (tab === 'partners-vol') window.renderAdminPartnersAndVolunteersTab();
     else if (tab === 'backup') window.renderAdminBackupRestoreTab();
   };
+    window.adminStartNewCampaign = function() {
+    const t = document.getElementById('cfg-camp-title');
+    const d = document.getElementById('cfg-camp-desc');
+    const tg = document.getElementById('cfg-camp-target');
+    const cur = document.getElementById('cfg-camp-current');
+    const act = document.getElementById('cfg-camp-active');
+    if (t) t.value = '';
+    if (d) d.value = '';
+    if (tg) tg.value = '500';
+    if (cur) cur.value = '0';
+    if (act) act.value = 'true';
+    alert('🆕 تم تجهيز نموذج الحملة الجديدة! اكتب اسم الحملة الجديدة والهدف وارفع صورتها ثم اضغط (💾 حفظ وتحديث الحملة الحالية).');
+  };
 })();
