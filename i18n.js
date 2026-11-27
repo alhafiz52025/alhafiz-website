@@ -466,7 +466,7 @@
     "شهادة الوفاة *": "Death Certificate *",
     "قسيمة الطلاق *": "Divorce Certificate *",
     "صورة الحكم / شهادة من السجن *": "Court Verdict / Prison Certificate *",
-    "جواب هجر (من المركز أو العمدة أو شيخ البلد) *": "Abandonment Certificate (Police / Mayor / Village Chief) *"
+    "جواب هجر (من المركز أو العمدة أو شيخ البلد) *": "Abandonment Certificate (Police / Mayor / Village Chief) *",
         // 7. القوائم المنسدلة، البانر، الحملة المباشرة، بوابة التبرعات، التطوع، والشركاء
     "🏛️ مؤسسة الحافظ للتنمية والخدمات - إشهار رقم 2202 لسنة 2025 (مركز إهناسيا - بني سويف)": "🏛️ Al-Hafiz Foundation - Reg. No. 2202 of 2025 (Ihnasia - Beni Suef)",
     "🔐 دخول الأعضاء والإدارة": "🔐 Staff & Admin Login",
