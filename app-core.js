@@ -63,10 +63,24 @@
             } catch (e) { resolve({ data: null, error: { message: e.message } }); }
           }
         };
-        return q;
+               return q;
+      },
+      async rpc(fnName, params = {}) {
+        try {
+          const res = await fetch(`${baseUrl}/rpc/${fnName}`, {
+            method: 'POST',
+            headers: { 'apikey': apiKey, 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+          });
+          const json = await res.json();
+          if (!res.ok) return { data: null, error: { message: json.message || res.statusText } };
+          return { data: json, error: null };
+        } catch (e) {
+          return { data: null, error: { message: e.message } };
+        }
       }
     };
-  }
+
 
   window.escapeHtml = function(str) {
     return String(str ?? '')
