@@ -835,4 +835,38 @@
       r.readAsDataURL(compressedFile);
     });
   };
+    // توجيه ذكي للمتقدم للتواصل مع الباحث المسند لحالته أو الإدارة (أو كليهما)
+  window.contactResearcherOrAdminSupport = async function() {
+    const cfg = window.SITE_CONFIG_CACHE || {};
+    const adminWa = String(cfg.phone_whatsapp || '01000880156').replace(/\D/g, '');
+    const codeInput = prompt('إذا كان لديك رقم طلب مسجل (مثال: HF-2026-10001) أدخله هنا لتوجيهك للباحث المسند لحالتك، أو اتركه فارغاً للتواصل مع الإدارة مباشرة:', '') || '';
+    const cleanCode = codeInput.trim().toUpperCase();
+
+    let researcherPhone = '';
+    let researcherName = '';
+    if (cleanCode && window.supabaseClient) {
+      const { data: fam } = await window.supabaseClient.from('families')
+        .select('assigned_to_email, assigned_to_name').or(`tracking_code.eq.${cleanCode},initial_tracking_code.eq.${cleanCode}`).maybeSingle();
+      if (fam && fam.assigned_to_email) {
+        researcherName = fam.assigned_to_name || 'الباحث الميداني';
+        const { data: prof } = await window.supabaseClient.from('users_profiles')
+          .select('phone').ilike('email', fam.assigned_to_email).maybeSingle();
+        if (prof && prof.phone) researcherPhone = String(prof.phone).replace(/\D/g, '');
+      }
+    }
+
+    const msg = cleanCode
+      ? `مرحباً مؤسسة الحافظ، أحتاج مساعدة في استكمال إجراءات طلبي رقم (${cleanCode}).`
+      : 'مرحباً مؤسسة الحافظ للتنمية والخدمات، أواجه استفساراً أثناء تقديم طلب مساعدة وأحتاج للتوجيه.';
+
+    if (researcherPhone && researcherPhone !== adminWa) {
+      const rIntl = researcherPhone.startsWith('20') ? researcherPhone : ('20' + researcherPhone.replace(/^0/, ''));
+      const u1 = new URL('https://wa.me'); u1.pathname = rIntl; u1.searchParams.set('text', msg + ` (موجه إلى أ/ ${researcherName})`);
+      window.open(u1.toString(), '_blank', 'noopener,noreferrer');
+    }
+
+    const aIntl = adminWa.startsWith('20') ? adminWa : ('20' + adminWa.replace(/^0/, ''));
+    const u2 = new URL('https://wa.me'); u2.pathname = aIntl; u2.searchParams.set('text', msg);
+    setTimeout(() => { window.open(u2.toString(), '_blank', 'noopener,noreferrer'); }, researcherPhone ? 450 : 0);
+  };
 })();
