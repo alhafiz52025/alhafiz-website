@@ -639,7 +639,7 @@
     });
   };
 
-  window.trackApplication = async function() {
+    window.trackApplication = async function() {
     const q = (document.getElementById('track-input')?.value || '').trim().toUpperCase();
     const resBox = document.getElementById('track-result');
     if (!q || !resBox) return;
@@ -649,31 +649,33 @@
       return;
     }
 
-    resBox.innerHTML = '<p style="font-size:13px;">جاري البحث...</p>';
+    resBox.innerHTML = '<p style="font-size:13px;">⏳ جارٍ البحث في السجلات الموثقة...</p>';
     if (!window.supabaseClient) return;
 
-    if (q.startsWith('DON-') || q.startsWith('INK-')) {
-      const { data } = await window.supabaseClient.from('donations').select('*').eq('donation_code', q).maybeSingle();
-      if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على تبرع بهذا الكود.</div>'; return; }
-      const st = data.status === 'approved'
-        ? `✅ تم اعتماد الاستلام رسمياً (رقم الإيصال / الإيداع: ${window.escapeHtml(data.linked_doc_number || 'معتمد')})`
-        : '⏳ قيد مراجعة كشف الحساب البنكي / الاستلام المخزني';
-      resBox.innerHTML = `<div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:14px; border-radius:10px;"><strong>كود التبرع:</strong> ${window.escapeHtml(data.donation_code)}<br><strong>المتبرع:</strong> ${window.escapeHtml(data.donor_name || 'فاعل خير')}<br><strong>الحالة:</strong> ${st}</div>`;
+    const { data, error } = await window.supabaseClient.rpc('public_track_record', { p_code: q });
+    if (error || !data || !data.found) {
+      resBox.innerHTML = `<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على سجل مطابق للكود (${window.escapeHtml(q)}).</div>`;
       return;
     }
 
-    if (q.startsWith('GRV-')) {
-      const { data } = await window.supabaseClient.from('grievances').select('*').eq('tracking_code', q).maybeSingle();
-      if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على رسالة بهذا الرقم.</div>'; return; }
-      resBox.innerHTML = `<div style="background:#f8fafc; border:1px solid #cbd5e1; padding:14px; border-radius:10px;"><strong>رقم المتابعة:</strong> ${window.escapeHtml(data.tracking_code)}<br><strong>الحالة:</strong> ${data.status === 'resolved' || data.status === 'تم الرد' ? 'تم الرد' : 'قيد المراجعة'}</div>`;
-      return;
-    }
+    const statusMap = {
+      approved: '✅ معتمد / مقبول للصرف',
+      rejected: '❌ مرفوض',
+      not_eligible: '❌ غير مستحق',
+      pending: '🔍 قيد المراجعة والتدقيق',
+      resolved: '✅ تم الرد والبت في الرسالة'
+    };
+    const statusLabel = statusMap[data.status] || '🔍 قيد المراجعة';
+    const extraInfo = data.doc_number
+      ? `<br><strong>رقم الإيصال / الإذن الرسمي:</strong> ${window.escapeHtml(data.doc_number)}`
+      : (data.notes ? `<br><strong>ملاحظات الإدارة:</strong> ${window.escapeHtml(data.notes)}` : '');
 
-    const { data } = await window.supabaseClient.from('families').select('*').or(`tracking_code.eq.${q},initial_tracking_code.eq.${q}`).maybeSingle();
-    if (!data) { resBox.innerHTML = '<div style="color:#b91c1c; font-weight:700;">❌ لم يتم العثور على طلب مطابق.</div>'; return; }
-
-    const statusLabel = data.status === 'approved' ? '✅ مقبول للصرف' : (data.status === 'rejected' ? '❌ مرفوض' : '🔍 قيد المراجعة');
-    resBox.innerHTML = `<div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:16px; border-radius:12px;"><strong>رقم الطلب:</strong> ${window.escapeHtml(data.tracking_code)}<br><strong>النوع:</strong> ${window.escapeHtml(data.intervention_type)}<br><strong>الحالة:</strong> ${statusLabel}</div>`;
+    resBox.innerHTML = `
+      <div style="background:#ecfdf5; border:1px solid #a7f3d0; padding:16px; border-radius:12px;">
+        <strong>الكود:</strong> ${window.escapeHtml(data.code)}<br>
+        <strong>البيان:</strong> ${window.escapeHtml(data.title || '')}<br>
+        <strong>الحالة:</strong> ${statusLabel}${extraInfo}
+      </div>`;
   };
 
   window.loginUser = async function() {
@@ -681,63 +683,47 @@
     const pass = (document.getElementById('login-pass')?.value || '').trim();
     if (!email || !pass) return alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور.');
 
-    const cfg = await window.getFoundationSettings();
-    const adminEmail = (cfg.admin_email || 'alhafiz52025@gmail.com').toLowerCase();
-    let matchedUser = null;
-
-    if (email === adminEmail && pass === '22022025') {
-      matchedUser = { email: adminEmail, name: 'رئيس مجلس الأمناء', role: 'admin', phone: cfg.phone_whatsapp || '01000880156' };
-    } else if (window.supabaseClient) {
-      const { data } = await window.supabaseClient.from('users_profiles').select('*').ilike('email', email).maybeSingle();
-      if (data && data.account_status === 'active' && (data.password_hash === pass || data.temp_code === pass)) {
-        matchedUser = {
-          id: data.id, email: data.email, name: data.full_name, role: data.role || 'researcher',
-          phone: data.phone || cfg.phone_whatsapp || '01000880156',
-          can_view_all_cases: !!data.can_view_all_cases, must_change_password: data.temp_code === pass || !!data.must_change_password
-        };
-      }
+    const { data, error } = await window.supabaseClient.rpc('verify_staff_credentials', { p_email: email, p_pass: pass });
+    if (error || !data || !data.ok) {
+      return alert('❌ ' + (data?.msg || error?.message || 'بيانات الدخول غير صحيحة أو الحساب غير مفعل.'));
     }
 
-    if (!matchedUser) return alert('❌ بيانات الدخول غير صحيحة أو الحساب غير مفعل.');
-
-    pending2FAUser = matchedUser;
-    pending2FACode = String(Math.floor(100000 + Math.random() * 900000));
+    pending2FAUser = data.user;
+    pending2FACode = data.otp;
     pending2FAExpires = Date.now() + 5 * 60 * 1000;
-
-    if (window.supabaseClient?.auth?.signInWithOtp) {
-      window.supabaseClient.auth.signInWithOtp({ email: matchedUser.email }).catch(() => {});
-    }
 
     const otpBox = document.getElementById('login-2fa-box');
     const otpHint = document.getElementById('login-2fa-hint');
     if (otpBox) {
       otpBox.classList.remove('hidden');
-      if (otpHint) otpHint.innerHTML = `🔐 تم إرسال رمز التحقق (6 أرقام) إلى البريد (<strong>${window.escapeHtml(matchedUser.email)}</strong>). يمكنك أيضاً استلامه فوراً عبر واتساب:`;
+      if (otpHint) otpHint.innerHTML = `🔐 تم توليد رمز التحقق (6 أرقام) على الخادم لحسابك (<strong>${window.escapeHtml(pending2FAUser.email)}</strong>). اختر وسيلة استلام الرمز الآن:`;
     }
   };
 
   window.send2FACodeToWhatsApp = function() {
-      window.send2FACodeToEmail = function() {
+    if (!pending2FAUser || !pending2FACode) return;
+    window.triggerInstantWhatsApp(pending2FAUser.phone, `مؤسسة الحافظ للتنمية والخدمات\n🔐 رمز تأكيد الدخول (OTP) الخاص بك هو: ${pending2FACode}\nصالح لمدة 5 دقائق.`);
+  };
+
+  window.send2FACodeToEmail = function() {
     if (!pending2FAUser || !pending2FACode) return;
     const subj = 'رمز تأكيد الدخول (OTP) - مؤسسة الحافظ للتنمية والخدمات';
     const body = `مرحباً أ/ ${pending2FAUser.name}\nرمز تأكيد الدخول الخاص بك هو: ${pending2FACode}\nصالح لمدة 5 دقائق.`;
     window.open(`mailto:${encodeURIComponent(pending2FAUser.email)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`, '_blank', 'noopener,noreferrer');
   };
-    if (!pending2FAUser || !pending2FACode) return;
-    window.triggerInstantWhatsApp(pending2FAUser.phone, `مؤسسة الحافظ للتنمية والخدمات\n🔐 رمز تأكيد الدخول (OTP) الخاص بك هو: ${pending2FACode}\nصالح لمدة 5 دقائق.`);
-  };
 
-  window.complete2FALogin = function() {
+  window.complete2FALogin = async function() {
     const codeInput = (document.getElementById('login-otp-input')?.value || '').trim();
-    if (!pending2FAUser || !pending2FACode) return alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور أولاً.');
-    if (Date.now() > pending2FAExpires) {
-      pending2FAUser = null; pending2FACode = '';
-      return alert('⏰ انتهت صلاحية رمز التحقق. يرجى تسجيل الدخول مجدداً.');
+    if (!pending2FAUser || !codeInput) return alert('⚠️ يرجى إدخال البريد الإلكتروني وكلمة المرور ثم كتابة رمز التأكيد.');
+
+    const { data, error } = await window.supabaseClient.rpc('verify_staff_otp', { p_email: pending2FAUser.email, p_otp: codeInput });
+    if (error || !data || !data.ok) {
+      return alert('❌ ' + (data?.msg || error?.message || 'رمز التحقق غير صحيح أو منتهي الصلاحية.'));
     }
-    if (codeInput !== pending2FACode) return alert('❌ رمز التحقق غير صحيح.');
 
     window.currentUser = pending2FAUser;
-    pending2FAUser = null; pending2FACode = '';
+    pending2FAUser = null;
+    pending2FACode = '';
     document.getElementById('login-2fa-box')?.classList.add('hidden');
     sessionStorage.setItem('hf_current_user', JSON.stringify(window.currentUser));
     if (typeof window.routeLoggedInUser === 'function') window.routeLoggedInUser(window.currentUser);
