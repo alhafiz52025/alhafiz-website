@@ -836,7 +836,7 @@
     });
   };
     // توجيه ذكي للمتقدم للتواصل مع الباحث المسند لحالته أو الإدارة (أو كليهما)
-  window.contactResearcherOrAdminSupport = async function() {
+    window.contactResearcherOrAdminSupport = async function() {
     const cfg = window.SITE_CONFIG_CACHE || {};
     const adminWa = String(cfg.phone_whatsapp || '01000880156').replace(/\D/g, '');
     const codeInput = prompt('إذا كان لديك رقم طلب مسجل (مثال: HF-2026-10001) أدخله هنا لتوجيهك للباحث المسند لحالتك، أو اتركه فارغاً للتواصل مع الإدارة مباشرة:', '') || '';
@@ -859,14 +859,30 @@
       ? `مرحباً مؤسسة الحافظ، أحتاج مساعدة في استكمال إجراءات طلبي رقم (${cleanCode}).`
       : 'مرحباً مؤسسة الحافظ للتنمية والخدمات، أواجه استفساراً أثناء تقديم طلب مساعدة وأحتاج للتوجيه.';
 
-    if (researcherPhone && researcherPhone !== adminWa) {
-      const rIntl = researcherPhone.startsWith('20') ? researcherPhone : ('20' + researcherPhone.replace(/^0/, ''));
-      const u1 = new URL('https://wa.me'); u1.pathname = rIntl; u1.searchParams.set('text', msg + ` (موجه إلى أ/ ${researcherName})`);
-      window.open(u1.toString(), '_blank', 'noopener,noreferrer');
-    }
+    const buildWaLink = (rawNum, extraText = '') => {
+      const intl = rawNum.startsWith('20') ? rawNum : ('20' + rawNum.replace(/^0/, ''));
+      const u = new URL('https://wa.me');
+      u.pathname = intl;
+      u.searchParams.set('text', msg + extraText);
+      return u.toString();
+    };
 
-    const aIntl = adminWa.startsWith('20') ? adminWa : ('20' + adminWa.replace(/^0/, ''));
-    const u2 = new URL('https://wa.me'); u2.pathname = aIntl; u2.searchParams.set('text', msg);
-    setTimeout(() => { window.open(u2.toString(), '_blank', 'noopener,noreferrer'); }, researcherPhone ? 450 : 0);
+    const adminUrl = buildWaLink(adminWa);
+    const resUrl = (researcherPhone && researcherPhone !== adminWa)
+      ? buildWaLink(researcherPhone, ` (موجه إلى أ/ ${researcherName})`)
+      : '';
+
+    const modal = document.getElementById('policy-modal');
+    const body = document.getElementById('policy-modal-body');
+    if (modal && body) {
+      body.innerHTML = `
+        <h4 style="color:#064e3b; margin-bottom:8px;">💬 اختر جهة التواصل الفوري عبر الواتساب:</h4>
+        <p style="font-size:13px; color:#334155; margin-bottom:12px;">اضغط على الزر أدناه لفتح محادثة الواتساب مباشرة دون حظر من المتصفح:</p>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          ${resUrl ? `<a href="${resUrl}" target="_blank" rel="noopener noreferrer" class="action-btn" style="text-align:center; background:#0284c7;">👤 مراسلة الباحث الميداني المسند (${window.escapeHtml(researcherName)})</a>` : ''}
+          <a href="${adminUrl}" target="_blank" rel="noopener noreferrer" class="action-btn" style="text-align:center; background:#16a34a;">🏛️ مراسلة إدارة مؤسسة الحافظ مباشرة</a>
+        </div>`;
+      modal.classList.remove('hidden');
+    }
   };
 })();
