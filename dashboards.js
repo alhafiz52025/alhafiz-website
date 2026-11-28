@@ -2475,6 +2475,7 @@
         </table>
       </div>`;
   };
+  
   window.adminCreateUserAccount = async function() {
     const full_name = (document.getElementById('new-u-name')?.value || '').trim();
     const email = (document.getElementById('new-u-email')?.value || '').trim().toLowerCase();
