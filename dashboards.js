@@ -2454,9 +2454,16 @@
             <tr><th>الاسم</th><th>البريد والهاتف</th><th>الصفة</th><th>الحالة</th><th>إجراءات</th></tr>
           </thead>
           <tbody>
-            ${users.map(u => `
+                        ${users.map(u => `
               <tr>
-                   <td style="display:flex; gap:4px; flex-wrap:wrap;">
+                <td>
+                  <strong>${window.escapeHtml(u.full_name || 'بدون اسم')}</strong><br>
+                  <small style="color:#047857;">الحالات المسندة: <strong>${(window.ALL_ADMIN_CASES || []).filter(c => String(c.assigned_to_email || '').toLowerCase() === String(u.email || '').toLowerCase()).length}</strong></small>
+                </td>
+                <td>${window.escapeHtml(u.email || '')}<br><small>${window.escapeHtml(u.phone || '')}</small></td>
+                <td>${window.escapeHtml(roleLabels[u.role] || u.role || 'باحث')}</td>
+                <td>${u.account_status === 'active' ? '✅ نشط' : '⛔ موقوف'}</td>
+                <td style="display:flex; gap:4px; flex-wrap:wrap;">
                   <button type="button" onclick="adminViewMemberAssignedCases('${escapeAttr(u.email)}', '${escapeAttr(u.full_name || '')}')" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 7px; font-size:11px;">📁 حالاته</button>
                   <button type="button" onclick="adminEditUserAccount('${escapeAttr(u.id)}')" class="nav-btn" style="background:#4f46e5; color:#fff; padding:3px 7px; font-size:11px;">✏️ تعديل</button>
                   <button type="button" onclick="adminToggleUserStatus('${escapeAttr(u.id)}', '${u.account_status === 'active' ? 'suspended' : 'active'}')" class="nav-btn" style="background:#0f766e; color:#fff; padding:3px 7px; font-size:11px;">${u.account_status === 'active' ? 'إيقاف' : 'تفعيل'}</button>
@@ -2468,7 +2475,6 @@
         </table>
       </div>`;
   };
-
   window.adminCreateUserAccount = async function() {
     const full_name = (document.getElementById('new-u-name')?.value || '').trim();
     const email = (document.getElementById('new-u-email')?.value || '').trim().toLowerCase();
@@ -2546,17 +2552,32 @@
     window.renderAdminMembersSection();
   };
 
-  window.adminViewMemberAssignedCases = function(memberEmail, memberName) {
+    window.adminViewMemberAssignedCases = function(memberEmail, memberName) {
     const cases = (window.ALL_ADMIN_CASES || []).filter(c =>
       String(c.assigned_to_email || '').toLowerCase() === String(memberEmail || '').toLowerCase()
     );
+    const modal = document.getElementById('policy-modal');
+    const body = document.getElementById('policy-modal-body');
+    if (!modal || !body) return;
+
     if (cases.length === 0) {
-      return alert(`ℹ️ لا توجد حالات مسندة حالياً للعضو (${memberName}).`);
+      body.innerHTML = `<h4 style="color:#064e3b;">📁 الحالات المسندة إلى (${window.escapeHtml(memberName)})</h4><p>لا توجد حالات مسندة لهذا العضو حالياً. يمكنك إسناد الحالات له من تبويب (📋 الحالات).</p>`;
+    } else {
+      body.innerHTML = `
+        <h4 style="color:#064e3b; margin-bottom:10px;">📁 الحالات المسندة إلى (${window.escapeHtml(memberName)}) — العدد: ${cases.length}</h4>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>الكود</th><th>اسم الحالة</th><th>القرية</th><th>نوع التدخل</th><th>الحالة</th></tr></thead>
+            <tbody>
+              ${cases.map(c => `<tr><td><strong>${window.escapeHtml(c.tracking_code)}</strong></td><td>${window.escapeHtml(c.applicant_name || '')}</td><td>${window.escapeHtml(c.village_hamlet || '')}</td><td>${window.escapeHtml(c.intervention_type || '')}</td><td>${window.escapeHtml(c.status || '')}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
     }
-    const listText = cases.map((c, i) => `${i + 1}) ${c.tracking_code} — ${c.village_hamlet || ''} (${c.intervention_type || ''})`).join('\n');
-    alert(`📁 الحالات المسندة إلى (${memberName}) — العدد: ${cases.length}\n\n${listText}`);
+    modal.classList.remove('hidden');
   };
 
+  window.adminNotifyMemberJoin = function(userId) {
     const u = (window.ALL_ADMIN_USERS || []).find(x => String(x.id) === String(userId));
     if (!u) return;
     const msg =
