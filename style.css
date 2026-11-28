@@ -670,4 +670,14 @@ footer a:hover { text-decoration: underline; }
 @media (max-width: 720px) {
   .side-media-card { grid-template-columns: 1fr; }
 }
-
+/* إصلاح تكدس بطاقات المشروعات والأعمدة على شاشات الموبايل */
+@media (max-width: 768px) {
+  #wizard-container [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    display: grid !important;
+  }
+  #wizard-container .grid-2,
+  #wizard-container .grid-3,
+  #wizard-container .grid-4 {
+    grid-template-columns: 1fr !important;
+  }
