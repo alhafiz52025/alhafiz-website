@@ -422,13 +422,36 @@
         <details><summary>كيف أستلم إيصال التبرع الرسمي؟</summary><p>بعد إجراء التحويل البنكي على حساب المؤسسة بالبنك الزراعي المصري - فرع منهرة، يمكنك التوجه لمقر المؤسسة (منشأة عبد الصمد – مركز إهناسيا) لاستلام الإيصال الرسمي المختوم.</p></details>
       </div>
     </section>
-    <!-- 9. استمارة طلب مساعدة -->
+        <!-- 9. استمارة طلب مساعدة -->
     <section id="section-apply" class="hidden">
       <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
           <h3 style="color:var(--primary-dark); margin:0;">📝 استمارة تسجيل وبحث حالة اجتماعية</h3>
           <button type="button" onclick="saveDraft()" class="nav-btn btn-gold">💾 حفظ مسودة</button>
         </div>
+
+        <!-- تنويه الأوراق المطلوبة قبل بدء التقديم -->
+        <div style="background:#fffbeb; border:1px solid #f59e0b; border-right:4px solid #d97706; border-radius:10px; padding:12px; margin-bottom:12px; color:#78350f; font-size:13px;">
+          <strong style="display:block; margin-bottom:5px; color:#92400e;">📋 تنويه هام: الأوراق المطلوبة تجهيزها قبل بدء التقديم:</strong>
+          <ul style="margin:0; padding-right:18px; line-height:1.8;">
+            <li>صورة بطاقة الرقم القومي سارية للزوج والزوجة (وجه أمامي ووجه خلفي).</li>
+            <li>شهادات ميلاد الأبناء المميكنة + بحث اجتماعي مختوم من الوحدة الاجتماعية.</li>
+            <li>تقرير طبي مختوم (لحالات العلاج والعمليات) — أو قسيمة الزواج والشهادة الصحية (لتجهيز العرائس).</li>
+            <li>للمشروعات الصغيرة (قرض حسن): صورة البطاقة (وش وظهر) مبدئياً، وعند القبول المبدئي يُطلب فيش جنائي وصورة بطاقة الضامن.</li>
+          </ul>
+        </div>
+
+        <!-- زر المساعدة الفورية والتواصل مع الباحث المسند والإدارة -->
+        <div style="background:#ecfdf5; border:1px solid #10b981; border-radius:10px; padding:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div style="font-size:13px; color:#064e3b;">
+            <strong>🆘 واجهت مشكلة أثناء التقديم أو تحتاج مساعدة؟</strong><br>
+            <small>تواصل مباشرة مع الباحث الميداني المسند لحالتك أو إدارة المؤسسة لإرشادك فوراً.</small>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" onclick="contactResearcherOrAdminSupport()" class="action-btn" style="font-size:12px; padding:8px 14px;">💬 تواصل مع الباحث والإدارة</button>
+          </div>
+        </div>
+
         <div id="wizard-container"></div>
       </div>
     </section>
