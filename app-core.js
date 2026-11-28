@@ -63,7 +63,7 @@
             } catch (e) { resolve({ data: null, error: { message: e.message } }); }
           }
         };
-               return q;
+                return q;
       },
       async rpc(fnName, params = {}) {
         try {
@@ -80,7 +80,7 @@
         }
       }
     };
-
+  }
 
   window.escapeHtml = function(str) {
     return String(str ?? '')
