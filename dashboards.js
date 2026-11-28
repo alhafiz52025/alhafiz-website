@@ -2461,7 +2461,7 @@
                   <small style="color:#047857;">الحالات المسندة: <strong>${(window.ALL_ADMIN_CASES || []).filter(c => String(c.assigned_to_email || '').toLowerCase() === String(u.email || '').toLowerCase()).length}</strong></small>
                 </td>
                 <td>${window.escapeHtml(u.email || '')}<br><small>${window.escapeHtml(u.phone || '')}</small></td>
-                <td>${window.escapeHtml(roleLabels[u.role] || u.role || 'باحث')}</td>
+                 <td>${window.escapeHtml(roleNames[u.role] || u.role || 'باحث')}</td>
                 <td>${u.account_status === 'active' ? '✅ نشط' : '⛔ موقوف'}</td>
                 <td style="display:flex; gap:4px; flex-wrap:wrap;">
                   <button type="button" onclick="adminViewMemberAssignedCases('${escapeAttr(u.email)}', '${escapeAttr(u.full_name || '')}')" class="nav-btn" style="background:#0284c7; color:#fff; padding:3px 7px; font-size:11px;">📁 حالاته</button>
