@@ -2524,8 +2524,7 @@
     await window.renderAdminMembersSection();
   };
 
-  window.adminNotifyMemberJoin = function(userId) {
-      window.adminEditUserAccount = async function(userId) {
+   window.adminEditUserAccount = async function(userId) {
     const u = (window.ALL_ADMIN_USERS || []).find(x => String(x.id) === String(userId));
     if (!u) return;
     const newName = prompt('تعديل الاسم الكامل للعضو:', u.full_name || '');
